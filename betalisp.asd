@@ -3,24 +3,25 @@
   :author "Stephan Seitz"
   :license "GPLv3"
   :depends-on ("petalisp"
-               "cl-cuda")
+               "cl-cuda"
+               "iterate")
   :components ((:module "src"
                 :components
-                ((:file "main"))))
+                ((:file "main") (:file "cuda-array"))))
   :description ""
   :long-description
   #.(read-file-string
-     (subpathname *load-pathname* "README.markdown"))
+     (subpathname *load-pathname* "README.org"))
   :in-order-to ((test-op (test-op "betalisp/tests"))))
 
-(defsystem "betalisp/tests"
-  :author "Stephan Seitz"
-  :license "GPLv3"
-  :depends-on ("betalisp"
-               "rove")
-  :components ((:module "tests"
-                :components
-                ((:file "main"))))
-  :description "Test system for betalisp"
+;(defsystem "betalisp/tests"
+  ;:author "Stephan Seitz"
+  ;:license "GPLv3"
+  ;:depends-on ("betalisp"
+               ;"rove")
+  ;:components ((:module "tests"
+                ;:components
+                ;((:file "main"))))
+  ;:description "Test system for betalisp"
 
-  :perform (test-op (op c) (symbol-call :rove :run c)))
+  ;:perform (test-op (op c) (symbol-call :rove :run c)))
