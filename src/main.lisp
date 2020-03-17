@@ -1,5 +1,8 @@
-(defpackage betalisp
+(defpackage petalisp-cuda
   (:shadowing-import-from #:petalisp #:set-difference)
-  (:use :cl :petalisp :petalisp :cl-cuda :iterate))
-(in-package :betalisp)
+  (:use :cl
+        :petalisp
+        :iterate)
+  (:import-from :cl-cuda))
+(in-package :petalisp-cuda)
 

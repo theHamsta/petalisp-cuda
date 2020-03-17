@@ -1,11 +1,13 @@
-(defpackage betalisp/tests/main
+(defpackage petalisp-cuda/tests
   (:use :cl
-        :betalisp
+        :petalisp-cuda
+        :petalisp-cuda.cuda-array
+        :cl-cuda
         :rove))
-(in-package :betalisp/tests/main)
+(in-package :petalisp-cuda/tests)
 
-;; NOTE: To run this test file, execute `(asdf:test-system :betalisp)' in your Lisp.
+;; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
 
-(deftest test-target-1
-  (testing "should (= 1 1) to be true"
-    (ok (= 1 1))))
+(deftest test-make-cuda-array
+  (with-cuda (0)
+    (make-cuda-array '(10 20) 'float)))

@@ -19,4 +19,5 @@ script:
                  (lambda (c h)
                    (declare (ignore c h))
                    (uiop:quit -1)))'
-       -e '(ql:quickload :betalisp-test)'
+       -e '(ql:quickload :petalisp-cuda/tests)'
+       -e '(asdf:test-system :petalisp-cuda)'

@@ -1,4 +1,4 @@
-(in-package :betalisp)
+(in-package :petalisp-cuda)
 
 (defvar *gpu-storage-table*)
 (defvar *preferred-block-size* (16 16 1))
