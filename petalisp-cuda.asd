@@ -17,6 +17,7 @@
                 (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
+                 (:file "cudnn")
                  ))))
 
 

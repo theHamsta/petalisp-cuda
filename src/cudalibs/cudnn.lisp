@@ -133,9 +133,9 @@
   (mode cudnnErrQueryMode-t)
   (tag (:pointer cudnnRuntimeTag-t)))
 
-(cffi:defcfun "cudnngetproperty" cudnnStatus-t
-  (type libraryPropertyType)
-  (value (:pointer :int)))
+;(cffi:defcfun "cudnngetproperty" cudnnStatus-t
+  ;(type libraryPropertyType)
+  ;(value (:pointer :int)))
 
 (cffi:defcfun "cudnncreate" cudnnStatus-t
   (handle (:pointer cudnnHandle-t)))
@@ -143,13 +143,13 @@
 (cffi:defcfun "cudnndestroy" cudnnStatus-t
   (handle cudnnHandle-t))
 
-(cffi:defcfun "cudnnsetstream" cudnnStatus-t
-  (handle cudnnHandle-t)
-  (streamid cudaStream-t))
+;(cffi:defcfun "cudnnsetstream" cudnnStatus-t
+  ;(handle cudnnHandle-t)
+  ;(streamid (:pointer)))
 
 (cffi:defcfun "cudnngetstream" cudnnStatus-t
   (handle cudnnHandle-t)
-  (streamid (:pointer cudaStream-t)))
+  (streamid (:pointer)))
 
 (cffi:defcstruct cudnntensorstruct)
 
@@ -2429,21 +2429,21 @@
   (ctclossdesc cudnnCTCLossDescriptor-t)
   (sizeinbytes (:pointer :int)))
 
-(cffi:defcstruct cudnnalgorithm-t-record
-  (algo (:union Algorithm)))
+;(cffi:defcstruct cudnnalgorithm-t-record
+  ;(algo (:union Algorithm)))
 
-(cffi:defctype cudnnalgorithm-t (:struct cudnnalgorithm-t-record))
+;(cffi:defctype cudnnalgorithm-t (:struct cudnnalgorithm-t-record))
 
 (cffi:defcfun "cudnncreatealgorithmdescriptor" cudnnStatus-t
   (algodesc (:pointer cudnnAlgorithmDescriptor-t)))
 
-(cffi:defcfun "cudnnsetalgorithmdescriptor" cudnnStatus-t
-  (algodesc cudnnAlgorithmDescriptor-t)
-  (algorithm cudnnAlgorithm-t))
+;(cffi:defcfun "cudnnsetalgorithmdescriptor" cudnnStatus-t
+  ;(algodesc cudnnAlgorithmDescriptor-t)
+  ;(algorithm cudnnAlgorithm-t))
 
-(cffi:defcfun "cudnngetalgorithmdescriptor" cudnnStatus-t
-  (algodesc cudnnAlgorithmDescriptor-t)
-  (algorithm (:pointer cudnnAlgorithm-t)))
+;(cffi:defcfun "cudnngetalgorithmdescriptor" cudnnStatus-t
+  ;(algodesc cudnnAlgorithmDescriptor-t)
+  ;(algorithm (:pointer cudnnAlgorithm-t)))
 
 (cffi:defcfun "cudnncopyalgorithmdescriptor" cudnnStatus-t
   (src cudnnAlgorithmDescriptor-t)
@@ -2506,11 +2506,11 @@
   (time-usec :unsigned-int)
   (time-delta :unsigned-int)
   (handle cudnnHandle-t)
-  (stream cudaStream-t)
+  (stream (:pointer))
   (pid :unsigned-long-long)
   (tid :unsigned-long-long)
   (cudadeviceid :int)
-  (reserved (:pointer :int :count 15)
+  (reserved (:pointer :int)
 ))
 
 (cffi:defctype cudnndebug-t (:struct cudnndebug-t-record))
