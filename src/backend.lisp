@@ -1,7 +1,5 @@
 (defpackage :petalisp-cuda.backend
-  (:use :cl
-        :petalisp.ir)
-  (:import-from :cl-cuda)
+  (:use :cl)
   (:export cuda-backend
            use-cuda-backend))
 (in-package :petalisp-cuda.backend)
@@ -21,13 +19,13 @@
 (defun use-cuda-backend ()
   (unless (typep petalisp:*backend* 'cuda-backend)
     (progn 
-      (when (petalisp:*backend*)
+      (when petalisp:*backend*
         (petalisp.core:delete-backend petalisp:*backend*))
       (setq petalisp:*backend* (make-instance 'cuda-backend)))))
 
 (defclass cuda-backend (petalisp.core:backend)
   ((kernel-cache :initform (make-hash-table) :reader cuda-kernel-cache)
-   (allocated-cuda-context :initform (nil) :accessor allocated-cuda-context)))
+   (allocated-cuda-context :initform nil :accessor allocated-cuda-context)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)

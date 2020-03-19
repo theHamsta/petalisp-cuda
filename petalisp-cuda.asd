@@ -3,6 +3,8 @@
   :author "Stephan Seitz <stephan.seitz@fau.de>"
   :license "GPLv3"
   :depends-on ("petalisp"
+               "petalisp.core"
+               "petalisp.ir"
                "cl-cuda"
                "iterate"
                "array-operations"
@@ -12,13 +14,11 @@
                 :components
                 ((:file "main")
                  (:file "cuda-array")
-                 (:file "backend")
-                 ))
+                 (:file "backend")))
                 (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
-                 (:file "cudnn")
-                 ))))
+                 (:file "cudnn")))))
 
 
 (defsystem "petalisp-cuda/tests"
