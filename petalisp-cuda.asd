@@ -5,7 +5,9 @@
   :depends-on ("petalisp"
                "cl-cuda"
                "iterate"
-               "array-operations")
+               "array-operations"
+               "cffi"
+               "cffi-libffi")
   :components ((:module "src"
                 :components
                 ((:file "main")
@@ -15,7 +17,7 @@
                 (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
-                 (:file "cudnn")))))
+                 ))))
 
 
 (defsystem "petalisp-cuda/tests"

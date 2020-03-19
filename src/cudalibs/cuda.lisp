@@ -1,4 +1,5 @@
-(defpackage petalisp-cuda.cudalibs)
+(defpackage petalisp-cuda.cudalibs
+  )
 
 (in-package petalisp-cuda.cudalibs)
 
@@ -446,21 +447,21 @@
 (cffi:defctype cugraphexec (:pointer (:struct CUgraphExec-st)))
 
 (cffi:defcstruct cuuuid-st
-  (bytes (:pointer :char :count 16)
+  (bytes (:pointer)
 ))
 
 (cffi:defctype cuuuid (:struct CUuuid-st))
 
 (cffi:defcstruct cuipceventhandle-st
   "CUDA IPC event handle"
-  (reserved (:pointer :char :count 64)
+  (reserved (:pointer)
 ))
 
 (cffi:defctype cuipceventhandle (:struct CUipcEventHandle-st))
 
 (cffi:defcstruct cuipcmemhandle-st
   "CUDA IPC mem handle"
-  (reserved (:pointer :char :count 64)
+  (reserved (:pointer)
 ))
 
 (cffi:defctype cuipcmemhandle (:struct CUipcMemHandle-st))
@@ -544,16 +545,16 @@
 (cffi:defctype custreambatchmemoptype :int ; enum CUstreamBatchMemOpType-enum
 )
 
-(cffi:defcunion custreambatchmemopparams-union
-  "Per-operation parameters for ::cuStreamBatchMemOp"
-  (operation CUstreamBatchMemOpType)
-  (waitvalue (:struct CUstreamMemOpWaitValueParams-st))
-  (writevalue (:struct CUstreamMemOpWriteValueParams-st))
-  (flushremotewrites (:struct CUstreamMemOpFlushRemoteWritesParams-st))
-  (pad (:pointer cuuint64-t :count 6)
-))
+;(cffi:defcunion custreambatchmemopparams-union
+  ;"Per-operation parameters for ::cuStreamBatchMemOp"
+  ;(operation CUstreamBatchMemOpType)
+  ;(waitvalue (:struct CUstreamMemOpWaitValueParams-st))
+  ;(writevalue (:struct CUstreamMemOpWriteValueParams-st))
+  ;(flushremotewrites (:struct CUstreamMemOpFlushRemoteWritesParams-st))
+  ;(pad (:pointer)
+;))
 
-(cffi:defctype custreambatchmemopparams (:union CUstreamBatchMemOpParams-union))
+;(cffi:defctype custreambatchmemopparams (:union CUstreamBatchMemOpParams-union))
 
 (cffi:defcenum cuoccupancy-flags-enum
   "Occupancy calculator flag"
@@ -711,9 +712,9 @@
 (cffi:defcstruct cudevprop-st
   "Legacy device properties"
   (maxthreadsperblock :int)
-  (maxthreadsdim (:pointer :int :count 3)
+  (maxthreadsdim (:pointer)
 )
-  (maxgridsize (:pointer :int :count 3)
+  (maxgridsize (:pointer)
 )
   (sharedmemperblock :int)
   (totalconstantmemory :int)
@@ -904,7 +905,7 @@
 
 (cffi:defcstruct culinkstate-st)
 
-(cffi:defctype culinkstate (:pointer (:struct CUlinkState-st)))
+(cffi:defctype culinkstate (:pointer))
 
 (cffi:defcenum cugraphicsregisterflags-enum
   "Flags to register a graphics resource"
@@ -979,15 +980,15 @@
 
 (cffi:defctype cuda-kernel-node-params (:struct CUDA-KERNEL-NODE-PARAMS-st))
 
-(cffi:defcstruct cuda-memset-node-params-st
-  "Memset node parameters")
+;(cffi:defcstruct cuda-memset-node-params-st
+  ;"Memset node parameters")
 
-(cffi:defctype cuda-memset-node-params (:struct CUDA-MEMSET-NODE-PARAMS-st))
+;(cffi:defctype cuda-memset-node-params (:struct CUDA-MEMSET-NODE-PARAMS-st))
 
 (cffi:defcstruct cuda-host-node-params-st
   "Host node parameters"
   (fn CUhostFn)
-  (userdata (:pointer :void)))
+  (userdata (:pointer)))
 
 (cffi:defctype cuda-host-node-params (:struct CUDA-HOST-NODE-PARAMS-st))
 
@@ -1120,39 +1121,10 @@
 (cffi:defctype size-t :pointer ; function ptr int (int *)
 )
 
-(cffi:defcstruct cuda-memcpy2d-st
-  "2D memory copy parameters")
-
-(cffi:defctype cuda-memcpy2d (:struct CUDA-MEMCPY2D-st))
-
-(cffi:defcstruct cuda-memcpy3d-st
-  "3D memory copy parameters")
-
-(cffi:defctype cuda-memcpy3d (:struct CUDA-MEMCPY3D-st))
-
-(cffi:defcstruct cuda-memcpy3d-peer-st
-  "3D memory cross-context copy parameters")
-
-(cffi:defctype cuda-memcpy3d-peer (:struct CUDA-MEMCPY3D-PEER-st))
-
-(cffi:defcstruct cuda-array-descriptor-st
-  "Array descriptor")
-
-(cffi:defctype cuda-array-descriptor (:struct CUDA-ARRAY-DESCRIPTOR-st))
-
-(cffi:defcstruct cuda-array3d-descriptor-st
-  "3D array descriptor")
-
-(cffi:defctype cuda-array3d-descriptor (:struct CUDA-ARRAY3D-DESCRIPTOR-st))
-
-(cffi:defcstruct cuda-resource-desc-st
-  "CUDA Resource descriptor")
-
-(cffi:defctype cuda-resource-desc (:struct CUDA-RESOURCE-DESC-st))
 
 (cffi:defcstruct cuda-texture-desc-st
   "Texture descriptor"
-  (addressmode (:pointer CUaddress-mode :count 3)
+  (addressmode (:pointer)
 )
   (filtermode CUfilter-mode)
   (flags :unsigned-int)
@@ -1161,9 +1133,9 @@
   (mipmaplevelbias :float)
   (minmipmaplevelclamp :float)
   (maxmipmaplevelclamp :float)
-  (bordercolor (:pointer :float :count 4)
+  (bordercolor (:pointer)
 )
-  (reserved (:pointer :int :count 12)
+  (reserved (:pointer)
 ))
 
 (cffi:defctype cuda-texture-desc (:struct CUDA-TEXTURE-DESC-st))
@@ -1209,10 +1181,10 @@
 (cffi:defctype curesourceviewformat :int ; enum CUresourceViewFormat-enum
 )
 
-(cffi:defcstruct cuda-resource-view-desc-st
-  "Resource view descriptor")
+;(cffi:defcstruct cuda-resource-view-desc-st
+  ;"Resource view descriptor")
 
-(cffi:defctype cuda-resource-view-desc (:struct CUDA-RESOURCE-VIEW-DESC-st))
+;(cffi:defctype cuda-resource-view-desc (:struct CUDA-RESOURCE-VIEW-DESC-st))
 
 (cffi:defcstruct cuda-pointer-attribute-p2p-tokens-st
   "GPU Direct v3 tokens"
@@ -1261,7 +1233,7 @@
   (handle (:union cuda-external-memory-handle-desc-st-handle))
   (size :unsigned-long-long)
   (flags :unsigned-int)
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int)
 ))
 
 (cffi:defctype cuda-external-memory-handle-desc (:struct CUDA-EXTERNAL-MEMORY-HANDLE-DESC-st))
@@ -1271,15 +1243,15 @@
   (offset :unsigned-long-long)
   (size :unsigned-long-long)
   (flags :unsigned-int)
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int)
 ))
 
 (cffi:defctype cuda-external-memory-buffer-desc (:struct CUDA-EXTERNAL-MEMORY-BUFFER-DESC-st))
 
-(cffi:defcstruct cuda-external-memory-mipmapped-array-desc-st
-  "External memory mipmap descriptor")
+;(cffi:defcstruct cuda-external-memory-mipmapped-array-desc-st
+  ;"External memory mipmap descriptor")
 
-(cffi:defctype cuda-external-memory-mipmapped-array-desc (:struct CUDA-EXTERNAL-MEMORY-MIPMAPPED-ARRAY-DESC-st))
+;(cffi:defctype cuda-external-memory-mipmapped-array-desc (:struct CUDA-EXTERNAL-MEMORY-MIPMAPPED-ARRAY-DESC-st))
 
 (cffi:defcenum cuexternalsemaphorehandletype-enum
   "External semaphore handle types"
@@ -1304,7 +1276,7 @@
   (type CUexternalSemaphoreHandleType)
   (handle (:union cuda-external-semaphore-handle-desc-st-handle))
   (flags :unsigned-int)
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int )
 ))
 
 (cffi:defctype cuda-external-semaphore-handle-desc (:struct CUDA-EXTERNAL-SEMAPHORE-HANDLE-DESC-st))
@@ -1314,14 +1286,14 @@
 
 (cffi:defcstruct cuda-external-semaphore-signal-params-st-params
   (fence (:struct cuda-external-semaphore-signal-params-st-params-fence))
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int )
 ))
 
 (cffi:defcstruct cuda-external-semaphore-signal-params-st
   "External semaphore signal parameters"
   (params (:struct cuda-external-semaphore-signal-params-st-params))
   (flags :unsigned-int)
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int )
 ))
 
 (cffi:defctype cuda-external-semaphore-signal-params (:struct CUDA-EXTERNAL-SEMAPHORE-SIGNAL-PARAMS-st))
@@ -1331,14 +1303,14 @@
 
 (cffi:defcstruct cuda-external-semaphore-wait-params-st-params
   (fence (:struct cuda-external-semaphore-wait-params-st-params-fence))
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int )
 ))
 
 (cffi:defcstruct cuda-external-semaphore-wait-params-st
   "External semaphore wait parameters"
   (params (:struct cuda-external-semaphore-wait-params-st-params))
   (flags :unsigned-int)
-  (reserved (:pointer :unsigned-int :count 16)
+  (reserved (:pointer :unsigned-int )
 ))
 
 (cffi:defctype cuda-external-semaphore-wait-params (:struct CUDA-EXTERNAL-SEMAPHORE-WAIT-PARAMS-st))
@@ -3288,7 +3260,7 @@
   supports managed memory and is not peer-to-peer compatible with any of the other
   managed memory supporting devices on which contexts were previously created, even if
   those contexts have been destroyed. These environment variables are described
-  in the CUDA programming guide under the "CUDA environment variables" section.
+  in the CUDA programming guide under the CUDA environment variables section.
   - On ARM, managed memory is not available on discrete gpu with Drive PX-2.
  
   \param dptr     - Returned device pointer
@@ -3748,13 +3720,13 @@
   (bytecount size-t))
 
 (cffi:defcfun ("cumemcpy2d_v2" cumemcpy2d-v2) CUresult
-  (pcopy (:pointer CUDA-MEMCPY2D)))
+  (pcopy (:pointer)))
 
 (cffi:defcfun ("cumemcpy2dunaligned_v2" cumemcpy2dunaligned-v2) CUresult
-  (pcopy (:pointer CUDA-MEMCPY2D)))
+  (pcopy (:pointer)))
 
 (cffi:defcfun ("cumemcpy3d_v2" cumemcpy3d-v2) CUresult
-  (pcopy (:pointer CUDA-MEMCPY3D)))
+  (pcopy (:pointer)))
 
 (cffi:defcfun "cumemcpy3dpeer" CUresult
   "\brief Copies memory between contexts
@@ -3777,7 +3749,7 @@
   \sa ::cuMemcpyDtoD, ::cuMemcpyPeer, ::cuMemcpyDtoDAsync, ::cuMemcpyPeerAsync,
   ::cuMemcpy3DPeerAsync,
   ::cudaMemcpy3DPeer"
-  (pcopy (:pointer CUDA-MEMCPY3D-PEER)))
+  (pcopy (:pointer)))
 
 (cffi:defcfun "cumemcpyasync" CUresult
   "\brief Copies memory asynchronously
@@ -3895,11 +3867,11 @@
   (hstream CUstream))
 
 (cffi:defcfun ("cumemcpy2dasync_v2" cumemcpy2dasync-v2) CUresult
-  (pcopy (:pointer CUDA-MEMCPY2D))
+  (pcopy (:pointer))
   (hstream CUstream))
 
 (cffi:defcfun ("cumemcpy3dasync_v2" cumemcpy3dasync-v2) CUresult
-  (pcopy (:pointer CUDA-MEMCPY3D))
+  (pcopy (:pointer))
   (hstream CUstream))
 
 (cffi:defcfun "cumemcpy3dpeerasync" CUresult
@@ -3925,7 +3897,7 @@
   \sa ::cuMemcpyDtoD, ::cuMemcpyPeer, ::cuMemcpyDtoDAsync, ::cuMemcpyPeerAsync,
   ::cuMemcpy3DPeerAsync,
   ::cudaMemcpy3DPeerAsync"
-  (pcopy (:pointer CUDA-MEMCPY3D-PEER))
+  (pcopy (:pointer))
   (hstream CUstream))
 
 (cffi:defcfun ("cumemsetd8_v2" cumemsetd8-v2) CUresult
@@ -4221,11 +4193,11 @@
   (hstream CUstream))
 
 (cffi:defcfun ("cuarraycreate_v2" cuarraycreate-v2) CUresult
-  (phandle (:pointer CUarray))
-  (pallocatearray (:pointer CUDA-ARRAY-DESCRIPTOR)))
+  (phandle (:pointer))
+  (pallocatearray (:pointer)))
 
 (cffi:defcfun ("cuarraygetdescriptor_v2" cuarraygetdescriptor-v2) CUresult
-  (parraydescriptor (:pointer CUDA-ARRAY-DESCRIPTOR))
+  (parraydescriptor (:pointer))
   (harray CUarray))
 
 (cffi:defcfun "cuarraydestroy" CUresult
@@ -4259,11 +4231,11 @@
   (harray CUarray))
 
 (cffi:defcfun ("cuarray3dcreate_v2" cuarray3dcreate-v2) CUresult
-  (phandle (:pointer CUarray))
-  (pallocatearray (:pointer CUDA-ARRAY3D-DESCRIPTOR)))
+  (phandle (:pointer))
+  (pallocatearray (:pointer)))
 
 (cffi:defcfun ("cuarray3dgetdescriptor_v2" cuarray3dgetdescriptor-v2) CUresult
-  (parraydescriptor (:pointer CUDA-ARRAY3D-DESCRIPTOR))
+  (parraydescriptor (:pointer))
   (harray CUarray))
 
 (cffi:defcfun "cumipmappedarraycreate" CUresult
@@ -4405,8 +4377,8 @@
   ::cuMipmappedArrayGetLevel,
   ::cuArrayCreate,
   ::cudaMallocMipmappedArray"
-  (phandle (:pointer CUmipmappedArray))
-  (pmipmappedarraydesc (:pointer CUDA-ARRAY3D-DESCRIPTOR))
+  (phandle (:pointer))
+  (pmipmappedarraydesc (:pointer))
   (nummipmaplevels :unsigned-int))
 
 (cffi:defcfun "cumipmappedarraygetlevel" CUresult
@@ -4549,7 +4521,7 @@
  
        A boolean attribute which when set, ensures that synchronous memory operations
        initiated on the region of memory that \p ptr points to will always synchronize.
-       See further documentation in the section titled "API synchronization behavior"
+       See further documentation in the section titled `API synchronization behavior`
        to learn more about cases when synchronous memory operations can
        exhibit asynchronous behavior.
  
@@ -4922,7 +4894,7 @@
        memory operations that are synchronous. If there are some previously initiated
        synchronous memory operations that are pending when this attribute is set, the
        function does not return until those memory operations are complete.
-       See further documentation in the section titled "API synchronization behavior"
+       See further documentation in the section titled `API synchronization behavior`
        to learn more about cases when synchronous memory operations can
        exhibit asynchronous behavior.
        \p value will be considered as a pointer to an unsigned integer to which this attribute is to be set.
@@ -5249,7 +5221,7 @@
     to the callback stream.<li>
     <li>The start of execution of a callback has the same effect as
     synchronizing an event recorded in the same stream immediately prior to
-    the callback.  It thus synchronizes streams which have been "joined"
+    the callback.  It thus synchronizes streams which have been joined
     prior to the callback.<li>
     <li>Adding device work to any stream does not have the effect of making
     the stream active until all preceding host functions and stream callbacks
@@ -5392,7 +5364,7 @@
     with ::cuStreamEndCapture on the stream where it was initiated in order to
     continue using \p hStream.
  
-  Note that, if this is called on ::CU_STREAM_LEGACY (the "null stream") while
+  Note that, if this is called on ::CU_STREAM_LEGACY (the null stream) while
   a blocking stream in the same context is capturing, it will return
   ::CUDA_ERROR_STREAM_CAPTURE_IMPLICIT and \p captureStatus is unspecified
   after the call. The blocking stream capture is not invalidated.
@@ -5426,7 +5398,7 @@
   Query the capture status of a stream and and get an id for
   the capture sequence, which is unique over the lifetime of the process.
  
-  If called on ::CU_STREAM_LEGACY (the "null stream") while a stream not created
+  If called on ::CU_STREAM_LEGACY (the null stream) while a stream not created
   with ::CU_STREAM_NON_BLOCKING is capturing, returns ::CUDA_ERROR_STREAM_CAPTURE_IMPLICIT.
  
   A valid id is returned only if both of the following are true:
@@ -5901,8 +5873,8 @@
   \note If the Vulkan memory imported into CUDA is mapped on the CPU then the
   application must use vkInvalidateMappedMemoryRangesvkFlushMappedMemoryRanges
   as well as appropriate Vulkan pipeline barriers to maintain coherence between
-  CPU and GPU. For more information on these APIs, please refer to "Synchronization
-  and Cache Control" chapter from Vulkan specification.
+  CPU and GPU. For more information on these APIs, please refer to `Synchronization
+  and Cache Control` chapter from Vulkan specification.
  
   \sa ::cuDestroyExternalMemory,
   ::cuExternalMemoryGetMappedBuffer,
@@ -5962,57 +5934,13 @@
   ::cuExternalMemoryGetMappedMipmappedArray"
   (devptr (:pointer CUdeviceptr))
   (extmem CUexternalMemory)
-  (bufferdesc (:pointer CUDA-EXTERNAL-MEMORY-BUFFER-DESC)))
+  (bufferdesc (:pointer)))
 
 (cffi:defcfun "cuexternalmemorygetmappedmipmappedarray" CUresult
-  "\brief Maps a CUDA mipmapped array onto an external memory object
- 
-  Maps a CUDA mipmapped array onto an external object and returns a
-  handle to it in \p mipmap.
- 
-  The properties of the CUDA mipmapped array being mapped must be
-  described in \p mipmapDesc. The structure
-  ::CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC is defined as follows:
- 
-  \code
-        typedef struct CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC_st {
-            unsigned long long offset;
-            CUDA_ARRAY3D_DESCRIPTOR arrayDesc;
-            unsigned int numLevels;
-        } CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC;
-  \endcode
- 
-  where ::CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC::offset is the
-  offset in the memory object where the base level of the mipmap
-  chain is.
-  ::CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC::arrayDesc describes
-  the format, dimensions and type of the base level of the mipmap
-  chain. For further details on these parameters, please refer to the
-  documentation for ::cuMipmappedArrayCreate. Note that if the mipmapped
-  array is bound as a color target in the graphics API, then the flag
-  ::CUDA_ARRAY3D_COLOR_ATTACHMENT must be specified in
-  ::CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC::arrayDesc::Flags.
-  ::CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC::numLevels specifies
-  the total number of levels in the mipmap chain.
- 
-  The returned CUDA mipmapped array must be freed using ::cuMipmappedArrayDestroy.
- 
-  \param mipmap     - Returned CUDA mipmapped array
-  \param extMem     - Handle to external memory object
-  \param mipmapDesc - CUDA array descriptor
- 
-  \return
-  ::CUDA_SUCCESS,
-  ::CUDA_ERROR_NOT_INITIALIZED,
-  ::CUDA_ERROR_INVALID_HANDLE
-  \notefnerr
- 
-  \sa ::cuImportExternalMemory
-  ::cuDestroyExternalMemory,
-  ::cuExternalMemoryGetMappedBuffer"
+  ""
   (mipmap (:pointer CUmipmappedArray))
   (extmem CUexternalMemory)
-  (mipmapdesc (:pointer CUDA-EXTERNAL-MEMORY-MIPMAPPED-ARRAY-DESC)))
+  (mipmapdesc (:pointer)))
 
 (cffi:defcfun "cudestroyexternalmemory" CUresult
   "\brief Destroys an external memory object.
@@ -6421,7 +6349,7 @@
   ::cuMemHostRegister"
   (stream CUstream)
   (count :unsigned-int)
-  (paramarray (:pointer CUstreamBatchMemOpParams))
+  (paramarray (:pointer))
   (flags :unsigned-int))
 
 (cffi:defcfun "cufuncgetattribute" CUresult
@@ -6455,7 +6383,7 @@
     legacy cubins that do not have a properly-encoded binary architecture
     version.
   - ::CU_FUNC_CACHE_MODE_CA: The attribute to indicate whether the function has
-    been compiled with user specified option "-Xptxas --dlcm=ca" set .
+    been compiled with user specified option -Xptxas --dlcm=ca set .
   - ::CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES: The maximum size in bytes of
     dynamically-allocated shared memory.
   - ::CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT: Preferred shared memory-L1
@@ -6991,7 +6919,7 @@
     to the stream it was enqueued in.<li>
     <li>The start of execution of the function has the same effect as
     synchronizing an event recorded in the same stream immediately prior to
-    the function.  It thus synchronizes streams which have been "joined"
+    the function.  It thus synchronizes streams which have been joined
     prior to the function.<li>
     <li>Adding device work to any stream does not have the effect of making
     the stream active until all preceding host functions and stream callbacks
@@ -7635,7 +7563,7 @@
   (hgraph CUgraph)
   (dependencies (:pointer CUgraphNode))
   (numdependencies size-t)
-  (copyparams (:pointer CUDA-MEMCPY3D))
+  (copyparams (:pointer ))
   (ctx CUcontext))
 
 (cffi:defcfun "cugraphmemcpynodegetparams" CUresult
@@ -7659,7 +7587,7 @@
   ::cuGraphAddMemcpyNode,
   ::cuGraphMemcpyNodeSetParams"
   (hnode CUgraphNode)
-  (nodeparams (:pointer CUDA-MEMCPY3D)))
+  (nodeparams (:pointer)))
 
 (cffi:defcfun "cugraphmemcpynodesetparams" CUresult
   "\brief Sets a memcpy node's parameters
@@ -7682,7 +7610,7 @@
   ::cuGraphAddMemcpyNode,
   ::cuGraphMemcpyNodeGetParams"
   (hnode CUgraphNode)
-  (nodeparams (:pointer CUDA-MEMCPY3D)))
+  (nodeparams (:pointer)))
 
 (cffi:defcfun "cugraphaddmemsetnode" CUresult
   "\brief Creates a memset node and adds it to a graph
@@ -7727,7 +7655,7 @@
   (hgraph CUgraph)
   (dependencies (:pointer CUgraphNode))
   (numdependencies size-t)
-  (memsetparams (:pointer CUDA-MEMSET-NODE-PARAMS))
+  (memsetparams (:pointer))
   (ctx CUcontext))
 
 (cffi:defcfun "cugraphmemsetnodegetparams" CUresult
@@ -7751,7 +7679,7 @@
   ::cuGraphAddMemsetNode,
   ::cuGraphMemsetNodeSetParams"
   (hnode CUgraphNode)
-  (nodeparams (:pointer CUDA-MEMSET-NODE-PARAMS)))
+  (nodeparams (:pointer)))
 
 (cffi:defcfun "cugraphmemsetnodesetparams" CUresult
   "\brief Sets a memset node's parameters
@@ -7774,7 +7702,7 @@
   ::cuGraphAddMemsetNode,
   ::cuGraphMemsetNodeGetParams"
   (hnode CUgraphNode)
-  (nodeparams (:pointer CUDA-MEMSET-NODE-PARAMS)))
+  (nodeparams (:pointer)))
 
 (cffi:defcfun "cugraphaddhostnode" CUresult
   "\brief Creates a host execution node and adds it to a graph
@@ -8489,7 +8417,7 @@
     occupancy calculator will calculate the occupancy as if caching
     is disabled. Setting ::CU_OCCUPANCY_DISABLE_CACHING_OVERRIDE makes
     the occupancy calculator to return 0 in such cases. More information
-    can be found about this feature in the "Unified L1Texture Cache"
+    can be found about this feature in the Unified L1Texture Cache
     section of the Maxwell tuning guide.
  
   \param numBlocks       - Returned occupancy
@@ -8592,7 +8520,7 @@
     caching. Setting ::CU_OCCUPANCY_DISABLE_CACHING_OVERRIDE
     guarantees that the the produced launch configuration is global
     caching compatible at a potential cost of occupancy. More information
-    can be found about this feature in the "Unified L1Texture Cache"
+    can be found about this feature in the Unified L1Texture Cache
     section of the Maxwell tuning guide.
  
   \param minGridSize - Returned minimum grid size needed to achieve the maximum occupancy
@@ -8693,7 +8621,7 @@
 
 (cffi:defcfun ("cutexrefsetaddress2d_v3" cutexrefsetaddress2d-v3) CUresult
   (htexref CUtexref)
-  (desc (:pointer CUDA-ARRAY-DESCRIPTOR))
+  (desc (:pointer))
   (dptr CUdeviceptr)
   (pitch size-t))
 
@@ -8958,7 +8886,7 @@
  
   Note that the color values can be set only when the Address mode is set to
   CU_TR_ADDRESS_MODE_BORDER using ::cuTexRefSetAddressMode.
-  Applications using integer border color values have to "reinterpret_cast" their values to float.
+  Applications using integer border color values have to reinterpret_cast their values to float.
  
   \param hTexRef       - Texture reference
   \param pBorderColor  - RGBA color
@@ -9624,9 +9552,9 @@
   ::cuTexObjectDestroy,
   ::cudaCreateTextureObject"
   (ptexobject (:pointer CUtexObject))
-  (presdesc (:pointer CUDA-RESOURCE-DESC))
-  (ptexdesc (:pointer CUDA-TEXTURE-DESC))
-  (presviewdesc (:pointer CUDA-RESOURCE-VIEW-DESC)))
+  (presdesc (:pointer))
+  (ptexdesc (:pointer))
+  (presviewdesc (:pointer)))
 
 (cffi:defcfun "cutexobjectdestroy" CUresult
   "\brief Destroys a texture object
@@ -9665,7 +9593,7 @@
   \sa
   ::cuTexObjectCreate,
   ::cudaGetTextureObjectResourceDesc,"
-  (presdesc (:pointer CUDA-RESOURCE-DESC))
+  (presdesc (:pointer))
   (texobject CUtexObject))
 
 (cffi:defcfun "cutexobjectgettexturedesc" CUresult
@@ -9708,7 +9636,7 @@
   \sa
   ::cuTexObjectCreate,
   ::cudaGetTextureObjectResourceViewDesc"
-  (presviewdesc (:pointer CUDA-RESOURCE-VIEW-DESC))
+  (presviewdesc (:pointer))
   (texobject CUtexObject))
 
 (cffi:defcfun "cusurfobjectcreate" CUresult
@@ -9737,7 +9665,7 @@
   ::cuSurfObjectDestroy,
   ::cudaCreateSurfaceObject"
   (psurfobject (:pointer CUsurfObject))
-  (presdesc (:pointer CUDA-RESOURCE-DESC)))
+  (presdesc (:pointer)))
 
 (cffi:defcfun "cusurfobjectdestroy" CUresult
   "\brief Destroys a surface object
@@ -9776,7 +9704,7 @@
   \sa
   ::cuSurfObjectCreate,
   ::cudaGetSurfaceObjectResourceDesc"
-  (presdesc (:pointer CUDA-RESOURCE-DESC))
+  (presdesc (:pointer))
   (surfobject CUsurfObject))
 
 (cffi:defcfun "cudevicecanaccesspeer" CUresult
