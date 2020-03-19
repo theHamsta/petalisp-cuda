@@ -1,10 +1,15 @@
 (defpackage petalisp-cuda.cuda-array
   (:use :cl
         :iterate)
-  (:import-from :cl-cuda)
   (:export :make-cuda-array
-           :free-cuda-array))
+           :cuda-array
+           :free-cuda-array
+           :copy-memory-block-to-lisp
+           :copy-cuda-array-to-lisp))
+
 (in-package :petalisp-cuda.cuda-array)
+
+; TODO rename cuda-nd-array
 
 ; TODO: generalize to (memory-block memory-layout) ?
 (defstruct (cuda-array (:constructor %make-cuda-array))
@@ -22,11 +27,24 @@
   (multiple-value-bind (size strides) (mem-layout-from-shape shape strides)
     (%make-cuda-array :memory-block (cl-cuda:alloc-memory-block dtype size)
                       :shape shape
-                      :strides strides
-                      )))
+                      :strides strides)))
 
 (defun free-cuda-array (array)
   (progn
     (cl-cuda:free-memory-block (slot-value array 'memory-block))
-    (setf (slot-value array 'memory-block) nil)
-    ))
+    (setf (slot-value array 'memory-block) nil)))
+
+(defun memory-block-aref (indices)
+  (let ((memory-block (slot-value array 'memory-block))
+            (strides (slot-value array 'strides)))
+        (memory-block-aref memory-block (reduce #'+ (mapcar #'* indices strides)))))
+
+(defun copy-memory-block-to-lisp (memory-block)
+  (progn
+      (cl-cuda:sync-memory-block memory-block :device-to-host)
+      (array-operations:generate (aops:generate (lambda (indices) (cuda-aref memory-block indices)) :subscripts))))
+
+(defun copy-cuda-array-to-lisp (array)
+  (let ((memory-block (slot-value array 'memory-block)))
+    (memory-block-to-lisp memory-block)))
+

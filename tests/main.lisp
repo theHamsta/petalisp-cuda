@@ -8,6 +8,15 @@
 
 ;; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
 
+(deftest test-make-cuda-backend
+  (make-instance 'petalisp-cuda.backend:cuda-backend))
+
+(deftest test-make-cuda-backend2
+  (with-cuda (0)
+    (make-instance 'petalisp-cuda.backend:cuda-backend)))
+
 (deftest test-make-cuda-array
   (with-cuda (0)
     (make-cuda-array '(10 20) 'float)))
+
+

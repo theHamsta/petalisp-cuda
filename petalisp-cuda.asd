@@ -1,26 +1,31 @@
 (defsystem "petalisp-cuda"
   :version "0.1.0"
-  :author "Stephan Seitz"
+  :author "Stephan Seitz <stephan.seitz@fau.de>"
   :license "GPLv3"
   :depends-on ("petalisp"
                "cl-cuda"
-               "iterate")
+               "iterate"
+               "array-operations")
   :components ((:module "src"
                 :components
                 ((:file "main")
-                 (:file "cuda-array"))))
-  :description ""
-  :long-description
-  #.(read-file-string
-     (subpathname *load-pathname* "README.org"))
-  :in-order-to ((test-op (test-op "petalisp-cuda/tests"))))
+                 (:file "cuda-array")
+                 (:file "backend")
+                 ))
+                (:module "src/cudalibs"
+                :components
+                ((:file "cuda")
+                 (:file "cudnn")))))
+
 
 (defsystem "petalisp-cuda/tests"
   :author "Stephan Seitz"
   :license "GPLv3"
   :depends-on ("petalisp-cuda"
                "petalisp"
+               "petalisp.core"
                "cl-cuda"
+               "array-operations"
                "iterate"
                "rove")
   :components ((:module "tests"
