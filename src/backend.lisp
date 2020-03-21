@@ -6,14 +6,18 @@
 
 (defvar *gpu-storage-table*)
 (defvar *preferred-block-size* '(16 16 1))
-(defvar +petalisp-cuda-typemapping+ (make-hash-table))
-(defparameter *allocated-cuda-context nil)
-(setf (gethash '(unsigned-byte 32) +petalisp-cuda-typemapping+) 'int) 
-(setf (gethash 'single-float +petalisp-cuda-typemapping+) 'float) 
-(setf (gethash 'double-float +petalisp-cuda-typemapping+) 'double) 
 
 (defun petalisp-to-cuda-type (petalisp-type)
-  (gethash petalisp-type +petalisp-to-cuda-type+))
+  (cl-pattern:match petalisp-type
+    ( :int                 )
+    ( :float               )
+    ( :double              )
+    ( (:boolean :int8)     )
+    ( (:struct 'float3)    )
+    ( (:struct 'float4)    )
+    ( (:struct 'double3)   )
+    ( (:struct 'double4)   )
+    (_ (cl:error "The value ~S is invalid here." type))))
 
 
 (defun use-cuda-backend ()
@@ -28,12 +32,15 @@
    (allocated-cuda-context :initform nil :accessor allocated-cuda-context)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
-  (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
-    (progn
-      (cl-cuda:init-cuda)
-      (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
-      (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))))
-      (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*))
+  (progn
+    (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
+      (progn
+        (cl-cuda:init-cuda)
+        (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
+        (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))
+        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*))))
+  (petalisp-cuda.cudalibs:cudnn-init))
+      
 
 (defgeneric compile-kernel (backend kernel)
   (:method ((backend cuda-backend) kernel)
@@ -70,7 +77,7 @@
       (setf (buffer-storage buffer)
             (petalisp-cuda.cuda-array:make-cuda-array (buffer-shape buffer) 
               (petalisp-to-cuda-type (petalisp.type-inference:type-specifier
-                (buffer-ntype buffer)))))
+                (buffer-ntype buffer))))))
     ;; Deallocate.
     (lambda (buffer)
       (let ((storage (buffer-storage buffer)))
@@ -78,7 +85,7 @@
           (petalisp-cuda.cuda-array:free-cuda-array storage)
           (setf (buffer-storage buffer) nil)
          #| (when (buffer-reusablep buffer)|#
-            #|(memory-pool-free memory-pool storage)|#))))))
+            #|(memory-pool-free memory-pool storage)|#)))))
 
 ;(defmethod petalisp.core:coerce-to-lazy-array :around ((array array))
   ;(if *running-in-oclcl*
@@ -90,14 +97,14 @@
       ;(let ((*running-in-oclcl* nil))
         ;(call-next-method))))
 
-(defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array cl-cuda.api.memory::memory-block))
-  (petalisp-cuda.cuda-array:copy-memory-block-to-lisp)) 
-
 (defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.cuda-array:cuda-array))
-  (petalisp-cuda.cuda-array:copy-cuda-array-to-lisp)) 
+  (petalisp-cuda.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
+  (progn
   (let ((context? (allocated-cuda-context backend)))
     (when context? (progn
                      (cl-cuda:destroy-cuda-context context?) 
                      (setf (allocated-cuda-context backend) nil)))))
+  (petalisp-cuda.cudalibs:cudnn-destroy)
+  (setq petalisp:*backend* nil))

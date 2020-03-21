@@ -3,6 +3,7 @@
   (:use :cl
         :petalisp
         :iterate)
-  (:import-from :cl-cuda))
+  (:shadowing-import-from :petalisp-cuda.backend #:use-cuda-backend)
+  (:export :use-cuda-backend))
 (in-package :petalisp-cuda)
 

@@ -86,8 +86,22 @@
 (defconstant +cudnn-sev-info-en+ ACTUAL_VALUE_HERE)
 |#
 
+;TODO make magic macro that checks if return value is :CUDNN-STATUS-SUCCESS
 
-(cffi:defcstruct cudnncontext)
+(cffi:defcenum cudnnStatus-t
+	(:CUDNN_STATUS_SUCCESS #.0)
+	(:CUDNN_STATUS_NOT_INITIALIZED #.1)
+	(:CUDNN_STATUS_ALLOC_FAILED #.2)
+	(:CUDNN_STATUS_BAD_PARAM #.3)
+	(:CUDNN_STATUS_INTERNAL_ERROR #.4)
+	(:CUDNN_STATUS_INVALID_VALUE #.5)
+	(:CUDNN_STATUS_ARCH_MISMATCH #.6)
+	(:CUDNN_STATUS_MAPPING_ERROR #.7)
+	(:CUDNN_STATUS_EXECUTION_FAILED #.8)
+	(:CUDNN_STATUS_NOT_SUPPORTED #.9)
+	(:CUDNN_STATUS_LICENSE_ERROR #.10))
+
+(cffi:defcstruct cudnnContext)
 
 (cffi:defctype cudnnhandle-t (:pointer (:struct cudnnContext)))
 
@@ -137,10 +151,10 @@
   ;(type libraryPropertyType)
   ;(value (:pointer :int)))
 
-(cffi:defcfun "cudnncreate" cudnnStatus-t
-  (handle (:pointer cudnnHandle-t)))
+(cffi:defcfun "cudnnCreate" cudnnStatus-t
+  (handle :pointer))
 
-(cffi:defcfun "cudnndestroy" cudnnStatus-t
+(cffi:defcfun "cudnnDestroy" cudnnStatus-t
   (handle cudnnHandle-t))
 
 ;(cffi:defcfun "cudnnsetstream" cudnnStatus-t
@@ -233,7 +247,7 @@
 
 (cffi:defctype cudnnreordertype-t cudnnreordertype-t-enum)
 
-(cffi:defcfun "cudnncreatetensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnCreateTensorDescriptor" cudnnStatus-t
   (tensordesc (:pointer cudnnTensorDescriptor-t)))
 
 (cffi:defcenum cudnntensorformat-t-enum
@@ -276,7 +290,7 @@
   (hstride (:pointer :int))
   (wstride (:pointer :int)))
 
-(cffi:defcfun "cudnnsettensornddescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetTensorNdDescriptor" cudnnStatus-t
   (tensordesc cudnnTensorDescriptor-t)
   (datatype cudnnDataType-t)
   (nbdims :int)
@@ -460,7 +474,7 @@
   (:cudnn-reduce-tensor-no-indices 0)
   (:cudnn-reduce-tensor-flattened-indices 1))
 
-(cffi:defctype cudnnreducetensorindices-t cudnnreducetensorindices-t-enum)
+(cffi:defctype cudnnReduceTensorIndices-t cudnnreducetensorindices-t-enum)
 
 (cffi:defcenum cudnnindicestype-t-enum
   (:cudnn-32bit-indices 0)
@@ -470,10 +484,10 @@
 
 (cffi:defctype cudnnindicestype-t cudnnindicestype-t-enum)
 
-(cffi:defcfun "cudnncreatereducetensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnCreateReduceTensorDescriptor" cudnnStatus-t
   (reducetensordesc (:pointer cudnnReduceTensorDescriptor-t)))
 
-(cffi:defcfun "cudnnsetreducetensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetReduceTensorDescriptor" cudnnStatus-t
   (reducetensordesc cudnnReduceTensorDescriptor-t)
   (reducetensorop cudnnReduceTensorOp-t)
   (reducetensorcomptype cudnnDataType-t)
@@ -481,7 +495,7 @@
   (reducetensorindices cudnnReduceTensorIndices-t)
   (reducetensorindicestype cudnnIndicesType-t))
 
-(cffi:defcfun "cudnngetreducetensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnGetReduceTensorDescriptor" cudnnStatus-t
   (reducetensordesc cudnnReduceTensorDescriptor-t)
   (reducetensorop (:pointer cudnnReduceTensorOp-t))
   (reducetensorcomptype (:pointer cudnnDataType-t))
@@ -489,24 +503,24 @@
   (reducetensorindices (:pointer cudnnReduceTensorIndices-t))
   (reducetensorindicestype (:pointer cudnnIndicesType-t)))
 
-(cffi:defcfun "cudnndestroyreducetensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnDestroyReduceTensorDescriptor" cudnnStatus-t
   (reducetensordesc cudnnReduceTensorDescriptor-t))
 
-(cffi:defcfun "cudnngetreductionindicessize" cudnnStatus-t
+(cffi:defcfun "cudnnGetReductionIndicesSize" cudnnStatus-t
   (handle cudnnHandle-t)
   (reducetensordesc cudnnReduceTensorDescriptor-t)
   (adesc cudnnTensorDescriptor-t)
   (cdesc cudnnTensorDescriptor-t)
   (sizeinbytes (:pointer :int)))
 
-(cffi:defcfun "cudnngetreductionworkspacesize" cudnnStatus-t
+(cffi:defcfun "cudnnGetReductionWorkspaceSize" cudnnStatus-t
   (handle cudnnHandle-t)
   (reducetensordesc cudnnReduceTensorDescriptor-t)
   (adesc cudnnTensorDescriptor-t)
   (cdesc cudnnTensorDescriptor-t)
   (sizeinbytes (:pointer :int)))
 
-(cffi:defcfun "cudnnreducetensor" cudnnStatus-t
+(cffi:defcfun "cudnnReduceTensor" cudnnStatus-t
   (handle cudnnHandle-t)
   (reducetensordesc cudnnReduceTensorDescriptor-t)
   (indices (:pointer :void))

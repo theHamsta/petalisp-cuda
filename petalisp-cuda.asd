@@ -9,16 +9,22 @@
                "iterate"
                "array-operations"
                "cffi"
-               "cffi-libffi")
-  :components ((:module "src"
+               "cffi-libffi"
+               "trivia"
+               "alexandria"
+               "cl-pattern")
+  :components ((:module "src/cuda-array"
                 :components
-                ((:file "main")
-                 (:file "cuda-array")
-                 (:file "backend")))
-                (:module "src/cudalibs"
+                ((:file "cuda-array")))
+               (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
-                 (:file "cudnn")))))
+                 (:file "cudnn")
+                 (:file "package")))
+               (:module "src"
+                :components
+                ((:file "backend")
+                 (:file "package")))))
 
 
 (defsystem "petalisp-cuda/tests"

@@ -20,3 +20,16 @@
     (make-cuda-array '(10 20) 'float)))
 
 
+(deftest test-descriptor
+  (with-cuda (0)
+    (petalisp-cuda.cudalibs::cudnn-create-tensor-descriptor
+      (make-cuda-array '(10 20) 'float))))
+
+(deftest test-descriptor
+  (with-cuda (0)
+    (progn
+      (petalisp-cuda:use-cuda-backend)
+      (let ((a (make-cuda-array '(10 20) 'float))
+            (b make-cuda-array '(10 1) 'float))
+        (petalisp-cuda.cudalibs:cudnn-array a b #'+)))))
+
