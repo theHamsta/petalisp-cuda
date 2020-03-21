@@ -21,6 +21,14 @@ repository to your local projects folder:
 git clone 
 #+END_SRC
 
+** Debugging
+
+You can activate logging in CUDNN by setting
+```bash
+export CUDNN_LOGDEST_DBG=stdout
+```
+or `stderr` or `filename.txt`
+
 ** Author
 
 + Stephan Seitz (stephan.seitz@fau.de)
