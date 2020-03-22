@@ -2,8 +2,8 @@
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp-cuda.cuda-array :element-type :device-ptr)
   (:import-from :cl :defun :let :or :gethash :setf :setq :let* :progn :defmacro :when :nil :values :equalp :assert)
-  (:export :cudnn-init
-           :cudnn-destroy
+  (:export :make-cudnn-handler
+           :finalize-cudnn-handler
            :cudnn-reduce-array))
 
 

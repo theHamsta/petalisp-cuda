@@ -11,8 +11,7 @@
                "cffi"
                "cffi-libffi"
                "trivia"
-               "alexandria"
-               "cl-pattern")
+               "alexandria")
   :components ((:module "src/cuda-array"
                 :components
                 ((:file "cuda-array")))

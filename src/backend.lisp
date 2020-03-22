@@ -21,15 +21,20 @@
 
 
 (defun use-cuda-backend ()
-  (unless (typep petalisp:*backend* 'cuda-backend)
-    (progn 
-      (when petalisp:*backend*
-        (petalisp.core:delete-backend petalisp:*backend*))
-      (setq petalisp:*backend* (make-instance 'cuda-backend)))))
+  (if (typep petalisp:*backend* 'cuda-backend)
+      petalisp:*backend*
+      (progn 
+        (when petalisp:*backend*
+          (petalisp.core:delete-backend petalisp:*backend*))
+        (setq petalisp:*backend* (make-instance 'cuda-backend)))))
 
 (defclass cuda-backend (petalisp.core:backend)
-  ((kernel-cache :initform (make-hash-table) :reader cuda-kernel-cache)
-   (allocated-cuda-context :initform nil :accessor allocated-cuda-context)))
+  ((kernel-cache :initform (make-hash-table)
+                 :reader cuda-kernel-cache)
+   (allocated-cuda-context :initform nil
+                           :accessor allocated-cuda-context)
+   (cudnn-handler :initform (petalisp-cuda.cudalibs:make-cudnn-handler)
+                  :accessor cudnn-handler)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (progn
@@ -38,13 +43,12 @@
         (cl-cuda:init-cuda)
         (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
         (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))
-        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*))))
-  (petalisp-cuda.cudalibs:cudnn-init))
+        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*)))))
       
 
 (defgeneric compile-kernel (backend kernel)
   (:method ((backend cuda-backend) kernel)
-    print kernel))
+    (print kernel)))
 
 (defgeneric find-kernel (backend kernel)
   (:documentation "Find a GPU kernel that will run the code in the kernel KERNEL.")
@@ -106,5 +110,4 @@
     (when context? (progn
                      (cl-cuda:destroy-cuda-context context?) 
                      (setf (allocated-cuda-context backend) nil)))))
-  (petalisp-cuda.cudalibs:cudnn-destroy)
-  (setq petalisp:*backend* nil))
+  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
