@@ -4,7 +4,6 @@
            use-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
-(defvar *gpu-storage-table*)
 (defvar *preferred-block-size* '(16 16 1))
 
 (defun petalisp-to-cuda-type (petalisp-type)
@@ -102,6 +101,7 @@
         ;(call-next-method))))
 
 (defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.cuda-array:cuda-array))
+  ;TODO: replace with WAAF-CFFI if row mayor?
   (petalisp-cuda.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))

@@ -19,7 +19,7 @@
                 :components
                 ((:file "cuda")
                  (:file "cudnn")
-                 (:file "package")))
+                 (:file "cudnn-handler")))
                (:module "src"
                 :components
                 ((:file "backend")

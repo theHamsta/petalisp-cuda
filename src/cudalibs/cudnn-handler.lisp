@@ -4,9 +4,9 @@
   ((cudnn-handle :accessor cudnn-handle
                  :initform (cudnn-init))
    (tensor-descriptors :accessor tensor-descriptors
-                       :initform (cl:make-hash-table))
+                       :initform (cl:make-hash-table :test #'equalp))
    (reduce-descriptors :accessor reduce-descriptors
-                       :initform (cl:make-hash-table))
+                       :initform (cl:make-hash-table :test #'equalp))
    (workspace :accessor workspace
               :initform nil)
    (workspace-size :accessor workspace-size
@@ -87,29 +87,29 @@
   (cl:let* ((shape (cl:slot-value array 'petalisp-cuda.cuda-array::shape))
             (strides (cl:slot-value array 'petalisp-cuda.cuda-array::strides))
             (element-type (petalisp-cuda.cuda-array::element-type array))
-            (hash-key '(device-ptr shape stride element-type))
+            (hash-key (values shape strides element-type))
             (min-shape (cl:max (cl:length shape) 4))) ; cudnn wants tensors of dim 4 to 8
-    (or nil;(cl:gethash hash-key (tensor-descriptors cudnn-handler))
-            (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
-                                                      (cffi:with-foreign-object (stride-array :int min-shape)
-                                                        (cffi:with-foreign-object (shape-array :int min-shape)
-                                                          (cl:progn
-                                                            (cl:assert (cl:<= (cl:length shape) 8)) ; cudnn requirement
-                                                            (fill-foreign-array shape shape-array min-shape 1)
-                                                            (fill-foreign-array strides stride-array min-shape 1)
-                                                            (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateTensorDescriptor new-descriptor))) 
-                                                            (assert (equalp :CUDNN-STATUS-SUCCESS
-                                                                            (cudnnSetTensorNdDescriptor
-                                                                              (cffi:mem-ref new-descriptor :pointer)
-                                                                              (cudnn-type element-type)
-                                                                              min-shape
-                                                                              shape-array
-                                                                              stride-array)))
-                                                            (setf (gethash hash-key (tensor-descriptors cudnn-handler))
-                                                                  (cffi:mem-ref new-descriptor :pointer)))))))))
+           (or (cl:gethash hash-key (tensor-descriptors cudnn-handler))
+               (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
+                 (cffi:with-foreign-object (stride-array :int min-shape)
+                   (cffi:with-foreign-object (shape-array :int min-shape)
+                     (cl:progn
+                       (cl:assert (cl:<= (cl:length shape) 8)) ; cudnn requirement
+                       (fill-foreign-array shape shape-array min-shape 1)
+                       (fill-foreign-array strides stride-array min-shape 1)
+                       (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateTensorDescriptor new-descriptor))) 
+                       (assert (equalp :CUDNN-STATUS-SUCCESS
+                                       (cudnnSetTensorNdDescriptor
+                                         (cffi:mem-ref new-descriptor :pointer)
+                                         (cudnn-type element-type)
+                                         min-shape
+                                         shape-array
+                                         stride-array)))
+                       (setf (gethash hash-key (tensor-descriptors cudnn-handler))
+                             (cffi:mem-ref new-descriptor :pointer)))))))))
 
 (defun cudnn-create-reduction-descriptor (reduce-op element-type cudnn-handle)
-  (let ((hash-key '(reduce-op element-type)))
+  (let ((hash-key (values reduce-op element-type)))
     (or nil; (gethash hash-key (reduce-descriptors cudnn-handle))
         (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
         (progn
