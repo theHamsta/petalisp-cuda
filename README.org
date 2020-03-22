@@ -18,16 +18,16 @@ With [[https://www.quicklisp.org/beta/][quicklisp]] installed, clone this
 repository to your local projects folder:
 
 #+BEGIN_SRC bash
-git clone 
+git clone git@github.com:theHamsta/petalisp-cuda.git
 #+END_SRC
 
 ** Debugging
 
 You can activate logging in CUDNN by setting
-```bash
+#+BEGIN_SRC bash
 export CUDNN_LOGDEST_DBG=stdout
-```
-or `stderr` or `filename.txt`
+#+END_SRC
+or =stderr= or =filename.txt=
 
 ** Author
 
