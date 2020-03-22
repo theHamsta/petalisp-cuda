@@ -23,7 +23,9 @@
                       (reverse (iter (for element in (reverse shape))
                                  (accumulate element by #'* :initial-value 1 into acc)
                                  (collect (/ acc element))))))
-         (size (reduce #'max (mapcar #'* strides shape))))
+         (size (reduce #'max (mapcar #'* strides shape)
+                       ;even with all-zeros strides we need at least one element
+                       :initial-value 1)))
     (values size strides)))
 
 (defun make-cuda-array (shape dtype &optional strides)
