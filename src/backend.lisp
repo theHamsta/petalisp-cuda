@@ -1,22 +1,25 @@
 (defpackage :petalisp-cuda.backend
-  (:use :cl)
+  (:use :cl
+        :petalisp.ir
+        :petalisp-cuda.memory.memory-pool)
+  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array)
   (:export cuda-backend
            use-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
 (defvar *preferred-block-size* '(16 16 1))
 
-(defun petalisp-to-cuda-type (petalisp-type)
-  (cl-pattern:match petalisp-type
-    ( :int                 )
-    ( :float               )
-    ( :double              )
-    ( (:boolean :int8)     )
-    ( (:struct 'float3)    )
-    ( (:struct 'float4)    )
-    ( (:struct 'double3)   )
-    ( (:struct 'double4)   )
-    (_ (cl:error "The value ~S is invalid here." type))))
+(defun cl-cuda-type-from-ntype (ntype &optional avoid-64bit-types)
+  (petalisp.type-inference:ntype-subtypecase ntype
+    (integer          'cl-cuda:int)
+    ((signed-byte 32) 'cl-cuda:int)
+    (single-float     'cl-cuda:float)
+    (double-float     (if avoid-64bit-types
+                          'cl-cuda:float
+                          'cl-cuda:double))
+    ;(t                'cl-cuda:bool)))
+    (t (error "Cannot convert ~S to a CFFI type."
+              (petalisp.type-inference:type-specifier ntype)))))
 
 
 (defun use-cuda-backend ()
@@ -33,7 +36,13 @@
    (allocated-cuda-context :initform nil
                            :accessor allocated-cuda-context)
    (cudnn-handler :initform (petalisp-cuda.cudalibs:make-cudnn-handler)
-                  :accessor cudnn-handler)))
+                  :accessor cudnn-handler)
+   (memory-pool :initform (make-cuda-memory-pool)
+                :accessor cuda-memory-pool)
+   (avoid-64bit-types :initform nil
+                      :accessor avoid-64bit-types)
+   (device :initform nil
+           :accessor backend-device)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (progn
@@ -42,54 +51,62 @@
         (cl-cuda:init-cuda)
         (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
         (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))
-        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*)))))
+        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*)))
+    (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))))
       
 
 (defgeneric compile-kernel (backend kernel)
   (:method ((backend cuda-backend) kernel)
     (print kernel)))
 
-(defgeneric find-kernel (backend kernel)
-  (:documentation "Find a GPU kernel that will run the code in the kernel KERNEL.")
-  (:method ((backend cuda-backend) kernel)
-    (let ((blueprint (petalisp.ir:kernel-blueprint kernel)))
-      (multiple-value-bind (cuda-kernel in-cache?)
-          (gethash blueprint (kernel-cache backend))
-        (if in-cache?
-            gpu-kernel
-            (setf (gethash blueprint (kernel-cache backend))
-                  (compile-kernel backend kernel)))))))
-
 (defgeneric execute-kernel (backend kernel)
    (:method ((backend cuda-backend) kernel)
       (print kernel)))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
-  (petalisp.scheduler:schedule-on-workers
-    lazy-arrays
-    1 ; single worker
-    ;; Execute.
-    (lambda (tasks)
-      (loop for task in tasks do
-            (let* ((kernel (petalisp.scheduler:task-kernel task)))
-              (execute-kernel backend kernel))))
-    ;; Barrier.
-    (lambda () ())
-    ;; Allocate. TODO: use cuda memory pool
-    (lambda (buffer)
-      (setf (buffer-storage buffer)
-            (petalisp-cuda.cuda-array:make-cuda-array (buffer-shape buffer) 
-              (petalisp-to-cuda-type (petalisp.type-inference:type-specifier
-                (buffer-ntype buffer))))))
-    ;; Deallocate.
-    (lambda (buffer)
-      (let ((storage (buffer-storage buffer)))
-        (unless (null storage)
-          (petalisp-cuda.cuda-array:free-cuda-array storage)
-          (setf (buffer-storage buffer) nil)
-         #| (when (buffer-reusablep buffer)|#
-            #|(memory-pool-free memory-pool storage)|#)))))
+  (let ((memory-pool (cuda-memory-pool backend))
+        (avoid-64bit-types (avoid-64bit-types backend)))
+    (petalisp.scheduler:schedule-on-workers
+      lazy-arrays
+      1 ; single worker
+      ;; Execute.
+      (lambda (tasks)
+        (loop for task in tasks do
+              (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                (execute-kernel backend kernel))))
+      ;; Barrier.
+      (lambda () ())
+      ;; Allocate.
+      (lambda (buffer)
+        (progn
+        (setf (slot-value buffer 'petalisp.ir::device) (backend-device backend)); actually here's already to late to set device. ir generator should know about the device
+        (setf (buffer-storage buffer)
+              (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
+                                                        (cl-cuda-type-from-ntype (buffer-ntype buffer) avoid-64bit-types)
+                                                        nil
+                                                        (lambda (type size) (memory-pool-allocate memory-pool type size))))))
+      ;; Deallocate.
+      (lambda (buffer)
+        (let ((storage (buffer-storage buffer)))
+          (unless (null storage)
+            (setf (buffer-storage buffer) nil)
+            (when (buffer-reusablep buffer)
+              (petalisp-cuda.memory.cuda-array:free-cuda-array storage (lambda (mem-block) (memory-pool-free memory-pool mem-block))))))))))
 
+;(defclass cuda-immediate (petalisp.core:array-immediate))
+
+;(defun make-cuda-array-immediate (array &optional reusablep)
+  ;(progn
+    ;(check-type array cuda-array)
+    ;(make-instance 'cuda-array-immediate
+                   ;:shape (shape array)
+                   ;:storage array
+                   ;:reusablep reusablep
+                   ;:ntype (petalisp.type-inference:array-element-ntype array)))) ;TODO
+
+(defmethod lazy-array (array )
+  )
+  
 ;(defmethod petalisp.core:coerce-to-lazy-array :around ((array array))
   ;(if *running-in-oclcl*
       ;(let ((gpu-array (gethash array *gpu-storage-table*)))
@@ -100,14 +117,13 @@
       ;(let ((*running-in-oclcl* nil))
         ;(call-next-method))))
 
-(defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.cuda-array:cuda-array))
-  ;TODO: replace with WAAF-CFFI if row mayor?
-  (petalisp-cuda.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
+(defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.memory.cuda-array:cuda-array))
+  (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
   (progn
-  (let ((context? (allocated-cuda-context backend)))
-    (when context? (progn
-                     (cl-cuda:destroy-cuda-context context?) 
-                     (setf (allocated-cuda-context backend) nil)))))
-  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
+    (let ((context? (allocated-cuda-context backend)))
+      (when context? (progn
+                       (cl-cuda:destroy-cuda-context context?) 
+                       (setf (allocated-cuda-context backend) nil))))
+    (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))))

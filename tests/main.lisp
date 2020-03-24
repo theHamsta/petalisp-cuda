@@ -1,7 +1,7 @@
 (defpackage petalisp-cuda/tests
   (:use :cl
         :petalisp-cuda
-        :petalisp-cuda.cuda-array
+        :petalisp-cuda.memory.cuda-array
         :cl-cuda
         :rove))
 (in-package :petalisp-cuda/tests)

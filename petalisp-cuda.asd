@@ -12,9 +12,10 @@
                "cffi-libffi"
                "trivia"
                "alexandria")
-  :components ((:module "src/cuda-array"
+  :components ((:module "src/memory"
                 :components
-                ((:file "cuda-array")))
+                ((:file "memory-pool")
+                 (:file "cuda-array")))
                (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
@@ -22,7 +23,8 @@
                  (:file "cudnn-handler")))
                (:module "src"
                 :components
-                ((:file "backend")
+                ((:file "device")
+                 (:file "backend")
                  (:file "package")))))
 
 

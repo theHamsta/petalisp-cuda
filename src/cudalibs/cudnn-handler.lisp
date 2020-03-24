@@ -36,7 +36,7 @@
                                 (cl:funcall destroy-function x)
                                 (cffi:foreign-free x)))
                (alexandria:hash-table-values hash-table))
-    (cl:setf hash-table (cl:make-hash-table))))
+    (cl:clrhash hash-table)))
 
 ;; CUDNN abstractions
 (cl:defun cudnn-init ()
@@ -50,43 +50,34 @@
       (clear-foreign-hashtable (tensor-descriptors cudnn-handler) #'cudnnDestroyTensorDescriptor)
       (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
       (cl-cuda:free-device-memory (workspace cudnn-handler))
+      (cl:setf (workspace cudnn-handler) nil)
+      (cl:setf (workspace-size cudnn-handler) 0)
       (cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler))))))
 
 (cl:defun cudnn-type (type)
   (trivia:match type
-    (:int  :cudnn-data-int32)
-    (:float       :cudnn-data-float)
-    (:double      :cudnn-data-double)
-    ;(cl-cuda:int8      :cudnn-data-int8)
+    (:int        :cudnn-data-int32)
+    (:float      :cudnn-data-float)
+    (:double     :cudnn-data-double)
+    (:bool       :cudnn-data-int8)
+    (:int8       :cudnn-data-int8)
     (:float3     :cudnn-data-floatx3)
     (:float4     :cudnn-data-floatx4)
     (:double3    :cudnn-data-doublex3)
     (:double4    :cudnn-data-doublex4)
     (cl:t (cl:error "The value ~S is invalid here." type))))
 
-;; what's the problem with this??
-;(defun cudnn-reduce-op (reduce-op)
-  ;(trivia:match reduce-op
-    ;(#':+                    :cudnn-reduce-tensor-add)
-    ;(#'cl:*                  :cudnn-reduce-tensor-mul)
-    ;(#'cl:max                :cudnn-reduce-tensor-max)
-    ;(#'cl:min                :cudnn-reduce-tensor-min)
-    ;(cl:t (cl:error "The value ~S is invalid here." reduce-op))))
-
 (defun cudnn-reduce-op (reduce-op)
-  (cl:if (equalp reduce-op #'cl:+)
-      :cudnn-reduce-tensor-add
-      (cl:if (equalp reduce-op #'cl:*)
-          :cudnn-reduce-tensor-mul
-          (cl:if (equalp reduce-op #'cl:min)
-              :cudnn-reduce-tensor-min
-              (cl:if (equalp reduce-op #'cl:max)
-                  :cudnn-reduce-tensor-max)))))
+  (cl:cond ((equalp reduce-op #'cl:+)   :cudnn-reduce-tensor-add)
+           ((equalp reduce-op #'cl:*)   :cudnn-reduce-tensor-mul)
+           ((equalp reduce-op #'cl:max) :cudnn-reduce-tensor-max)
+           ((equalp reduce-op #'cl:min) :cudnn-reduce-tensor-min)
+           (cl:t (cl:error "The value ~S is invalid here." reduce-op))))
 
 (cl:defun cudnn-create-tensor-descriptor (array cudnn-handler)
-  (cl:let* ((shape (cl:slot-value array 'petalisp-cuda.cuda-array::shape))
-            (strides (cl:slot-value array 'petalisp-cuda.cuda-array::strides))
-            (element-type (petalisp-cuda.cuda-array::element-type array))
+  (cl:let* ((shape (cl:slot-value array 'petalisp-cuda.memory.cuda-array::shape))
+            (strides (cl:slot-value array 'petalisp-cuda.memory.cuda-array::strides))
+            (element-type (petalisp-cuda.memory.cuda-array::element-type array))
             (hash-key (values shape strides element-type))
             (min-shape (cl:max (cl:length shape) 4))) ; cudnn wants tensors of dim 4 to 8
            (or (cl:gethash hash-key (tensor-descriptors cudnn-handler))
@@ -109,20 +100,21 @@
                              (cffi:mem-ref new-descriptor :pointer)))))))))
 
 (defun cudnn-create-reduction-descriptor (reduce-op element-type cudnn-handle)
-  (let ((hash-key (values reduce-op element-type)))
-    (or nil; (gethash hash-key (reduce-descriptors cudnn-handle))
-        (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
-        (progn
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateReduceTensorDescriptor new-descriptor)))
-          (assert (equalp :CUDNN-STATUS-SUCCESS
-                          (cudnnSetReduceTensorDescriptor (cffi:mem-ref new-descriptor :pointer)
-                                                          (cudnn-reduce-op reduce-op)
-                                                          (cudnn-type element-type)
-                                                          :cudnn-propagate-nan
-                                                          :cudnn-reduce-tensor-no-indices ; ignored except for min/max
-                                                          :cudnn-32bit-indices)))           ; only 32bit currently supported
-          (setf (gethash hash-key (reduce-descriptors cudnn-handle))
-                (cffi:mem-ref new-descriptor :pointer)))))))
+  (petalisp.utilities:with-hash-table-memoization
+    ((values reduce-op element-type))
+    (reduce-descriptors cudnn-handle)
+    (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
+      (progn
+        (assert (equalp :CUDNN-STATUS-SUCCESS
+                        (cudnnCreateReduceTensorDescriptor new-descriptor)))
+        (assert (equalp :CUDNN-STATUS-SUCCESS
+                        (cudnnSetReduceTensorDescriptor (cffi:mem-ref new-descriptor :pointer)
+                                                        (cudnn-reduce-op reduce-op)
+                                                        (cudnn-type element-type)
+                                                        :cudnn-propagate-nan
+                                                        :cudnn-reduce-tensor-no-indices ; ignored except for min/max
+                                                        :cudnn-32bit-indices)))           ; only 32bit currently supported
+        (cffi:mem-ref new-descriptor :pointer)))))
 
 (defun allocate-workspace (min-size cudnn-handler)
   (progn
@@ -131,14 +123,15 @@
         (when (workspace cudnn-handler)
           (cl-cuda:free-device-memory (workspace cudnn-handler)))
         (setf (workspace-size cudnn-handler) min-size)
-        (setf (workspace cudnn-handler) (cl-cuda:alloc-device-memory 'cl-cuda:float (cl:/ (workspace-size cudnn-handler) 4)))))  ; allocate more than necessary ?
-    (values (workspace cudnn-handler) (workspace-size cudnn-handler))))
+        (setf (workspace cudnn-handler)
+              (cl-cuda:alloc-device-memory 'cl-cuda:float
+                                           (cl:/ (workspace-size cudnn-handler) 4)))))  ; allocate more than necessary ?
+    (values (workspace cudnn-handler)
+            (workspace-size cudnn-handler))))
 
 
 (defun cudnn-reduce-array (input-array output-array reduce-op cudnn-handler)
-  (progn
-    (cl:assert cudnn-handler)
-    (let ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
+  (let ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
           (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
           (reduction-descriptor (cudnn-create-reduction-descriptor reduce-op (element-type input-array) cudnn-handler))
           (double-or-float (cl:if (equalp (element-type input-array) :double) :double :float)))
@@ -179,7 +172,7 @@
                                                          (cffi:make-pointer (device-ptr input-array))
                                                          beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
                                                          output-descriptor
-                                                         (cffi:make-pointer (device-ptr output-array))))))))))))))
-    output-array))
+                                                         (cffi:make-pointer (device-ptr output-array)))))))
+                  output-array))))))))
 ;The data types of the tensors A and C must match if of type double. In this case, alpha and beta and the computation enum of reduceTensorDesc are all assumed to be of type double.
 ;The HALF and INT8 data types may be mixed with the FLOAT data types. In these cases, the computation enum of reduceTensorDesc is required to be of type FLOAT. 
