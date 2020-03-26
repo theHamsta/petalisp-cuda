@@ -1,13 +1,15 @@
 (defpackage petalisp-cuda.cudalibs
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp-cuda.memory.cuda-array :element-type :device-ptr)
-  (:import-from :cl :defun :let :or :gethash :setf :setq :let* :progn :defmacro :when :nil :values :equalp :assert)
+  (:import-from :cl :defun :let :or :gethash :setf :setq :let* :progn :defmacro :when :nil :values :equalp :assert :t)
   (:export :make-cudnn-handler
            :finalize-cudnn-handler
-           :cudnn-reduce-array))
+           :cudnn-reduce-array
+           :*cudnn-fount*))
 
 
 (in-package petalisp-cuda.cudalibs)
+(cl:defparameter *cudnn-found* t)
 
 (cffi:define-foreign-library libcudnn
   (:unix (:or "libcudnn.so.7" "libcudnn.so"))
@@ -19,7 +21,7 @@
   (cffi:load-foreign-library-error (e)
     (cl:princ e *error-output*)
     (cl:terpri *error-output*)
-    (cl:setf *cudnn-not-found* t)))
+    (cl:setq *cudnn-found* nil)))
 
 ;(cffi:define-foreign-library libcudart
   ;(:unix (:or "/usr/local/cuda-10.1/targets/x86_64-linux/lib/libcudart.so" "libcudart.so"))

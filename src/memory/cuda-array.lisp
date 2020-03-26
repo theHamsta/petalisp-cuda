@@ -1,6 +1,7 @@
 (defpackage petalisp-cuda.memory.cuda-array
   (:use :cl
-        :iterate)
+        :iterate
+        :cl-itertools)
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp.core :rank)
   (:export :make-cuda-array
@@ -9,6 +10,7 @@
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp
            :device-ptr
+           :nd-iter
            :element-type))
 
 (in-package :petalisp-cuda.memory.cuda-array)
@@ -20,9 +22,28 @@
 (defstruct (cuda-array (:constructor %make-cuda-array))
   memory-block shape strides)
 
+(defiter nd-iter (shape)
+  (let* ((ndim (length shape))
+         (cur (mapcar (lambda (x) (* 0 x)) shape))
+         (last-idx (1- ndim))
+         (last-element (mapcar #'1- shape))) 
+    (loop do (progn
+               (yield cur)
+               (loop for i from last-idx downto 0 
+                     do (progn
+                          (incf (nth i cur))
+                          (if (= (nth i cur) (nth i shape))
+                              (setf (nth i cur) 0)
+                              (loop-finish))))
+               (when (equal last-element cur)
+                 (progn
+                   (yield cur)
+                   (loop-finish)))))))
 
   ;TODO: redo this with allocator type
 (defgeneric make-cuda-array (shape dtype &optional strides alloc-function)
+  (:method ((array array) dtype &optional strides alloc-function)
+      (cuda-array-from-lisp array dtype strides alloc-function))
   ;; from raw shape
   (:method ((shape list) dtype &optional strides alloc-function)
     (let ((alloc-function (or alloc-function
@@ -35,6 +56,12 @@
   (:method ((shape petalisp:shape) dtype &optional strides alloc-function)
     (let ((dimensions (mapcar #'petalisp:range-size (petalisp:shape-ranges shape))))
       (make-cuda-array dimensions dtype strides alloc-function))))
+
+
+(defun cuda-array-from-lisp (lisp-array dtype &optional strides alloc-function)
+  (let* ((shape (array-dimensions lisp-array))
+         (cuda-array (make-cuda-array shape dtype strides alloc-function)))
+    (copy-lisp-to-cuda-array lisp-array cuda-array)))
 
 
 (defun free-cuda-array (array &optional free-function)
@@ -50,6 +77,10 @@
             (strides (slot-value array 'strides)))
         (cl-cuda:memory-block-aref memory-block (reduce #'+ (mapcar #'* indices strides)))))
 
+(defun set-cuda-array-aref (array indices value)
+  (let ((memory-block (slot-value array 'memory-block))
+            (strides (slot-value array 'strides)))
+        (setf (cl-cuda:memory-block-aref memory-block (reduce #'+ (mapcar #'* indices strides))) value)))
 
 (defun element-type (array)
   (cffi-type (cl-cuda:memory-block-type (cl:slot-value array 'memory-block))))
@@ -78,6 +109,19 @@
       (cl-cuda:sync-memory-block memory-block :device-to-host)
       (aops:generate (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
 
+(defun copy-lisp-to-cuda-array (lisp-array cuda-array)
+  (let ((memory-block (slot-value cuda-array 'memory-block))
+        (cuda-shape (slot-value cuda-array 'shape)))
+    (progn
+      (assert (equalp (array-dimensions lisp-array) cuda-shape))
+      ;; TODO: probably very slow
+      (iterate (for i in-it (petalisp-cuda.memory.cuda-array:nd-iter cuda-shape))
+        (let ((args i))
+          (progn
+            (push lisp-array args)
+            (set-cuda-array-aref cuda-array i (apply #'aref args))))))
+      (cl-cuda:sync-memory-block memory-block :host-to-device)
+      cuda-array))
 
 (defun mem-layout-from-shape (shape &optional strides)
   (let* ((strides (or strides

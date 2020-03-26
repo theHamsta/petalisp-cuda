@@ -11,7 +11,8 @@
                "cffi"
                "cffi-libffi"
                "trivia"
-               "alexandria")
+               "alexandria"
+               "cl-itertools")
   :components ((:module "src/memory"
                 :components
                 ((:file "memory-pool")
@@ -43,4 +44,4 @@
                 ((:file "main"))))
   :description "Test system for petalisp-cuda"
 
-  :perform (test-op (op c) (symbol-call :rove :run c)))
+  :perform (test-op (op c) (with-standard-io-syntax (symbol-call :rove :run c))))
