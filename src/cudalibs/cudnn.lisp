@@ -4,19 +4,6 @@
 ;;; DEFCUDNNFUN macro
 ;;;
 
-; from cl-cuda defcufun
-;(cl:defmacro defcudnnfun (name  return-type
-                       ;&rest arguments)
-  ;(let ((%name (format-symbol (cl:symbol-package name) "%~A" name))
-        ;(argument-vars (cl:mapcar #'cl:car arguments)))
-    ;(if (cl:not *cudnn-not-found*)
-        ;`(cl:progn
-           ;(cl:defun ,name ,argument-vars
-             ;(cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS) (,%name ,@argument-vars)))
-           ;(cffi:defcfun ,%name ,return-type ,@arguments))
-        ;`(cl:defun ,name ,argument-vars
-           ;(cl:error "CUDNN not available")))))
-
 ;; next section imported from file /usr/include/cudnn.h
 
 #| MACRO_DEFINITION

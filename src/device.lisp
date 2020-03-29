@@ -12,8 +12,7 @@
                :type integer
                :reader :device-number)
    (compute-capability :initarg :compute-capability
-                       :initform (alexandria:required-argument :compute-capability))
-   (%compile-cache :initform (make-hash-table) :reader device-compile-cache :type hash-table)))
+                       :initform (alexandria:required-argument :compute-capability))))
 
 
 (defun make-cuda-device (device-id)

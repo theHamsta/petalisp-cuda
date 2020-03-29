@@ -68,8 +68,8 @@
   ;TODO: redo this with allocator type
   (let ((free-function (or free-function
                            #'cl-cuda:free-memory-block)))
-    (funcall free-function (slot-value array 'memory-block))
-    (setf (slot-value array 'memory-block) nil)))
+    (funcall free-function (cuda-array-memory-block array))
+    (setf (cuda-array-memory-block array) nil)))
 
 
 (defun cuda-array-aref (array indices)
@@ -83,11 +83,11 @@
         (setf (cl-cuda:memory-block-aref memory-block (reduce #'+ (mapcar #'* indices strides))) value)))
 
 (defun element-type (array)
-  (cffi-type (cl-cuda:memory-block-type (cl:slot-value array 'memory-block))))
+  (cffi-type (cl-cuda:memory-block-type (slot-value array 'memory-block))))
 
 
 (defun device-ptr (array)
-  (cl-cuda:memory-block-device-ptr (cl:slot-value array 'memory-block)))
+  (cl-cuda:memory-block-device-ptr (slot-value array 'memory-block)))
 
 
 (defun element-size (array)
@@ -135,5 +135,8 @@
 
 
 (defmethod petalisp.core:shape ((array cuda-array))
-  (petalisp.core:make-shape
-       (mapcar (lambda (s) (petalisp.core:range 0 1 (1- s))) (slot-value array 'strides))))
+  (let* ((strides (cuda-array-strides array))
+         (rank (length strides)))
+    (petalisp.core::%make-shape
+      (mapcar (lambda (s) (petalisp.core:range 0 1 (1- s))) strides)
+      rank)))

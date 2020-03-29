@@ -4,7 +4,9 @@
         :petalisp-cuda.memory.memory-pool)
   (:import-from :petalisp-cuda.memory.cuda-array :cuda-array)
   (:export cuda-backend
-           use-cuda-backend))
+           use-cuda-backend
+           cl-cuda-type-from-buffer
+           cl-cuda-type-from-ntype))
 (in-package :petalisp-cuda.backend)
 
 (defvar *preferred-block-size* '(16 16 1))
@@ -20,29 +22,29 @@
 (push '(uint64 :uint64 "uint64_t") cl-cuda.lang.type::+scalar-types+)
     
 
-(defun cl-cuda-type-from-ntype (ntype &optional avoid-64bit-types)
+(defun cl-cuda-type-from-ntype (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype
-    (integer          'cl-cuda:int)
+    (integer            'cl-cuda:int)
     ((unsigned-byte 2)  'uint8) 
     ((unsigned-byte 4)  'uint8)
     ((unsigned-byte 8)  'uint8)
     ((unsigned-byte 16) 'uint16)
     ((unsigned-byte 32) 'uint32)
     ((unsigned-byte 64) 'uint64)
-    ((signed-byte 2)  'cl-cuda:bool) 
-    ((signed-byte 4)  'cl-cuda:bool)
-    ((signed-byte 8)  'int8)
-    ((signed-byte 16) 'int16)
-    ((signed-byte 32) 'cl-cuda:int)
-    ((signed-byte 64) 'int64)
-    (single-float     'cl-cuda:float)
-    (double-float     (if avoid-64bit-types
-                          'cl-cuda:float
-                          'cl-cuda:double))
-    ;(t                'cl-cuda:bool)))
+    ((signed-byte 2)    'cl-cuda:bool) 
+    ((signed-byte 4)    'cl-cuda:bool)
+    ((signed-byte 8)    'int8)
+    ((signed-byte 16)   'int16)
+    ((signed-byte 32)   'cl-cuda:int)
+    ((signed-byte 64)   'int64)
+    (single-float       'cl-cuda:float)
+    (double-float       'cl-cuda:double)
     (number             'cl-cuda:float)
     (t (error "Cannot convert ~S to a CFFI type."
               (petalisp.type-inference:type-specifier ntype)))))
+
+(defun cl-cuda-type-from-buffer (buffer)
+  (cl-cuda-type-from-ntype (petalisp.ir:buffer-ntype buffer)))
 
 (defun ntype-from-cl-cuda-type (element-type)
   (petalisp.type-inference:ntype
@@ -76,10 +78,9 @@
                   :accessor cudnn-handler)
    (memory-pool :initform (make-cuda-memory-pool)
                 :accessor cuda-memory-pool)
-   (avoid-64bit-types :initform nil
-                      :accessor avoid-64bit-types)
    (device :initform nil
-           :accessor backend-device)))
+           :accessor backend-device)
+   (%compile-cache :initform (make-hash-table) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (progn
@@ -91,11 +92,6 @@
         (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*)))
     (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))))
       
-
-(defgeneric compile-kernel (backend kernel)
-  (:method ((backend cuda-backend) kernel)
-    (progn 
-      (princ kernel))))
 
 (defgeneric execute-kernel (backend kernel)
    (:method ((backend cuda-backend) kernel)
@@ -110,8 +106,7 @@
       (format t "~A~%" kernel))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
-  (let ((memory-pool (cuda-memory-pool backend))
-        (avoid-64bit-types (avoid-64bit-types backend)))
+  (let ((memory-pool (cuda-memory-pool backend)))
     (petalisp.scheduler:schedule-on-workers
       lazy-arrays
       1 ; single worker
@@ -127,7 +122,7 @@
         (progn
           (setf (slot-value buffer 'petalisp.ir::device) (backend-device backend)); actually here's already to late to set device. ir generator should know about the device
           (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
-                                                           (cl-cuda-type-from-ntype (buffer-ntype buffer) avoid-64bit-types)
+                                                           (cl-cuda-type-from-buffer buffer)
                                                            nil
                                                            (lambda (type size) (memory-pool-allocate memory-pool type size)))))
       ;; Deallocate.

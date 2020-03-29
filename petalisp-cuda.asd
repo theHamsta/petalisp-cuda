@@ -26,6 +26,8 @@
                 :components
                 ((:file "device")
                  (:file "backend")
+                 (:file "indexing")
+                 (:file "code-generation")
                  (:file "package")))))
 
 

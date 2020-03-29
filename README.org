@@ -24,6 +24,7 @@ git clone git@github.com:theHamsta/petalisp-cuda.git
 ** Debugging
 
 You can activate logging in CUDNN by setting
+
 #+BEGIN_SRC bash
 export CUDNN_LOGDEST_DBG=stdout
 #+END_SRC
