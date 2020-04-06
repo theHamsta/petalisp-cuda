@@ -6,8 +6,16 @@
 (in-package petalisp-cuda.device)
 
 ;;; CUDA device
-(defclass cuda-device (petalisp.core:device)
-  ((%device-id :initarg :device-id
+(defclass cuda-device ()
+  ((%name :initarg :name
+          :initform (alexandria:required-argument :name)
+          :type string
+          :reader :device-name)
+   (%memory-size :initarg :memory-size
+                 :initform (alexandria:required-argument :memory-size)
+                 :type integer
+                 :reader :device-memory-size)
+   (%device-id :initarg :device-id
                :initform (alexandria:required-argument :device-id)
                :type integer
                :reader :device-number)
@@ -24,8 +32,7 @@
                      :device-id device-id
                      :name (get-device-name device-id)
                      :compute-capability (+ (* 10 cc-major) cc-minor)
-                     :number-of-workers nil ;https://stackoverflow.com/questions/32530604/how-can-i-get-number-of-cores-in-cuda-device#32531982
-                     :memory-size (cffi:pointer-address (cffi:mem-ref mem-size :pointer)))))))
+                     :remory-size (cffi:pointer-address (cffi:mem-ref mem-size :pointer)))))))
 
 (defun get-device-name (device-id)
   (let* ((name "                                                                  ")

@@ -120,7 +120,6 @@
       ;; Allocate.
       (lambda (buffer)
         (progn
-          (setf (slot-value buffer 'petalisp.ir::device) (backend-device backend)); actually here's already to late to set device. ir generator should know about the device
           (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
                                                            (cl-cuda-type-from-buffer buffer)
                                                            nil
