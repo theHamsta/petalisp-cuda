@@ -21,7 +21,7 @@
                     :type list)))
 
 (defgeneric call-parameters (iteration-scheme))
-(defgeneric call-parameters (iteration-scheme))
+(defgeneric iteration-code (iteration-scheme kernel-body))
 
 ;; block-iteration-scheme
 (defclass block-iteration-scheme (iteration-scheme)

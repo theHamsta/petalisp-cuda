@@ -32,7 +32,7 @@
                      :device-id device-id
                      :name (get-device-name device-id)
                      :compute-capability (+ (* 10 cc-major) cc-minor)
-                     :remory-size (cffi:pointer-address (cffi:mem-ref mem-size :pointer)))))))
+                     :memory-size (cffi:pointer-address (cffi:mem-ref mem-size :pointer)))))))
 
 (defun get-device-name (device-id)
   (let* ((name "                                                                  ")

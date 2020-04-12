@@ -9,8 +9,6 @@
            cl-cuda-type-from-ntype))
 (in-package :petalisp-cuda.backend)
 
-(defvar *preferred-block-size* '(16 16 1))
-
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
 (push '(int16 :int16 "int16_t") cl-cuda.lang.type::+scalar-types+)
@@ -80,6 +78,8 @@
                 :accessor cuda-memory-pool)
    (device :initform nil
            :accessor backend-device)
+   (preferred-block-size :initform '(16 16 1)
+                         :accessor preferred-block-size)
    (%compile-cache :initform (make-hash-table) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
@@ -93,17 +93,7 @@
     (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))))
       
 
-(defgeneric execute-kernel (backend kernel)
-   (:method ((backend cuda-backend) kernel)
-    (progn 
-      (format t "~A~%" (petalisp.ir:kernel-iteration-space kernel))
-      (petalisp.ir:map-kernel-load-instructions
-        (lambda (instruction) (format t "~A~%" instruction))
-        kernel)
-      (petalisp.ir:map-kernel-store-instructions
-        (lambda (instruction) (format t "~A~%" instruction))
-        kernel)
-      (format t "~A~%" kernel))))
+(defgeneric execute-kernel (kernel backend))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
   (let ((memory-pool (cuda-memory-pool backend)))

@@ -27,7 +27,7 @@
                 ((:file "device")
                  (:file "backend")
                  (:file "indexing")
-                 (:file "code-generation")
+                 (:file "jit-execution")
                  (:file "package")))))
 
 
