@@ -15,12 +15,11 @@
   (:unix (:or "libcudnn.so.7" "libcudnn.so"))
   (t (:default "libcudnn")))
  
-(cffi:use-foreign-library libcudnn)
-
 (cl:handler-case (cffi:use-foreign-library libcudnn)
   (cffi:load-foreign-library-error (e)
-    (cl:princ e *error-output*)
-    (cl:terpri *error-output*)
+    (cl:princ e cl:*error-output*)
+    (cl:terpri cl:*error-output*)
+    (cl:format t "CUDNN will not be available for petalisp-cuda!~%")
     (cl:setq *cudnn-found* nil)))
 
 ;(cffi:define-foreign-library libcudart
