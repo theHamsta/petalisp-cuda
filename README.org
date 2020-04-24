@@ -10,7 +10,7 @@
 ** Requirements
 
 - CUDA toolkit
-- CUDNN
+- CUDNN (optional)
 
 ** Installation
 
