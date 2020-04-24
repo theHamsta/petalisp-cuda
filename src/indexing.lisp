@@ -8,7 +8,8 @@
   (:export :block-iteration-scheme
            :make-block-iteration-scheme
            :call-parameters
-           :iteration-code))
+           :iteration-code
+           :get-counter-symbol))
 
 (in-package petalisp-cuda.indexing)
 
@@ -56,6 +57,12 @@
                         (shape-ranges filtered-block-shape))
      :block-dim ,filtered-block-shape)))
 
+(defun get-counter-symbol (dimension-index)
+  (format-symbol nil "idx-~A" dim-idx))
+
+(defun get-counter-vector (number-dimensions)
+  (mapcar (lambda (dim) (format-symbol nil "idx-~A" dim)) (iota dim))
+
 (defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
   (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
         (xyz (xyz-dimensions iteration-scheme)))
@@ -63,7 +70,7 @@
     `(let (,(loop for dim-idx in xyz
                   for letter in (list 'x 'y 'z)
                   collect (let ((current-range (nth dim-idx iteration-ranges)))
-                            `(,(format-symbol nil "idx-~A" dim-idx) 
+                            `(, (get-counter-symbol dim-idx) 
                                (+ ,(range-start current-range)
                                   (* ,(range-step current-range)
                                      ,(case letter 
@@ -73,7 +80,7 @@
        (progn
           ;; return out-of-bounds threads
           ,@(loop for dim-idx in xyz
-                collect `(if (>= ,(format-symbol nil  "idx-~A" dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
+                collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
                              (return)))
           ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
           ;; and append kernel-body

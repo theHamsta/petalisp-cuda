@@ -12,7 +12,8 @@
                "cffi-libffi"
                "trivia"
                "alexandria"
-               "cl-itertools")
+               "cl-itertools"
+               "let-plus")
   :components ((:module "src/memory"
                 :components
                 ((:file "memory-pool")
