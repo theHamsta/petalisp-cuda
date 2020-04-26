@@ -59,10 +59,15 @@
                                           buffer->kernel-argument))))
 
 (defun linearize-instruction-transformation (instruction &optional buffer)
-  (let+ (((&slots input-rank output-rank input-mask output-mask scalings offset)
+  (let+ (((&slots input-rank output-rank input-mask output-mask scalings offsets)
           (instruction-transformation instruction)))
-        (let ((input (mapcar #'or input-mask (get-counter-vector input-rank))))
-          `(+ (mapcar #'or output-mask `())))))
+        (let ((input (mapcar #'or input-mask (get-counter-vector input-rank)))
+              (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
+              (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
+          `(+ (mapcar #'or output-mask
+                      (mapcar
+                        (lambda (i o s1 s2) `(* (+ ,i ,o, ,start) ,s1 ,s1))
+                        input offsets scalings strides))))))
 
   (defun get-instruction-symbol (instruction)
     (format-symbol nil "$~A"
