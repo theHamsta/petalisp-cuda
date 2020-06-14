@@ -1,6 +1,7 @@
 (defpackage petalisp-cuda.jitexecution
   (:use :petalisp-cuda.backend
         :petalisp.ir
+        :petalisp
         :cl
         :cl-cuda
         :let-plus)
@@ -47,7 +48,7 @@
                              :iteration-scheme iteration-scheme))))))
 
 (defmethod execute-kernel (kernel (backend cuda-backend))
-    (let ((compiled-function compile-kernel (kernel backend)))))
+    (let ((compiled-function (compile-kernel kernel backend)))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
@@ -63,11 +64,11 @@
           (instruction-transformation instruction)))
         (let ((input (mapcar (lambda (a b) (or a b)) input-mask (get-counter-vector input-rank)))
               (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank)))
-              (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank)))))
-          `(+ (mapcar (lambda (a b) (or a b)) output-mask
-                      ,(mapcar
+              (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
+          `(+ ,(mapcar (lambda (a b) (or a b)) output-mask
+                      (mapcar
                         (lambda (i o start s1 s2) `(* (+ ,i ,o ,start) ,s1 ,s2))
-                        input offsets starts scalings strides)))))
+                        input offsets starts scalings strides))))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol nil "$~A"
@@ -76,7 +77,7 @@
                      (instruction-number instruction))))
 
 (defun generate-instructions (instructions buffer->kernel-argument)
-  (let ((instruction (pop instructions))
+  (let* ((instruction (pop instructions))
         ($i (get-instruction-symbol instruction)))
     `(let ((,$i ,(etypecase instruction
                   (call-instruction
@@ -95,7 +96,7 @@
                                (linearize-instruction-transformation instruction buffer))
                          ,(first
                             (map-instruction-inputs #'get-instruction-symbol instruction))))))))
-       ,(generate-instructions instruction map-input))))
+       ,(generate-instructions instruction buffer->kernel-argument))))
 
 (defun map-call-operator (operator)
   operator)

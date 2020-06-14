@@ -6,7 +6,9 @@
   (:export cuda-backend
            use-cuda-backend
            cl-cuda-type-from-buffer
-           cl-cuda-type-from-ntype))
+           cl-cuda-type-from-ntype
+           compile-cache
+           preferred-block-size))
 (in-package :petalisp-cuda.backend)
 
 ; push missing cffi types
