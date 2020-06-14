@@ -2,8 +2,8 @@
   (:use :petalisp-cuda.backend
         :petalisp.ir
         :cl
-        :cl-cuda)
-  (:import-from :let-plus :let+
+        :cl-cuda
+        :let-plus)
   (:import-from :cl-cuda.api.kernel-manager :*kernel-manager*
                                             :kernel-manager-define-function)
   (:import-from :petalisp.utilities :with-hash-table-memoization)
@@ -59,26 +59,26 @@
                                           buffer->kernel-argument))))
 
 (defun linearize-instruction-transformation (instruction &optional buffer)
-  (let+ (((&slots input-rank output-rank input-mask output-mask scalings offsets)
+  (let+ (((&slots input-rank output-rank input-mask output-mask scalings offsets inverse)
           (instruction-transformation instruction)))
-        (let ((input (mapcar #'or input-mask (get-counter-vector input-rank)))
+        (let ((input (mapcar (lambda (a b) (or a b)) input-mask (get-counter-vector input-rank)))
               (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
               (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
-          `(+ (mapcar #'or output-mask
-                      (mapcar
+          `(+ (mapcar (lambda (a b) (or a b)) output-mask
+                      ((mapcar
                         (lambda (i o s1 s2) `(* (+ ,i ,o, ,start) ,s1 ,s1))
-                        input offsets scalings strides))))))
+                        ,input ,offsets ,scalings ,strides))))))
 
-  (defun get-instruction-symbol (instruction)
-    (format-symbol nil "$~A"
-                   (if (numberp instruction)
-                       instruction
-                       (instruction-number instruction)))))
+(defun get-instruction-symbol (instruction)
+  (format-symbol nil "$~A"
+                 (if (numberp instruction)
+                     instruction
+                     (instruction-number instruction))))
 
 (defun generate-instructions (instructions buffer->kernel-argument)
-  (let (((instruction (pop instructions)))
+  (let ((instruction (pop instructions))
         ($i (get-instruction-symbol instruction)))
-    `(let (($i ,(etypecase instruction
+    `(let ((,$i ,(etypecase instruction
                   (call-instruction
                     `(,(map-call-operator (call-instruction-operator instruction))
                        ,@(map-instruction-inputs #'get-instruction-symbol instruction)))
@@ -86,12 +86,12 @@
                     (linearize-instruction-transformation
                       (instruction-transformation instruction)))
                   (load-instruction
-                    `(aref ,(buffer->kernel-argument (load-instruction-buffer instruction))
+                    `(aref ,(funcall buffer->kernel-argument (load-instruction-buffer instruction))
                            ,(linearize-instruction-transformation instruction)))
                   (store-instruction
                     (let ((buffer (store-instruction-buffer instruction)))
                       `(set
-                         (aref ,(buffer->kernel-argument buffer)
+                         (aref ,(funcall buffer->kernel-argument buffer)
                                (linearize-instruction-transformation instruction buffer))
                          ,(first
                             (map-instruction-inputs #'get-instruction-symbol instruction))))))))
