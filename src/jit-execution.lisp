@@ -62,12 +62,12 @@
   (let+ (((&slots input-rank output-rank input-mask output-mask scalings offsets inverse)
           (instruction-transformation instruction)))
         (let ((input (mapcar (lambda (a b) (or a b)) input-mask (get-counter-vector input-rank)))
-              (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
-              (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
+              (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank)))
+              (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank)))))
           `(+ (mapcar (lambda (a b) (or a b)) output-mask
-                      ((mapcar
-                        (lambda (i o s1 s2) `(* (+ ,i ,o, ,start) ,s1 ,s1))
-                        ,input ,offsets ,scalings ,strides))))))
+                      ,(mapcar
+                        (lambda (i o start s1 s2) `(* (+ ,i ,o ,start) ,s1 ,s2))
+                        input offsets starts scalings strides)))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol nil "$~A"
