@@ -12,7 +12,7 @@
 (cl:defparameter *cudnn-found* t)
 
 (cffi:define-foreign-library libcudnn
-  (:unix (:or "libcudnn.so.7" "libcudnn.so"))
+  (:unix (:or "libcudnn.so.8" "libcudnn.so.7" "libcudnn.so"))
   (t (:default "libcudnn")))
  
 (cl:handler-case (cffi:use-foreign-library libcudnn)
