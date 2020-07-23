@@ -1,4 +1,4 @@
-(defpackage petalisp-cuda.indexing
+(defpackage petalisp-cuda.iteration-scheme
   (:use :cl
         :petalisp)
   (:import-from :alexandria :iota :format-symbol)
@@ -11,7 +11,7 @@
            :iteration-code
            :get-counter-symbol))
 
-(in-package petalisp-cuda.indexing)
+(in-package petalisp-cuda.iteration-scheme)
 
 (defclass iteration-scheme ()
   ((%shape :initarg shape

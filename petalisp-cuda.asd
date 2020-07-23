@@ -27,7 +27,7 @@
                 :components
                 ((:file "device")
                  (:file "backend")
-                 (:file "indexing")
+                 (:file "iteration-scheme")
                  (:file "jit-execution")
                  (:file "package")))))
 

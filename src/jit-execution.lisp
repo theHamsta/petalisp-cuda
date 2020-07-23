@@ -6,18 +6,20 @@
         :cl-cuda
         :let-plus)
   (:import-from :cl-cuda.api.kernel-manager :*kernel-manager*
-                                            :kernel-manager-define-function)
+                                            :kernel-manager-define-function
+                                            :ensure-kernel-function-loaded)
+  (:import-from :cl-cuda.driver-api :cu-device-ptr :cu-launch-kernel)
   (:import-from :petalisp.utilities :with-hash-table-memoization)
   (:import-from :alexandria :format-symbol :iota :with-gensyms)
-  (:import-from :petalisp-cuda.indexing :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
-  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides)
+  (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
+  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr)
   (:export :compile-kernel))
 
 (in-package petalisp-cuda.jitexecution)
 
 
 (defstruct (jit-function)
-  kernel-symbol iteration-scheme)
+  kernel-symbol iteration-scheme shared-mem-bytes)
 
 (defgeneric generate-iteration-scheme (kernel backend))
 
@@ -45,10 +47,32 @@
                                           kernel-arguments
                                           (generate-kernel kernel kernel-arguments buffers iteration-scheme))
           (make-jit-function :kernel-symbol function-name
-                             :iteration-scheme iteration-scheme))))))
+                             :iteration-scheme iteration-scheme
+                             :shared-mem-bytes 0))))))
+
+(defun fill-with-device-ptrs (ptr-array kernel-arguments)
+  (loop for i from 0 to (1- (list-length kernel-arguments)) do
+        (setf (cffi:mem-aref ptr-array 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))))
+
+(defun run-compiled-function (compiled-function kernel-arguments)
+  (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
+    (let ((parameters (call-parameters iteration-scheme)))
+      (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol)))
+        (cffi:with-foreign-object (kargs 'cu-device-ptr (list-length kernel-arguments))
+          (progn
+            (fill-with-device-ptrs kargs kernel-arguments)
+            (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
+              (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
+                (cu-launch-kernel hfunc
+                                  grid-dim-x  grid-dim-y  grid-dim-z
+                                  block-dim-x block-dim-y block-dim-z
+                                  shared-mem-bytes cl-cuda.api.context:*cuda-stream*
+                                  kargs (cffi:null-pointer))))))))))
 
 (defmethod execute-kernel (kernel (backend cuda-backend))
-    (let ((compiled-function (compile-kernel kernel backend)))))
+  (let* ((buffers (kernel-buffers kernel))
+         (arrays (mapcar #'buffer-storage buffers)))
+    (run-compiled-function (compile-kernel kernel backend) arrays)))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
@@ -99,7 +123,9 @@
        ,(generate-instructions instruction buffer->kernel-argument))))
 
 (defun map-call-operator (operator)
-  operator)
+  (progn 
+    (break)
+    operator))
 
 (defun make-buffer->kernel-argument (buffers kernel-arguments)
     (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))
