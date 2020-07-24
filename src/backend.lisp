@@ -106,7 +106,7 @@
       (lambda (tasks)
         (loop for task in tasks do
               (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                (execute-kernel backend kernel))))
+                (execute-kernel kernel backend))))
       ;; Barrier.
       (lambda () ())
       ;; Allocate.
