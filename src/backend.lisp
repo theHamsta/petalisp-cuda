@@ -8,7 +8,8 @@
            cl-cuda-type-from-buffer
            cl-cuda-type-from-ntype
            compile-cache
-           preferred-block-size))
+           preferred-block-size
+           execute-kernel))
 (in-package :petalisp-cuda.backend)
 
 ; push missing cffi types
@@ -111,18 +112,21 @@
       (lambda () ())
       ;; Allocate.
       (lambda (buffer)
-        (progn
-          (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
-                                                           (cl-cuda-type-from-buffer buffer)
-                                                           nil
-                                                           (lambda (type size) (memory-pool-allocate memory-pool type size)))))
+        (setf (petalisp.ir:buffer-storage buffer)
+              (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
+                                                               (cl-cuda-type-from-buffer buffer)
+                                                               nil
+                                                               (lambda (type size)
+                                                                 (memory-pool-allocate memory-pool type size)))))
       ;; Deallocate.
       (lambda (buffer)
         (let ((storage (buffer-storage buffer)))
           (unless (null storage)
             (setf (buffer-storage buffer) nil)
             (when (buffer-reusablep buffer)
-              (petalisp-cuda.memory.cuda-array:free-cuda-array storage (lambda (mem-block) (memory-pool-free memory-pool mem-block))))))))))
+              (petalisp-cuda.memory.cuda-array:free-cuda-array
+                storage
+                (lambda (mem-block) (memory-pool-free memory-pool mem-block))))))))))
 
 
 (defclass cuda-immediate (petalisp.core:immediate)

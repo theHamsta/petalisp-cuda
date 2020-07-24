@@ -13,10 +13,24 @@
   (:import-from :alexandria :format-symbol :iota :with-gensyms)
   (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr)
-  (:export :compile-kernel))
+  (:export :compile-kernel
+           :execute-kernel))
 
 (in-package petalisp-cuda.jitexecution)
 
+(defun kernel-inputs (kernel)
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-inputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))
+
+(defun kernel-outputs (kernel)
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-outputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))
 
 (defstruct (jit-function)
   kernel-symbol iteration-scheme shared-mem-bytes)
@@ -26,10 +40,10 @@
 (defmethod generate-iteration-scheme (kernel backend)
   (make-block-iteration-scheme (kernel-iteration-space kernel)
                                (preferred-block-size backend)
-                               (cuda-array-strides (storage (first (map-kernel-outputs #'identity kernel))))))
+                               (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
 (defun generate-kernel-arguments (buffers)
-  (mapcar (lambda (buffer idx) (list (format-symbol "buffer-~A" idx) (cl-cuda-type-from-buffer buffer)))
+  (mapcar (lambda (buffer idx) (list (format-symbol nil "buffer-~A" idx) (cl-cuda-type-from-buffer buffer)))
           buffers
           (iota (length buffers))))
 
@@ -51,14 +65,14 @@
                              :shared-mem-bytes 0))))))
 
 (defun fill-with-device-ptrs (ptr-array kernel-arguments)
-  (loop for i from 0 to (1- (list-length kernel-arguments)) do
+  (loop for i from 0 to (1- (length kernel-arguments)) do
         (setf (cffi:mem-aref ptr-array 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
   (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
       (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol)))
-        (cffi:with-foreign-object (kargs 'cu-device-ptr (list-length kernel-arguments))
+        (cffi:with-foreign-object (kargs 'cu-device-ptr (length kernel-arguments))
           (progn
             (fill-with-device-ptrs kargs kernel-arguments)
             (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
@@ -69,7 +83,7 @@
                                   shared-mem-bytes cl-cuda.api.context:*cuda-stream*
                                   kargs (cffi:null-pointer))))))))))
 
-(defmethod execute-kernel (kernel (backend cuda-backend))
+(defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let* ((buffers (kernel-buffers kernel))
          (arrays (mapcar #'buffer-storage buffers)))
     (run-compiled-function (compile-kernel kernel backend) arrays)))

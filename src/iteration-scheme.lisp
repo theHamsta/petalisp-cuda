@@ -31,13 +31,13 @@
                 :type petalisp.core:shape)))
 
 (defun make-block-iteration-scheme (iteration-shape block-shape-as-list array-strides)
-  (let* ((iteration-strides (loop for range in iteration-shape
+  (let* ((iteration-strides (loop for range in (shape-ranges iteration-shape)
                                   for stride in array-strides
                                   count t into i
                                   unless (range-empty-p range)
                                   collect (list i stride)))
          (fastest-dimensions (mapcar #'car (sort iteration-strides #'< :key #'second)))
-         (xyz (subseq fastest-dimensions 0 (max 3 (length fastest-dimensions))))
+         (xyz (subseq fastest-dimensions 0 (min 3 (length fastest-dimensions))))
          (block-shape '())
          (rank (shape-rank iteration-shape)))
     (progn
