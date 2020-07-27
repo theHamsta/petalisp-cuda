@@ -178,6 +178,31 @@
     ((petalisp.type-inference:short-float/) '/)
     ((petalisp.type-inference:long-float/) '/)
 
+    ((petalisp.type-inference:double-float=) '==)
+    ((petalisp.type-inference:single-float=) '==)
+    ((petalisp.type-inference:short-float=) '==)
+    ((petalisp.type-inference:long-float=) '==)
+
+    ((petalisp.type-inference:double-float>) '>)
+    ((petalisp.type-inference:single-float>) '>)
+    ((petalisp.type-inference:short-float>) '>)
+    ((petalisp.type-inference:long-float>) '>)
+
+    ((petalisp.type-inference:double-float<) '<)
+    ((petalisp.type-inference:single-float<) '<)
+    ((petalisp.type-inference:short-float<) '<)
+    ((petalisp.type-inference:long-float<) '<)
+
+    ((petalisp.type-inference:double-float<=) '<=)
+    ((petalisp.type-inference:single-float<=) '<=)
+    ((petalisp.type-inference:short-float<=) '<=)
+    ((petalisp.type-inference:long-float<=) '<=)
+
+    ((petalisp.type-inference:double-float>=) '>=)
+    ((petalisp.type-inference:single-float>=) '>=)
+    ((petalisp.type-inference:short-float>=) '>=)
+    ((petalisp.type-inference:long-float>=) '>=)
+
     ((petalisp.type-inference:double-float-min) 'min)
     ((petalisp.type-inference:single-float-min) 'min)
     ((petalisp.type-inference:short-float-min) 'min)
