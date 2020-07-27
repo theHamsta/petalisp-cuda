@@ -130,7 +130,7 @@
                      (instruction (instruction-number instruction)))))
 
 (defun generate-instructions (instructions buffer->kernel-argument)
-  (when instructions
+  (if instructions
     (let* ((instruction (pop instructions))
            ($i (get-instruction-symbol instruction)))
       `(let ((,$i ,(etypecase instruction
@@ -149,7 +149,8 @@
                             (aref ,(funcall buffer->kernel-argument buffer)
                                   ,(linearize-instruction-transformation instruction buffer))
                             ,(get-instruction-symbol (first (instruction-inputs instruction)))))))))
-         ,(generate-instructions instructions buffer->kernel-argument)))))
+         ,(generate-instructions instructions buffer->kernel-argument)))
+      '(return)))
 
 (defun make-buffer->kernel-argument (buffers kernel-arguments)
     (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))
@@ -229,14 +230,15 @@
     ((petalisp.type-inference:long-float-sin) 'sin)
 
     ((petalisp.type-inference:double-float-tan) 'tan)
-    ((petalisp.type-inference:tangle-float-tan) 'tan)
+    ((petalisp.type-inference:single-float-tan) 'tan)
     ((petalisp.type-inference:short-float-tan) 'tan)
     ((petalisp.type-inference:long-float-tan) 'tan)
 
-    ((petalisp.type-inference:double-float-exp) 'exp)
-    ((petalisp.type-inference:expgle-float-exp) 'exp)
-    ((petalisp.type-inference:short-float-exp) 'exp)
-    ((petalisp.type-inference:long-float-exp) 'exp)
+    ;; Petalisp has no exp
+    ;((petalisp.type-inference:double-float-exp) 'exp)
+    ;((petalisp.type-inference:single-float-exp) 'exp)
+    ;((petalisp.type-inference:short-float-exp) 'exp)
+    ;((petalisp.type-inference:long-float-exp) 'exp)
 
     (t (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!" operator))))
