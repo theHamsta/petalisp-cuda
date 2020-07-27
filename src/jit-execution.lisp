@@ -124,9 +124,10 @@
 
 (defun get-instruction-symbol (instruction)
   (format-symbol nil "$~A"
-                 (if (numberp instruction)
-                     instruction
-                     (instruction-number instruction))))
+                 (etypecase instruction
+                     (number instruction)
+                     (cons (instruction-number (cdr instruction)))
+                     (instruction (instruction-number instruction)))))
 
 (defun generate-instructions (instructions buffer->kernel-argument)
   (when instructions
@@ -135,7 +136,7 @@
       `(let ((,$i ,(etypecase instruction
                      (call-instruction
                        `(,(map-call-operator (call-instruction-operator instruction))
-                          ,@(map-instruction-inputs #'get-instruction-symbol instruction)))
+                          ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
                      (iref-instruction
                        (linearize-instruction-transformation
                          (instruction-transformation instruction)))
@@ -147,13 +148,33 @@
                          `(set
                             (aref ,(funcall buffer->kernel-argument buffer)
                                   ,(linearize-instruction-transformation instruction buffer))
-                            ,(get-instruction-symbol (car (first (instruction-inputs instruction))))))))))
+                            ,(get-instruction-symbol (first (instruction-inputs instruction)))))))))
          ,(generate-instructions instructions buffer->kernel-argument)))))
-
-(defun map-call-operator (operator)
-  (progn 
-    (break)
-    operator))
 
 (defun make-buffer->kernel-argument (buffers kernel-arguments)
     (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))
+
+(defun map-call-operator (operator)
+  (case operator 
+    ((petalisp.type-inference:double-float+) '+ )
+    ((petalisp.type-inference:single-float+) '+ )
+    ((petalisp.type-inference:short-float+) '+ )
+    ((petalisp.type-inference:long-float+) '+ )
+
+    ((petalisp.type-inference:double-float-) '- )
+    ((petalisp.type-inference:single-float-) '- )
+    ((petalisp.type-inference:short-float-) '- )
+    ((petalisp.type-inference:long-float-) '- )
+
+    ((petalisp.type-inference:double-float*) '* )
+    ((petalisp.type-inference:single-float*) '* )
+    ((petalisp.type-inference:short-float*) '* )
+    ((petalisp.type-inference:long-float*) '* )
+
+    ((petalisp.type-inference:double-float/) '/ )
+    ((petalisp.type-inference:single-float/) '/ )
+    ((petalisp.type-inference:short-float/) '/ )
+    ((petalisp.type-inference:long-float/) '/ )
+    (t (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
+More copy paste required here!" operator))))
+
