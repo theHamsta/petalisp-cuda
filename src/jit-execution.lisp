@@ -64,7 +64,7 @@
       (with-gensyms (function-name)
         (progn 
           (kernel-manager-define-function *kernel-manager*
-                                          function-name
+                                          (format-symbol t "~A" function-name) ;cl-cuda wants symbol with a package for the function name
                                           'void
                                           kernel-arguments
                                           (generate-kernel kernel kernel-arguments buffers iteration-scheme))
@@ -131,7 +131,7 @@
   (when instructions
     (let* ((instruction (pop instructions))
            ($i (get-instruction-symbol instruction)))
-      `(let ((,$i ,(etypecase instruction
+      `('let ((,$i ,(etypecase instruction
                      (call-instruction
                        `(,(map-call-operator (call-instruction-operator instruction))
                           ,@(map-instruction-inputs #'get-instruction-symbol instruction)))

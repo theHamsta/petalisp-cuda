@@ -67,7 +67,7 @@
   (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
         (xyz (xyz-dimensions iteration-scheme)))
     ;; define x,y,z dimensions
-    `(let (,(loop for dim-idx in xyz
+    `('let (,(loop for dim-idx in xyz
                   for letter in (list 'x 'y 'z)
                   collect (let ((current-range (nth dim-idx iteration-ranges)))
                             `(, (get-counter-symbol dim-idx) 
@@ -123,6 +123,6 @@
     (if (or (range-empty-p dim-range)
             (member dim-idx xyz))
         body
-        `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
+        `('do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
              ((< ,dim-symbol ,(range-end dim-range)))
            ,body))))
