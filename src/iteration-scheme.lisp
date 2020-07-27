@@ -14,10 +14,10 @@
 (in-package petalisp-cuda.iteration-scheme)
 
 (defclass iteration-scheme ()
-  ((%shape :initarg shape
+  ((%shape :initarg :shape
            :accessor iteration-shape
            :type petalisp.core:shape)
-   (%xyz-dimensions :initarg xyz-dimensions
+   (%xyz-dimensions :initarg :xyz-dimensions
                     :accessor xyz-dimensions
                     :type list)))
 
@@ -26,7 +26,7 @@
 
 ;; block-iteration-scheme
 (defclass block-iteration-scheme (iteration-scheme)
-  ((%block-shape :initarg block-shape
+  ((%block-shape :initarg :block-shape
                 :accessor block-shape
                 :type petalisp.core:shape)))
 
@@ -35,15 +35,15 @@
                                   for stride in array-strides
                                   count t into i
                                   unless (range-empty-p range)
-                                  collect (list i stride)))
-         (fastest-dimensions (mapcar #'car (sort iteration-strides #'< :key #'second)))
+                                  collect (list (1- i) stride)))
+         (fastest-dimensions (mapcar #'car (sort iteration-strides #'> :key #'second)))
          (xyz (subseq fastest-dimensions 0 (min 3 (length fastest-dimensions))))
          (block-shape '())
          (rank (shape-rank iteration-shape)))
     (progn
       (dotimes (i rank)
-        (push (~ 1) block-shape))
-      (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (~ range-size))) xyz block-shape-as-list)
+        (push (range 0 0) block-shape))
+      (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range 0 (1- range-size)))) xyz block-shape-as-list)
       (make-instance 'block-iteration-scheme
                      :shape iteration-shape
                      :xyz-dimensions xyz
@@ -52,10 +52,10 @@
 (defmethod call-parameters ((iteration-scheme block-iteration-scheme))
   (let ((filtered-iteration-shape (filtered-iteration-shape iteration-scheme))
         (filtered-block-shape (filtered-block-shape iteration-scheme)))
-    `(:grid-dim  ,(mapcar #'range-divup
-                        (shape-ranges filtered-iteration-shape)
-                        (shape-ranges filtered-block-shape))
-     :block-dim ,filtered-block-shape)))
+    `(:grid-dim  ,(mapcar #'ceiling
+                          filtered-iteration-shape
+                          filtered-block-shape)
+      :block-dim ,filtered-block-shape)))
 
 (defun get-counter-symbol (dimension-index)
   (format-symbol nil "idx-~A" dimension-index))
@@ -97,17 +97,19 @@
       (ceiling (range-size a) (range-size b))))) ; so it's basically ceiling + assertions right now
 
 (defun filter-xyz-dimensions (list xyz-dimensions)
-  (trivia:match (mapcar (lambda (idx) (nth idx list)) xyz-dimensions)
+   (trivia:match (mapcar (lambda (idx) (nth idx list)) xyz-dimensions)
     ((list x)     (list x 1 1))
     ((list x y)   (list x y 1))
     ((list x y z) (list x y z))
     (_ (error "CUDA allows maximum 3 dimensions"))))
 
 (defun filtered-block-shape (iteration-scheme)
-  (filter-xyz-dimensions (block-shape iteration-scheme) (xyz-dimensions iteration-scheme)))
+  (let ((xyz-size (mapcar #'range-size (block-shape iteration-scheme))))
+  (filter-xyz-dimensions xyz-size
+                         (xyz-dimensions iteration-scheme))))
 
 (defun filtered-iteration-shape (iteration-scheme)
-  (filter-xyz-dimensions (iteration-shape iteration-scheme) (xyz-dimensions iteration-scheme)))
+  (filter-xyz-dimensions (mapcar #'range-size (shape-ranges (iteration-shape iteration-scheme))) (xyz-dimensions iteration-scheme)))
 
 (defun range-empty-p (range)
   (= (range-size range) 0))
