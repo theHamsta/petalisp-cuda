@@ -63,6 +63,7 @@
           (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (progn 
+          (format t "~A~%" (generate-kernel kernel kernel-arguments buffers iteration-scheme))
           (kernel-manager-define-function *kernel-manager*
                                           (format-symbol t "~A" function-name) ;cl-cuda wants symbol with a package for the function name
                                           'void
@@ -114,9 +115,9 @@
          (scalings (transformation-scalings transformation))
          (offsets (transformation-offsets transformation)))
     (let ((input (map 'list (lambda (a b) (or a b)) input-mask (get-counter-vector input-rank)))
-          (strides (if buffer (slot-value 'strides (storage buffer)) (iota output-rank)))
-          (starts (if buffer (slot-value 'strides (storage buffer)) (iota output-rank))))
-      `(+ ,(map 'list (lambda (a b) (or a b)) output-mask
+          (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (iota output-rank)))
+          (starts (if buffer (cuda-array-strides (buffer-storage buffer)) (iota output-rank))))
+      `(+ ,@(map 'list (lambda (a b) (or a b)) output-mask
                    (map 'list
                      (lambda (i o start s1 s2) `(* (+ ,i ,o ,start) ,s1 ,s2))
                      input offsets starts scalings strides))))))
@@ -131,7 +132,7 @@
   (when instructions
     (let* ((instruction (pop instructions))
            ($i (get-instruction-symbol instruction)))
-      `('let ((,$i ,(etypecase instruction
+      `(let ((,$i ,(etypecase instruction
                      (call-instruction
                        `(,(map-call-operator (call-instruction-operator instruction))
                           ,@(map-instruction-inputs #'get-instruction-symbol instruction)))
@@ -145,9 +146,8 @@
                        (let ((buffer (store-instruction-buffer instruction)))
                          `(set
                             (aref ,(funcall buffer->kernel-argument buffer)
-                                  (linearize-instruction-transformation instruction buffer))
-                            ,(first
-                               (map-instruction-inputs #'get-instruction-symbol instruction))))))))
+                                  ,(linearize-instruction-transformation instruction buffer))
+                            ,(get-instruction-symbol (car (first (instruction-inputs instruction))))))))))
          ,(generate-instructions instructions buffer->kernel-argument)))))
 
 (defun map-call-operator (operator)

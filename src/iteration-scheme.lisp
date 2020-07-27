@@ -67,7 +67,7 @@
   (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
         (xyz (xyz-dimensions iteration-scheme)))
     ;; define x,y,z dimensions
-    `('let (,(loop for dim-idx in xyz
+    `(let ,(loop for dim-idx in xyz
                   for letter in (list 'x 'y 'z)
                   collect (let ((current-range (nth dim-idx iteration-ranges)))
                             `(, (get-counter-symbol dim-idx) 
@@ -76,11 +76,11 @@
                                      ,(case letter 
                                         (x '(+ thread-idx-x (* block-idx-x block-dim-x)))
                                         (y '(+ thread-idx-y (* block-idx-y block-dim-y)))
-                                        (z '(+ thread-idx-z (* block-idx-x block-dim-z))))))))))
+                                        (z '(+ thread-idx-z (* block-idx-x block-dim-z)))))))))
        (progn
           ;; return out-of-bounds threads
           ,@(loop for dim-idx in xyz
-                collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
+                collect `(if (> ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
                              (return)))
           ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
           ;; and append kernel-body
