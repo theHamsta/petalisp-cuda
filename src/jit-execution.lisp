@@ -155,26 +155,64 @@
     (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))
 
 (defun map-call-operator (operator)
+  ;; LHS: Petalisp/code/type-inference/package.lisp
+  ;; RHS: cl-cuda/src/lang/built-in.lisp
   (case operator 
-    ((petalisp.type-inference:double-float+) '+ )
-    ((petalisp.type-inference:single-float+) '+ )
-    ((petalisp.type-inference:short-float+) '+ )
-    ((petalisp.type-inference:long-float+) '+ )
+    ((petalisp.type-inference:double-float+) '+)
+    ((petalisp.type-inference:single-float+) '+)
+    ((petalisp.type-inference:short-float+) '+)
+    ((petalisp.type-inference:long-float+) '+)
 
-    ((petalisp.type-inference:double-float-) '- )
-    ((petalisp.type-inference:single-float-) '- )
-    ((petalisp.type-inference:short-float-) '- )
-    ((petalisp.type-inference:long-float-) '- )
+    ((petalisp.type-inference:double-float-) '-)
+    ((petalisp.type-inference:single-float-) '-)
+    ((petalisp.type-inference:short-float-) '-)
+    ((petalisp.type-inference:long-float-) '-)
 
-    ((petalisp.type-inference:double-float*) '* )
-    ((petalisp.type-inference:single-float*) '* )
-    ((petalisp.type-inference:short-float*) '* )
-    ((petalisp.type-inference:long-float*) '* )
+    ((petalisp.type-inference:double-float*) '*)
+    ((petalisp.type-inference:single-float*) '*)
+    ((petalisp.type-inference:short-float*) '*)
+    ((petalisp.type-inference:long-float*) '*)
 
-    ((petalisp.type-inference:double-float/) '/ )
-    ((petalisp.type-inference:single-float/) '/ )
-    ((petalisp.type-inference:short-float/) '/ )
-    ((petalisp.type-inference:long-float/) '/ )
+    ((petalisp.type-inference:double-float/) '/)
+    ((petalisp.type-inference:single-float/) '/)
+    ((petalisp.type-inference:short-float/) '/)
+    ((petalisp.type-inference:long-float/) '/)
+
+    ((petalisp.type-inference:double-float-min) 'min)
+    ((petalisp.type-inference:single-float-min) 'min)
+    ((petalisp.type-inference:short-float-min) 'min)
+    ((petalisp.type-inference:long-float-min) 'min)
+
+    ((petalisp.type-inference:double-float-max) 'max)
+    ((petalisp.type-inference:single-float-max) 'max)
+    ((petalisp.type-inference:short-float-max) 'max)
+    ((petalisp.type-inference:long-float-max) 'max)
+
+    ((petalisp.type-inference:double-float-abs) 'abs)
+    ((petalisp.type-inference:single-float-abs) 'abs)
+    ((petalisp.type-inference:short-float-abs) 'abs)
+    ((petalisp.type-inference:long-float-abs) 'abs)
+
+    ((petalisp.type-inference:double-float-cos) 'cos)
+    ((petalisp.type-inference:single-float-cos) 'cos)
+    ((petalisp.type-inference:short-float-cos) 'cos)
+    ((petalisp.type-inference:long-float-cos) 'cos)
+
+    ((petalisp.type-inference:double-float-sin) 'sin)
+    ((petalisp.type-inference:single-float-sin) 'sin)
+    ((petalisp.type-inference:short-float-sin) 'sin)
+    ((petalisp.type-inference:long-float-sin) 'sin)
+
+    ((petalisp.type-inference:double-float-tan) 'tan)
+    ((petalisp.type-inference:tangle-float-tan) 'tan)
+    ((petalisp.type-inference:short-float-tan) 'tan)
+    ((petalisp.type-inference:long-float-tan) 'tan)
+
+    ((petalisp.type-inference:double-float-exp) 'exp)
+    ((petalisp.type-inference:expgle-float-exp) 'exp)
+    ((petalisp.type-inference:short-float-exp) 'exp)
+    ((petalisp.type-inference:long-float-exp) 'exp)
+
     (t (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!" operator))))
 
