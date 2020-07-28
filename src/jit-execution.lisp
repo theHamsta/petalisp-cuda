@@ -100,7 +100,7 @@
                 (cu-launch-kernel hfunc
                                   grid-dim-x  grid-dim-y  grid-dim-z
                                   block-dim-x block-dim-y block-dim-z
-                                  shared-mem-bytes cl-cuda.api.context:*cuda-stream*
+                                  shared-mem-bytes (cffi:null-pointer) ;cl-cuda.api.context:*cuda-stream*
                                   kargs (cffi:null-pointer))))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
