@@ -57,6 +57,7 @@
 
 (defun upload-buffer-to-gpu (buffer)
   (let ((storage (buffer-storage buffer)))
+    ; TODO: optimization for scalars, not upload via global memory
     (unless (cuda-array-p storage)
      (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
 
@@ -121,7 +122,8 @@
          (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (make-list input-rank :initial-element 1)))
          (index-space (get-counter-vector input-rank) )
          (transformed (transform index-space transformation)))
-    `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
+    (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
+      (if (= (length rtn) 1) 0 rtn))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol t "$~A"

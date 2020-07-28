@@ -58,10 +58,10 @@
       :block-dim ,filtered-block-shape)))
 
 (defun get-counter-symbol (dimension-index)
-  (format-symbol t "idx-~A" dimension-index))
+  (format-symbol t "idx~A" dimension-index))
 
 (defun get-counter-vector (dim)
-  (mapcar (lambda (dim) (format-symbol t "idx-~A" dim)) (iota dim)))
+  (mapcar (lambda (dim) (format-symbol t "idx~A" dim)) (iota dim)))
 
 (defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
   (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
