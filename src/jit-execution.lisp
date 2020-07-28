@@ -13,7 +13,7 @@
   (:import-from :petalisp.utilities :with-hash-table-memoization)
   (:import-from :alexandria :format-symbol :iota :with-gensyms)
   (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
-  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr)
+  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr :make-cuda-array :cuda-array-p)
   (:export :compile-kernel
            :execute-kernel))
 
@@ -55,6 +55,14 @@
           buffers
           (iota (length buffers))))
 
+(defun upload-buffer-to-gpu (buffer)
+  (let ((storage (buffer-storage buffer)))
+    (unless (cuda-array-p storage)
+     (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
+
+(defun upload-buffers-to-gpu (buffers)
+  (mapcar #'upload-buffer-to-gpu buffers))
+
 (defun compile-kernel (kernel backend)
   (with-hash-table-memoization (kernel)
     (compile-cache backend)
@@ -63,6 +71,7 @@
           (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (progn 
+          (upload-buffers-to-gpu buffers)
           (format t "~A~%" `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
           (kernel-manager-define-function *kernel-manager*
                                           (format-symbol t "~A" function-name) ;cl-cuda wants symbol with a package for the function name
@@ -109,18 +118,10 @@
 (defun linearize-instruction-transformation (instruction &optional buffer)
   (let* ((transformation (instruction-transformation instruction))
          (input-rank (transformation-input-rank transformation))
-         (output-rank (transformation-output-rank transformation))
-         (input-mask (transformation-input-mask transformation))
-         (output-mask (transformation-output-mask transformation))
-         (scalings (transformation-scalings transformation))
-         (offsets (transformation-offsets transformation)))
-    (let ((input (map 'list (lambda (a b) (or a b)) input-mask (get-counter-vector input-rank)))
-          (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (iota output-rank)))
-          (starts (if buffer (cuda-array-strides (buffer-storage buffer)) (iota output-rank))))
-      `(+ ,@(map 'list (lambda (a b) (or a b)) output-mask
-                   (map 'list
-                     (lambda (i o start s1 s2) `(* (+ ,i ,o ,start) ,s1 ,s2))
-                     input offsets starts scalings strides))))))
+         (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (make-list input-rank :initial-element 1)))
+         (index-space (get-counter-vector input-rank) )
+         (transformed (transform index-space transformation)))
+    `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol t "$~A"
@@ -135,8 +136,7 @@
              ($i (get-instruction-symbol instruction)))
         (if (store-instruction-p instruction)
             (let ((buffer (store-instruction-buffer instruction)))
-              `
-              (progn
+              `(progn
                 (set
                  (aref ,(car (funcall buffer->kernel-argument buffer))
                        ,(linearize-instruction-transformation instruction buffer))
@@ -151,7 +151,7 @@
                                (instruction-transformation instruction)))
                            (load-instruction
                              `(aref ,(car (funcall buffer->kernel-argument (load-instruction-buffer instruction)))
-                                    ,(linearize-instruction-transformation instruction))))))
+                                    ,(linearize-instruction-transformation instruction (load-instruction-buffer instruction)))))))
                ,(generate-instructions instructions buffer->kernel-argument))))
       '(return)))
 

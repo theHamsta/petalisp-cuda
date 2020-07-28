@@ -11,6 +11,7 @@
            :copy-cuda-array-to-lisp
            :device-ptr
            :nd-iter
+           :cuda-array-p
            :element-type))
 
 (in-package :petalisp-cuda.memory.cuda-array)
@@ -62,6 +63,12 @@
   (let* ((shape (array-dimensions lisp-array))
          (cuda-array (make-cuda-array shape dtype strides alloc-function)))
     (copy-lisp-to-cuda-array lisp-array cuda-array)))
+
+;(defgeneric cuda-array-p (object))
+;(defmethod cuda-array-p ((object cuda-array))
+  ;t)
+;(defmethod cuda-array-p ((object t))
+  ;nil)
 
 
 (defun free-cuda-array (array &optional free-function)
