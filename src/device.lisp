@@ -2,7 +2,9 @@
   (:use :cl
         :petalisp-cuda.memory.memory-pool)
   (:export :cuda-device
-           :make-cuda-device))
+           :make-cuda-device
+           :device-id
+           :device-memory-size))
 (in-package petalisp-cuda.device)
 
 ;;; CUDA device
@@ -18,7 +20,7 @@
    (%device-id :initarg :device-id
                :initform (alexandria:required-argument :device-id)
                :type integer
-               :reader :device-number)
+               :reader :device-foo)
    (compute-capability :initarg :compute-capability
                        :initform (alexandria:required-argument :compute-capability))))
 

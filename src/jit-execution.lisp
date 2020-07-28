@@ -8,7 +8,8 @@
         :cl-cuda)
   (:import-from :cl-cuda.api.kernel-manager :*kernel-manager*
                                             :kernel-manager-define-function
-                                            :ensure-kernel-function-loaded)
+                                            :ensure-kernel-function-loaded
+                                            :kernel-manager-module-handle)
   (:import-from :cl-cuda.driver-api :cu-device-ptr :cu-launch-kernel)
   (:import-from :petalisp.utilities :with-hash-table-memoization)
   (:import-from :alexandria :format-symbol :iota :with-gensyms)
@@ -66,22 +67,22 @@
 
 (defun compile-kernel (kernel backend)
   (with-hash-table-memoization (kernel)
-    (compile-cache backend)
+      (compile-cache backend)
     (let* ((buffers (kernel-buffers kernel))
-          (kernel-arguments (generate-kernel-arguments buffers))
-          (iteration-scheme (generate-iteration-scheme kernel backend)))
+           (kernel-arguments (generate-kernel-arguments buffers))
+           (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
-        (progn 
-          (upload-buffers-to-gpu buffers)
-          (format t "~A~%" `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
-          (kernel-manager-define-function *kernel-manager*
-                                          (format-symbol t "~A" function-name) ;cl-cuda wants symbol with a package for the function name
-                                          'void
-                                          kernel-arguments
-                                          `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
-          (make-jit-function :kernel-symbol function-name
-                             :iteration-scheme iteration-scheme
-                             :shared-mem-bytes 0))))))
+        (let ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)))  ;cl-cuda wants symbol with a package for the function name
+          (progn 
+            (format t "~A~%" `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+            (kernel-manager-define-function *kernel-manager*
+                                            kernel-symbol
+                                            'void
+                                            kernel-arguments
+                                            `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+            (make-jit-function :kernel-symbol kernel-symbol
+                               :iteration-scheme iteration-scheme
+                               :shared-mem-bytes 0)))))))
 
 (defun fill-with-device-ptrs (ptr-array kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -91,7 +92,7 @@
   (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
       (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol)))
-        (cffi:with-foreign-object (kargs 'cu-device-ptr (length kernel-arguments))
+        (cffi:with-foreign-object (kargs :pointer (length kernel-arguments))
           (progn
             (fill-with-device-ptrs kargs kernel-arguments)
             (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
@@ -103,9 +104,11 @@
                                   kargs (cffi:null-pointer))))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
-  (let* ((buffers (kernel-buffers kernel))
-         (arrays (mapcar #'buffer-storage buffers)))
-    (run-compiled-function (compile-kernel kernel backend) arrays)))
+  (let ((buffers (kernel-buffers kernel)))
+    (progn
+      (upload-buffers-to-gpu buffers)
+      (let ((arrays (mapcar #'buffer-storage buffers)))
+        (run-compiled-function (compile-kernel kernel backend) arrays)))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain

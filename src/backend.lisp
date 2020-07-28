@@ -75,14 +75,16 @@
 (defclass cuda-backend (petalisp.core:backend)
   ((kernel-cache :initform (make-hash-table)
                  :reader cuda-kernel-cache)
-   (allocated-cuda-context :initform nil
-                           :accessor allocated-cuda-context)
+   (backend-context :initform nil
+                    :accessor backend-context)
    (cudnn-handler :initform (petalisp-cuda.cudalibs:make-cudnn-handler)
                   :accessor cudnn-handler)
    (memory-pool :initform (make-cuda-memory-pool)
                 :accessor cuda-memory-pool)
    (device :initform nil
            :accessor backend-device)
+   (device-id :initform nil
+              :accessor backend-device-id)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
    (%compile-cache :initform (make-hash-table) :reader compile-cache :type hash-table)))
@@ -93,42 +95,51 @@
       (progn
         (cl-cuda:init-cuda)
         (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
-        (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))
-        (setf (allocated-cuda-context backend) cl-cuda:*cuda-context*)))
+        (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))))
+    (setf (backend-context backend) cl-cuda:*cuda-context*)
+    (setf (backend-device-id backend) cl-cuda:*cuda-device*)
     (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))))
-      
+
 
 (defgeneric execute-kernel (kernel backend))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
-  (let ((memory-pool (cuda-memory-pool backend)))
-    (petalisp.scheduler:schedule-on-workers
-      lazy-arrays
-      1 ; single worker
-      ;; Execute.
-      (lambda (tasks)
-        (loop for task in tasks do
-              (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                (execute-kernel kernel backend))))
-      ;; Barrier.
-      (lambda () ())
-      ;; Allocate.
-      (lambda (buffer)
-        (setf (petalisp.ir:buffer-storage buffer)
-              (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
-                                                               (cl-cuda-type-from-buffer buffer)
-                                                               nil
-                                                               (lambda (type size)
-                                                                 (memory-pool-allocate memory-pool type size)))))
-      ;; Deallocate.
-      (lambda (buffer)
-        (let ((storage (buffer-storage buffer)))
-          (unless (null storage)
-            (setf (buffer-storage buffer) nil)
-            (when (buffer-reusablep buffer)
-              (petalisp-cuda.memory.cuda-array:free-cuda-array
-                storage
-                (lambda (mem-block) (memory-pool-free memory-pool mem-block))))))))))
+  (let* ((cl-cuda:*cuda-device* (backend-device-id backend))
+         (cl-cuda:*cuda-context* (backend-context backend))
+         (cl-cuda.api.nvcc:*nvcc-options*
+           (if (cl-cuda.api.context::arch-exists-p
+                 cl-cuda.api.nvcc:*nvcc-options*)
+               cl-cuda.api.nvcc:*nvcc-options*
+               (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
+    (let ((memory-pool (cuda-memory-pool backend)))
+      (petalisp.scheduler:schedule-on-workers
+        lazy-arrays
+        1 ; single worker
+        ;; Execute.
+
+        (lambda (tasks)
+          (loop for task in tasks do
+                (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                  (execute-kernel kernel backend))))
+        ;; Barrier.
+        (lambda () ())
+        ;; Allocate.
+        (lambda (buffer)
+          (setf (petalisp.ir:buffer-storage buffer)
+                (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
+                                                                 (cl-cuda-type-from-buffer buffer)
+                                                                 nil
+                                                                 (lambda (type size)
+                                                                   (memory-pool-allocate memory-pool type size)))))
+        ;; Deallocate.
+        (lambda (buffer)
+          (let ((storage (buffer-storage buffer)))
+            (unless (null storage)
+              (setf (buffer-storage buffer) nil)
+              (when (buffer-reusablep buffer)
+                (petalisp-cuda.memory.cuda-array:free-cuda-array
+                  storage
+                  (lambda (mem-block) (memory-pool-free memory-pool mem-block)))))))))))
 
 
 (defclass cuda-immediate (petalisp.core:immediate)
@@ -156,8 +167,8 @@
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
   (progn
-    (let ((context? (allocated-cuda-context backend)))
+    (let ((context? (backend-context backend)))
       (when context? (progn
                        (cl-cuda:destroy-cuda-context context?) 
-                       (setf (allocated-cuda-context backend) nil))))
+                       (setf (backend-context backend) nil))))
     (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))))
