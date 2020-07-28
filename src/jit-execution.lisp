@@ -151,14 +151,7 @@
                                (instruction-transformation instruction)))
                            (load-instruction
                              `(aref ,(car (funcall buffer->kernel-argument (load-instruction-buffer instruction)))
-                                    ,(linearize-instruction-transformation instruction)))
-                           ;(store-instruction
-                             ;(let ((buffer (store-instruction-buffer instruction)))
-                               ;`(set
-                                  ;(aref ,(funcall buffer->kernel-argument buffer)
-                                        ;,(linearize-instruction-transformation instruction buffer))
-                                  ;,(get-instruction-symbol (first (instruction-inputs instruction))))))
-                           )))
+                                    ,(linearize-instruction-transformation instruction))))))
                ,(generate-instructions instructions buffer->kernel-argument))))
       '(return)))
 
