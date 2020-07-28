@@ -51,7 +51,7 @@
                                (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
 (defun generate-kernel-arguments (buffers)
-  (mapcar (lambda (buffer idx) (list (format-symbol nil "buffer-~A" idx) (cl-cuda-type-from-buffer buffer)))
+  (mapcar (lambda (buffer idx) (list (format-symbol t "buffer-~A" idx) (cl-cuda.lang.type:array-type (cl-cuda-type-from-buffer buffer) 1)))
           buffers
           (iota (length buffers))))
 
@@ -63,12 +63,12 @@
           (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (progn 
-          (format t "~A~%" (generate-kernel kernel kernel-arguments buffers iteration-scheme))
+          (format t "~A~%" `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
           (kernel-manager-define-function *kernel-manager*
                                           (format-symbol t "~A" function-name) ;cl-cuda wants symbol with a package for the function name
                                           'void
                                           kernel-arguments
-                                          (generate-kernel kernel kernel-arguments buffers iteration-scheme))
+                                          `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
           (make-jit-function :kernel-symbol function-name
                              :iteration-scheme iteration-scheme
                              :shared-mem-bytes 0))))))
@@ -123,7 +123,7 @@
                      input offsets starts scalings strides))))))
 
 (defun get-instruction-symbol (instruction)
-  (format-symbol nil "$~A"
+  (format-symbol t "$~A"
                  (etypecase instruction
                      (number instruction)
                      (cons (instruction-number (cdr instruction)))
@@ -131,25 +131,35 @@
 
 (defun generate-instructions (instructions buffer->kernel-argument)
   (if instructions
-    (let* ((instruction (pop instructions))
-           ($i (get-instruction-symbol instruction)))
-      `(let ((,$i ,(etypecase instruction
-                     (call-instruction
-                       `(,(map-call-operator (call-instruction-operator instruction))
-                          ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
-                     (iref-instruction
-                       (linearize-instruction-transformation
-                         (instruction-transformation instruction)))
-                     (load-instruction
-                       `(aref ,(funcall buffer->kernel-argument (load-instruction-buffer instruction))
-                              ,(linearize-instruction-transformation instruction)))
-                     (store-instruction
-                       (let ((buffer (store-instruction-buffer instruction)))
-                         `(set
-                            (aref ,(funcall buffer->kernel-argument buffer)
-                                  ,(linearize-instruction-transformation instruction buffer))
-                            ,(get-instruction-symbol (first (instruction-inputs instruction)))))))))
-         ,(generate-instructions instructions buffer->kernel-argument)))
+      (let* ((instruction (pop instructions))
+             ($i (get-instruction-symbol instruction)))
+        (if (store-instruction-p instruction)
+            (let ((buffer (store-instruction-buffer instruction)))
+              `
+              (progn
+                (set
+                 (aref ,(car (funcall buffer->kernel-argument buffer))
+                       ,(linearize-instruction-transformation instruction buffer))
+                 ,(get-instruction-symbol (first (instruction-inputs instruction))))
+                ,(generate-instructions instructions buffer->kernel-argument)))
+            `(let ((,$i ,(etypecase instruction
+                           (call-instruction
+                             `(,(map-call-operator (call-instruction-operator instruction))
+                                ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
+                           (iref-instruction
+                             (linearize-instruction-transformation
+                               (instruction-transformation instruction)))
+                           (load-instruction
+                             `(aref ,(car (funcall buffer->kernel-argument (load-instruction-buffer instruction)))
+                                    ,(linearize-instruction-transformation instruction)))
+                           ;(store-instruction
+                             ;(let ((buffer (store-instruction-buffer instruction)))
+                               ;`(set
+                                  ;(aref ,(funcall buffer->kernel-argument buffer)
+                                        ;,(linearize-instruction-transformation instruction buffer))
+                                  ;,(get-instruction-symbol (first (instruction-inputs instruction))))))
+                           )))
+               ,(generate-instructions instructions buffer->kernel-argument))))
       '(return)))
 
 (defun make-buffer->kernel-argument (buffers kernel-arguments)

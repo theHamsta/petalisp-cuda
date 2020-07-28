@@ -58,10 +58,10 @@
       :block-dim ,filtered-block-shape)))
 
 (defun get-counter-symbol (dimension-index)
-  (format-symbol nil "idx-~A" dimension-index))
+  (format-symbol t "idx-~A" dimension-index))
 
 (defun get-counter-vector (dim)
-  (mapcar (lambda (dim) (format-symbol nil "idx-~A" dim)) (iota dim)))
+  (mapcar (lambda (dim) (format-symbol t "idx-~A" dim)) (iota dim)))
 
 (defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
   (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
@@ -119,7 +119,7 @@
                   (make-range-loop (rest iteration-ranges) (1+ dim-idx) xyz kernel-body)
                   kernel-body))
         (dim-range (first iteration-ranges))
-        (dim-symbol (format-symbol nil "idx-~A" dim-idx)))
+        (dim-symbol (format-symbol t "idx-~A" dim-idx)))
     (if (or (range-empty-p dim-range)
             (member dim-idx xyz))
         body
