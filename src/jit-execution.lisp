@@ -6,7 +6,7 @@
         :cl
         :let-plus
         :cl-cuda)
-  (:import-from :cl-cuda.api.kernel-manager :*kernel-manager*
+  (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
                                             :kernel-manager-define-function
                                             :ensure-kernel-function-loaded
                                             :kernel-manager-module-handle)
@@ -42,7 +42,7 @@
     rtn))
 
 (defstruct (jit-function)
-  kernel-symbol iteration-scheme shared-mem-bytes)
+  kernel-symbol iteration-scheme shared-mem-bytes kernel-manager)
 
 (defgeneric generate-iteration-scheme (kernel backend))
 
@@ -73,18 +73,20 @@
            (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-               (generated-kernel `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme))))  
+               (generated-kernel `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+               (kernel-manager (make-kernel-manager)))  
           (progn 
             (when cl-cuda:*show-messages*
-              (format t "Generated kernel ~A with arguments ~A:~%~A~%" function-name kernel-arguments generated-kernel))
-            (kernel-manager-define-function *kernel-manager*
+              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-arguments generated-kernel))
+            (kernel-manager-define-function kernel-manager
                                             kernel-symbol
                                             'void
                                             kernel-arguments
                                             generated-kernel)
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
-                               :shared-mem-bytes 0)))))))
+                               :shared-mem-bytes 0
+                               :kernel-manager kernel-manager)))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -95,7 +97,7 @@
 (defun run-compiled-function (compiled-function kernel-arguments)
   (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
-      (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol))
+      (let ((hfunc (ensure-kernel-function-loaded (jit-function-kernel-manager compiled-function) kernel-symbol))
             (nargs (length kernel-arguments)))
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
           (progn
