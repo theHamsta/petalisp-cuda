@@ -75,7 +75,6 @@
         (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
                (generated-kernel `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
                (kernel-manager (make-kernel-manager)))  
-          (progn 
             (when cl-cuda:*show-messages*
               (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-arguments generated-kernel))
             (kernel-manager-define-function kernel-manager
@@ -86,7 +85,7 @@
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager)))))))
+                               :kernel-manager kernel-manager))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -118,10 +117,9 @@
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
-    (progn
-      (upload-buffers-to-gpu buffers)
-      (let ((arrays (mapcar #'buffer-storage buffers)))
-        (run-compiled-function (compile-kernel kernel backend) arrays)))))
+    (upload-buffers-to-gpu buffers)
+    (let ((arrays (mapcar #'buffer-storage buffers)))
+      (run-compiled-function (compile-kernel kernel backend) arrays))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
