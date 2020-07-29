@@ -6,6 +6,8 @@
   (:import-from :petalisp.core :rank)
   (:export :make-cuda-array
            :cuda-array
+           :cuda-array-shape
+           :cuda-array-type
            :free-cuda-array
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp
@@ -89,7 +91,7 @@
             (strides (slot-value array 'strides)))
         (setf (cl-cuda:memory-block-aref memory-block (reduce #'+ (mapcar #'* indices strides))) value)))
 
-(defun element-type (array)
+(defun cuda-array-type (array)
   (cffi-type (cl-cuda:memory-block-type (slot-value array 'memory-block))))
 
 
@@ -98,7 +100,7 @@
 
 
 (defun element-size (array)
-  (cffi-type-size (element-type array)))
+  (cffi-type-size (cuda-array-type array)))
 
 
 (defun raw-memory-strides (array)
@@ -108,13 +110,12 @@
 (defmethod petalisp.core:rank ((array cuda-array))
   (length (slot-value array 'shape)))
 
-
 (defun copy-cuda-array-to-lisp (array)
   (let ((memory-block (slot-value array 'memory-block))
         (shape (slot-value array 'shape)))
     (progn
       (cl-cuda:sync-memory-block memory-block :device-to-host)
-      (aops:generate (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
+      (aops:generate* (petalisp-cuda.backend:lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
 
 (defun copy-lisp-to-cuda-array (lisp-array cuda-array)
   (let ((memory-block (slot-value cuda-array 'memory-block))
@@ -142,8 +143,8 @@
 
 
 (defmethod petalisp.core:shape ((array cuda-array))
-  (let* ((strides (cuda-array-strides array))
-         (rank (length strides)))
+  (let* ((shape (cuda-array-shape array))
+         (rank (length shape)))
     (petalisp.core::%make-shape
-      (mapcar (lambda (s) (petalisp.core:range 0 1 (1- s))) strides)
+      (mapcar (lambda (s) (petalisp.core:range 0 1 (1- s))) shape)
       rank)))

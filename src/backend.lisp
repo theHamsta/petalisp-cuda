@@ -1,15 +1,18 @@
 (defpackage :petalisp-cuda.backend
   (:use :cl
+        :petalisp
         :petalisp.ir
         :petalisp-cuda.memory.memory-pool)
-  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array)
+  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array :cuda-array-type)
   (:export cuda-backend
            use-cuda-backend
            cl-cuda-type-from-buffer
            compile-cache
            preferred-block-size
            execute-kernel
-           ntype-from-cl-cuda-type))
+           ntype-from-cl-cuda-type
+           ntype-cuda-array
+           lisp-type-cuda-array))
 (in-package :petalisp-cuda.backend)
 
 ; push missing cffi types
@@ -47,20 +50,28 @@
 (defun cl-cuda-type-from-buffer (buffer)
   (cl-cuda-type-from-ntype (petalisp.ir:buffer-ntype buffer)))
 
+(defun type-from-cl-cuda-type (element-type)
+  (cond
+    ((equal element-type :uint8)  '(unsigned-byte 8))
+    ((equal element-type :uint16) '(unsigned-byte 16))
+    ((equal element-type :uint32) '(unsigned-byte 32))
+    ((equal element-type :uint64) '(unsigned-byte 64))
+    ((equal element-type :int8)   '(signed-byte 8))
+    ((equal element-type :int16)  '(signed-byte 16))
+    ((equal element-type :int)    '(signed-byte 32))
+    ((equal element-type :int64)  '(signed-byte 64))
+    ((equal element-type :float)  'single-float)
+    ((equal element-type :double) 'double-float)     
+    (t (error "Cannot convert ~S to ntype." element-type))))
+
 (defun ntype-from-cl-cuda-type (element-type)
-  (petalisp.type-inference:ntype
-    (cond
-      ((equal element-type :uint8)  '(unsigned-byte 8))
-      ((equal element-type :uint16) '(unsigned-byte 16))
-      ((equal element-type :uint32) '(unsigned-byte 32))
-      ((equal element-type :uint64) '(unsigned-byte 64))
-      ((equal element-type :int8)   '(signed-byte 8))
-      ((equal element-type :int16)  '(signed-byte 16))
-      ((equal element-type :int)    '(signed-byte 32))
-      ((equal element-type :int64)  '(signed-byte 64))
-      ((equal element-type :float)  'single-float)
-      ((equal element-type :double) 'double-float)     
-       (t (error "Cannot convert ~S to ntype." element-type)))))
+  (petalisp.type-inference:ntype (type-from-cl-cuda-type element-type)))
+
+(defun ntype-cuda-array (cu-array)
+  (ntype-from-cl-cuda-type (cuda-array-type cu-array)))
+
+(defun lisp-type-cuda-array (cu-array)
+  (type-from-cl-cuda-type (cuda-array-type cu-array)))
 
 (defun use-cuda-backend ()
   (if (typep petalisp:*backend* 'cuda-backend)
@@ -139,22 +150,22 @@
                   storage
                   (lambda (mem-block) (memory-pool-free memory-pool mem-block)))))))))))
 
-
 (defclass cuda-immediate (petalisp.core:immediate)
-  ((%reusablep :initarg :reusablep :initform nil :reader reusablep)
-   (%storage :initarg :storage :reader petalisp.ir::storage)))
+  ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
+   (%ntype :initarg :ntype :initform nil :accessor petalisp.core:element-ntype)
+   (%shape :initarg :shape :initform nil :accessor petalisp.core:shape)
+   (%storage :initarg :storage :accessor petalisp.core:storage)))
 
-
-(defun make-cuda-immediate (array &optional reusablep)
+(defun make-cuda-immediate (cu-array &optional reusablep)
   (progn
-    (check-type array cuda-array)
+    (check-type cu-array cuda-array)
     (make-instance 'cuda-immediate
-                   :shape (petalisp.core:shape array)
-                   :storage array
+                   :shape (shape cu-array)
+                   :storage cu-array
                    :reusablep reusablep
-                   :ntype (petalisp.type-inference:ntype-of array))))
+                   :ntype (ntype-cuda-array cu-array))))
 
-(defmethod lazy-array ((array cuda-array))
+(defmethod petalisp.core:lazy-array ((array cuda-array))
   (make-cuda-immediate array))
   
 (defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.memory.cuda-array:cuda-array))
@@ -170,3 +181,10 @@
                        (cl-cuda:destroy-cuda-context context?) 
                        (setf (backend-context backend) nil))))
     (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))))
+
+
+(defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
+  (change-class instance (class-of replacement)
+    :storage (storage replacement)
+    :ntype (petalisp.core:element-ntype replacement)
+    :shape (shape replacement)))
