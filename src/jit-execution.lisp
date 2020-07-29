@@ -89,9 +89,8 @@
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
-        (progn
-          (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))
-          (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))))
+        (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))
+        (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
   (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager) compiled-function))
@@ -100,20 +99,18 @@
             (nargs (length kernel-arguments))
             (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
-          (progn
-            (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
-            (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
-              (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
-                (progn
-                  (when cl-cuda:*show-messages*
-                    (format t "Calling kernel ~A with call parameters ~A~%" kernel-symbol parameters))
-                  (cu-launch-kernel hfunc
-                                    grid-dim-x  grid-dim-y  grid-dim-z
-                                    block-dim-x block-dim-y block-dim-z
-                                    dynamic-shared-mem-bytes
-                                    cl-cuda.api.context:*cuda-stream*
-                                    ptrs-to-device-ptrs
-                                    extra-arguments))))))))))
+          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
+          (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
+            (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
+              (when cl-cuda:*show-messages*
+                (format t "Calling kernel ~A with call parameters ~A~%" kernel-symbol parameters))
+              (cu-launch-kernel hfunc
+                                grid-dim-x  grid-dim-y  grid-dim-z
+                                block-dim-x block-dim-y block-dim-z
+                                dynamic-shared-mem-bytes
+                                cl-cuda.api.context:*cuda-stream*
+                                ptrs-to-device-ptrs
+                                extra-arguments))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
