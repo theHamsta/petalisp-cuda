@@ -72,14 +72,16 @@
            (kernel-arguments (generate-kernel-arguments buffers))
            (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
-        (let ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)))  ;cl-cuda wants symbol with a package for the function name
+        (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
+               (generated-kernel `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme))))  
           (progn 
-            (format t "~A~%" `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+            (when cl-cuda:*show-messages*
+              (format t "Generated kernel ~A with arguments ~A:~%~A~%" function-name kernel-arguments generated-kernel))
             (kernel-manager-define-function *kernel-manager*
                                             kernel-symbol
                                             'void
                                             kernel-arguments
-                                            `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+                                            generated-kernel)
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :shared-mem-bytes 0)))))))
