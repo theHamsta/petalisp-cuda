@@ -42,7 +42,7 @@
     rtn))
 
 (defstruct (jit-function)
-  kernel-symbol iteration-scheme shared-mem-bytes kernel-manager)
+  kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager)
 
 (defgeneric generate-iteration-scheme (kernel backend))
 
@@ -85,7 +85,7 @@
                                             generated-kernel)
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
-                               :shared-mem-bytes 0
+                               :dynamic-shared-mem-bytes 0
                                :kernel-manager kernel-manager)))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
@@ -95,7 +95,7 @@
           (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
-  (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes kernel-manager) compiled-function))
+  (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
       (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol))
             (nargs (length kernel-arguments))
@@ -108,7 +108,7 @@
                 (cu-launch-kernel hfunc
                                   grid-dim-x  grid-dim-y  grid-dim-z
                                   block-dim-x block-dim-y block-dim-z
-                                  shared-mem-bytes
+                                  dynamic-shared-mem-bytes
                                   cl-cuda.api.context:*cuda-stream*
                                   ptrs-to-device-ptrs
                                   extra-arguments)))))))))
