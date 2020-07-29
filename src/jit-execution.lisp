@@ -66,8 +66,7 @@
   (mapcar #'upload-buffer-to-gpu buffers))
 
 (defun compile-kernel (kernel backend)
-  (let ((blueprint (kernel-blueprint kernel))) ; TODO find out what I need to hash from kernel
-    (petalisp.utilities:with-hash-table-memoization (blueprint)
+  (petalisp.utilities:with-hash-table-memoization (kernel) ; TODO find out what I need to hash from kernel
       (compile-cache backend)
     (let* ((buffers (kernel-buffers kernel))
            (kernel-arguments (generate-kernel-arguments buffers))
@@ -86,7 +85,7 @@
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager)))))))
+                               :kernel-manager kernel-manager))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
