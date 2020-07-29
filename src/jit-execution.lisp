@@ -84,24 +84,27 @@
                                :iteration-scheme iteration-scheme
                                :shared-mem-bytes 0)))))))
 
-(defun fill-with-device-ptrs (ptr-array kernel-arguments)
+(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
-        (setf (cffi:mem-aref ptr-array 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))))
+        (progn
+          (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))
+          (setf (cffi:mem-aref ptrs-to-device-ptrs :pointer i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
   (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
-      (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol)))
-        (cffi:with-foreign-object (kargs :pointer (length kernel-arguments))
+      (let ((hfunc (ensure-kernel-function-loaded *kernel-manager* kernel-symbol))
+            (nargs (length kernel-arguments)))
+        (cffi:with-foreign-objects ((ptrs-to-device-ptrs :pointer nargs) (device-ptrs 'cu-device-ptr nargs))
           (progn
-            (fill-with-device-ptrs kargs kernel-arguments)
+            (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
             (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
               (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
                 (cu-launch-kernel hfunc
                                   grid-dim-x  grid-dim-y  grid-dim-z
                                   block-dim-x block-dim-y block-dim-z
                                   shared-mem-bytes (cffi:null-pointer) ;cl-cuda.api.context:*cuda-stream*
-                                  kargs (cffi:null-pointer))))))))))
+                                  ptrs-to-device-ptrs (cffi:null-pointer))))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
