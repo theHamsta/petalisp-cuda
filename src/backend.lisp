@@ -21,8 +21,6 @@
 (push '(uint16 :uint16 "uint16_t") cl-cuda.lang.type::+scalar-types+)
 (push '(uint32 :uint32 "uint32_t") cl-cuda.lang.type::+scalar-types+)
 (push '(uint64 :uint64 "uint64_t") cl-cuda.lang.type::+scalar-types+)
-
-(push '(float* :float* "float*") cl-cuda.lang.type::+scalar-types+)
     
 
 (defun cl-cuda-type-from-ntype (ntype)
