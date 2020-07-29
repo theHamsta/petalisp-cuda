@@ -27,7 +27,11 @@
 (push '(uint16 :uint16 "uint16_t") cl-cuda.lang.type::+scalar-types+)
 (push '(uint32 :uint32 "uint32_t") cl-cuda.lang.type::+scalar-types+)
 (push '(uint64 :uint64 "uint64_t") cl-cuda.lang.type::+scalar-types+)
-    
+
+(push max  (((float float) float nil "fmaxf")
+            ((double double) double nil "fmax")) cl-cuda.lang.built-in::+built-in-functions+)
+(push min  (((float float) float nil "fminf")
+            ((double double) double nil "fmin")) cl-cuda.lang.built-in::+built-in-functions+)
 
 (defun cl-cuda-type-from-ntype (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype
