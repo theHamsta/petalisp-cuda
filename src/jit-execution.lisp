@@ -105,13 +105,16 @@
             (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
             (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
               (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
-                (cu-launch-kernel hfunc
-                                  grid-dim-x  grid-dim-y  grid-dim-z
-                                  block-dim-x block-dim-y block-dim-z
-                                  dynamic-shared-mem-bytes
-                                  cl-cuda.api.context:*cuda-stream*
-                                  ptrs-to-device-ptrs
-                                  extra-arguments)))))))))
+                (progn
+                  (when cl-cuda:*show-messages*
+                    (format t "Calling kernel ~A with call parameters ~A~%" kernel-symbol parameters))
+                  (cu-launch-kernel hfunc
+                                    grid-dim-x  grid-dim-y  grid-dim-z
+                                    block-dim-x block-dim-y block-dim-z
+                                    dynamic-shared-mem-bytes
+                                    cl-cuda.api.context:*cuda-stream*
+                                    ptrs-to-device-ptrs
+                                    extra-arguments))))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))

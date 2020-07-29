@@ -8,15 +8,35 @@
            :cuda-array
            :cuda-array-shape
            :cuda-array-type
+           :cuda-array-from-lisp
            :free-cuda-array
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp
            :device-ptr
            :nd-iter
            :cuda-array-p
+           :type-from-cl-cuda-type
+           :lisp-type-from-cl-cuda-type
            :element-type))
 
 (in-package :petalisp-cuda.memory.cuda-array)
+
+(defun type-from-cl-cuda-type (element-type)
+  (cond
+    ((equal element-type :uint8)  '(unsigned-byte 8))
+    ((equal element-type :uint16) '(unsigned-byte 16))
+    ((equal element-type :uint32) '(unsigned-byte 32))
+    ((equal element-type :uint64) '(unsigned-byte 64))
+    ((equal element-type :int8)   '(signed-byte 8))
+    ((equal element-type :int16)  '(signed-byte 16))
+    ((equal element-type :int)    '(signed-byte 32))
+    ((equal element-type :int64)  '(signed-byte 64))
+    ((equal element-type :float)  'single-float)
+    ((equal element-type :double) 'double-float)     
+    (t (error "Cannot convert ~S to ntype." element-type))))
+
+(defun lisp-type-cuda-array (cu-array)
+  (type-from-cl-cuda-type (cuda-array-type cu-array)))
 
 ; TODO rename my shape to dimenstions
 
@@ -115,7 +135,7 @@
         (shape (slot-value array 'shape)))
     (progn
       (cl-cuda:sync-memory-block memory-block :device-to-host)
-      (aops:generate* (petalisp-cuda.backend:lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
+      (aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
 
 (defun copy-lisp-to-cuda-array (lisp-array cuda-array)
   (let ((memory-block (slot-value cuda-array 'memory-block))
@@ -146,5 +166,5 @@
   (let* ((shape (cuda-array-shape array))
          (rank (length shape)))
     (petalisp.core::%make-shape
-      (mapcar (lambda (s) (petalisp.core:range 0 1 (1- s))) shape)
+      (mapcar (lambda (s) (petalisp.core:range 0 (1- s))) shape)
       rank)))

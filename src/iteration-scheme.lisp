@@ -76,7 +76,7 @@
                                      ,(case letter 
                                         (x '(+ thread-idx-x (* block-idx-x block-dim-x)))
                                         (y '(+ thread-idx-y (* block-idx-y block-dim-y)))
-                                        (z '(+ thread-idx-z (* block-idx-x block-dim-z)))))))))
+                                        (z '(+ thread-idx-z (* block-idx-z block-dim-z)))))))))
        (progn
           ;; return out-of-bounds threads
           ,@(loop for dim-idx in xyz

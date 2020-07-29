@@ -3,7 +3,10 @@
         :petalisp
         :petalisp.ir
         :petalisp-cuda.memory.memory-pool)
-  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array :cuda-array-type)
+  (:import-from :petalisp-cuda.memory.cuda-array
+                :cuda-array
+                :cuda-array-type
+                :type-from-cl-cuda-type)
   (:export cuda-backend
            use-cuda-backend
            cl-cuda-type-from-buffer
@@ -50,28 +53,12 @@
 (defun cl-cuda-type-from-buffer (buffer)
   (cl-cuda-type-from-ntype (petalisp.ir:buffer-ntype buffer)))
 
-(defun type-from-cl-cuda-type (element-type)
-  (cond
-    ((equal element-type :uint8)  '(unsigned-byte 8))
-    ((equal element-type :uint16) '(unsigned-byte 16))
-    ((equal element-type :uint32) '(unsigned-byte 32))
-    ((equal element-type :uint64) '(unsigned-byte 64))
-    ((equal element-type :int8)   '(signed-byte 8))
-    ((equal element-type :int16)  '(signed-byte 16))
-    ((equal element-type :int)    '(signed-byte 32))
-    ((equal element-type :int64)  '(signed-byte 64))
-    ((equal element-type :float)  'single-float)
-    ((equal element-type :double) 'double-float)     
-    (t (error "Cannot convert ~S to ntype." element-type))))
-
 (defun ntype-from-cl-cuda-type (element-type)
   (petalisp.type-inference:ntype (type-from-cl-cuda-type element-type)))
 
 (defun ntype-cuda-array (cu-array)
   (ntype-from-cl-cuda-type (cuda-array-type cu-array)))
 
-(defun lisp-type-cuda-array (cu-array)
-  (type-from-cl-cuda-type (cuda-array-type cu-array)))
 
 (defun use-cuda-backend ()
   (if (typep petalisp:*backend* 'cuda-backend)
