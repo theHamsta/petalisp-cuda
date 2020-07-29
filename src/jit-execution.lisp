@@ -95,9 +95,9 @@
           (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
-  (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes) compiled-function))
+  (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes kernel-manager) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
-      (let ((hfunc (ensure-kernel-function-loaded (jit-function-kernel-manager compiled-function) kernel-symbol))
+      (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol))
             (nargs (length kernel-arguments)))
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
           (progn
