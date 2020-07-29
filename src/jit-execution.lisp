@@ -98,7 +98,8 @@
   (let+ (((&slots kernel-symbol iteration-scheme shared-mem-bytes kernel-manager) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
       (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol))
-            (nargs (length kernel-arguments)))
+            (nargs (length kernel-arguments))
+            (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
           (progn
             (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
@@ -107,8 +108,10 @@
                 (cu-launch-kernel hfunc
                                   grid-dim-x  grid-dim-y  grid-dim-z
                                   block-dim-x block-dim-y block-dim-z
-                                  shared-mem-bytes cl-cuda.api.context:*cuda-stream*
-                                  ptrs-to-device-ptrs (cffi:null-pointer))))))))))
+                                  shared-mem-bytes
+                                  cl-cuda.api.context:*cuda-stream*
+                                  ptrs-to-device-ptrs
+                                  extra-arguments)))))))))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
