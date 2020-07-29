@@ -86,15 +86,13 @@
    (%compile-cache :initform (make-hash-table) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
-  (progn
-    (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
-      (progn
-        (cl-cuda:init-cuda)
-        (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
-        (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*))))
-    (setf (backend-context backend) cl-cuda:*cuda-context*)
-    (setf (backend-device-id backend) cl-cuda:*cuda-device*)
-    (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))))
+  (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
+    (cl-cuda:init-cuda)
+    (setf cl-cuda:*cuda-device* (cl-cuda:get-cuda-device 0))
+    (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*)))
+  (setf (backend-context backend) cl-cuda:*cuda-context*)
+  (setf (backend-device-id backend) cl-cuda:*cuda-device*)
+  (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*)))
 
 
 (defgeneric execute-kernel (kernel backend))
@@ -144,13 +142,12 @@
    (%storage :initarg :storage :accessor petalisp.core:storage)))
 
 (defun make-cuda-immediate (cu-array &optional reusablep)
-  (progn
     (check-type cu-array cuda-array)
     (make-instance 'cuda-immediate
                    :shape (shape cu-array)
                    :storage cu-array
                    :reusablep reusablep
-                   :ntype (ntype-cuda-array cu-array))))
+                   :ntype (ntype-cuda-array cu-array)))
 
 (defmethod petalisp.core:lazy-array ((array cuda-array))
   (make-cuda-immediate array))
@@ -162,12 +159,11 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (petalisp.core:storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
-  (progn
-    (let ((context? (backend-context backend)))
-      (when context? (progn
-                       (cl-cuda:destroy-cuda-context context?) 
-                       (setf (backend-context backend) nil))))
-    (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))))
+  (let ((context? (backend-context backend)))
+    (when context? (progn
+                     (cl-cuda:destroy-cuda-context context?) 
+                     (setf (backend-context backend) nil))))
+  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
 
 
 (defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
