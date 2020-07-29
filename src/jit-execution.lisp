@@ -166,7 +166,7 @@
                              `(aref ,(car (funcall buffer->kernel-argument (load-instruction-buffer instruction)))
                                     ,(linearize-instruction-transformation instruction (load-instruction-buffer instruction)))))))
                ,(generate-instructions instructions buffer->kernel-argument))))
-      '(return)))
+      '(progn)))
 
 (defun make-buffer->kernel-argument (buffers kernel-arguments)
     (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))

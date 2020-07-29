@@ -116,10 +116,10 @@
                   (make-range-loop (rest iteration-ranges) (1+ dim-idx) xyz kernel-body)
                   kernel-body))
         (dim-range (first iteration-ranges))
-        (dim-symbol (format-symbol t "idx-~A" dim-idx)))
+        (dim-symbol (get-counter-symbol dim-idx)))
     (if (or (range-empty-p dim-range)
             (member dim-idx xyz))
         body
-        `('do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
+        `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
           ((<= ,dim-symbol ,(range-end dim-range)))
           ,body))))
