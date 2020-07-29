@@ -30,6 +30,9 @@ export CUDNN_LOGDEST_DBG=stdout
 #+END_SRC
 or =stderr= or =filename.txt=
 
+cl-cuda will print a lot of stuff to stdout.
+This behavior can be controlled with =cl-cuda:*show-messages*=.
+
 ** Author
 
 + Stephan Seitz (stephan.seitz@fau.de)
