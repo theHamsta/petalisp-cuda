@@ -1,5 +1,7 @@
 * petalisp-cuda
 
+A CUDA backend for [[https://github.com/marcoheisig/Petalisp/][Petalisp]].
+
 ** Usage
 
 #+BEGIN_SRC lisp
