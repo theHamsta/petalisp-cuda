@@ -1,6 +1,6 @@
 * petalisp-cuda
 
-A CUDA backend for [[https://github.com/marcoheisig/Petalisp/][Petalisp]].
+A CUDA backend for [[https://github.com/marcoheisig/Petalisp/][Petalisp]]. The project is in an early experimental phase.
 
 ** Usage
 
