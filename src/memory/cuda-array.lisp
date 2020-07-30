@@ -86,13 +86,6 @@
          (cuda-array (make-cuda-array shape dtype strides alloc-function)))
     (copy-lisp-to-cuda-array lisp-array cuda-array)))
 
-;(defgeneric cuda-array-p (object))
-;(defmethod cuda-array-p ((object cuda-array))
-  ;t)
-;(defmethod cuda-array-p ((object t))
-  ;nil)
-
-
 (defun free-cuda-array (array &optional free-function)
   ;TODO: redo this with allocator type
   (let ((free-function (or free-function
@@ -128,7 +121,7 @@
 
 
 (defmethod petalisp.core:rank ((array cuda-array))
-  (length (slot-value array 'shape)))
+  (length (cuda-array-shape array)))
 
 (defun copy-cuda-array-to-lisp (array)
   (let ((memory-block (slot-value array 'memory-block))
