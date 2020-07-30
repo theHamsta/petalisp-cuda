@@ -97,30 +97,32 @@
   (mapcar #'upload-buffer-to-gpu buffers))
 
 (defun compile-kernel (kernel backend)
-  (petalisp.utilities:with-hash-table-memoization (kernel) ; TODO find out what I need to hash from kernel
-      (compile-cache backend)
-    (let* ((buffers (kernel-buffers kernel))
-           (kernel-parameters (generate-kernel-parameters buffers))
-           (iteration-scheme (generate-iteration-scheme kernel backend)))
-      (with-gensyms (function-name)
-        (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-               (generated-kernel (remove-lispy-stuff `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme))))
-               (kernel-manager (make-kernel-manager)))  
-            (when cl-cuda:*show-messages*
-              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
-            
-            ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
-            (kernel-manager-define-function kernel-manager
-                                            kernel-symbol
-                                            'void
-                                            kernel-parameters
-                                            generated-kernel)
-            (make-jit-function :kernel-symbol kernel-symbol
-                               :iteration-scheme iteration-scheme
-                               :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager
-                               :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel))))))
+  (let ((blueprint (kernel-blueprint kernel)))
+     ; TODO: compile we do not compile iteration-space independent
+     (petalisp.utilities:with-hash-table-memoization ((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
+    (compile-cache backend)
+        (let* ((buffers (kernel-buffers kernel))
+               (kernel-parameters (generate-kernel-parameters buffers))
+               (iteration-scheme (generate-iteration-scheme kernel backend)))
+          (with-gensyms (function-name)
+            (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
+                   (generated-kernel (remove-lispy-stuff `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme))))
+                   (kernel-manager (make-kernel-manager)))  
+              (when cl-cuda:*show-messages*
+                (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
+
+              ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
+              (kernel-manager-define-function kernel-manager
+                                              kernel-symbol
+                                              'void
+                                              kernel-parameters
+                                              generated-kernel)
+              (make-jit-function :kernel-symbol kernel-symbol
+                                 :iteration-scheme iteration-scheme
+                                 :dynamic-shared-mem-bytes 0
+                                 :kernel-manager kernel-manager
+                                 :kernel-parameters kernel-parameters
+                                 :kernel-body generated-kernel)))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do

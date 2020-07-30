@@ -82,9 +82,7 @@
         (setq petalisp:*backend* (make-instance 'cuda-backend)))))
 
 (defclass cuda-backend (petalisp.core:backend)
-  ((kernel-cache :initform (make-hash-table)
-                 :reader cuda-kernel-cache)
-   (backend-context :initform nil
+  ((backend-context :initform nil
                     :accessor backend-context)
    (cudnn-handler :initform (petalisp-cuda.cudalibs:make-cudnn-handler)
                   :accessor cudnn-handler)
@@ -96,7 +94,7 @@
               :accessor backend-device-id)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
-   (%compile-cache :initform (make-hash-table) :reader compile-cache :type hash-table)))
+   (%compile-cache :initform (make-hash-table :test 'equal) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
