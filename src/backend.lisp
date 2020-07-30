@@ -53,8 +53,11 @@
     (single-float       'cl-cuda:float)
     (double-float       'cl-cuda:double)
     (number             'cl-cuda:float)
-    (t (error "Cannot convert ~S to a CFFI type."
-              (petalisp.type-inference:type-specifier ntype)))))
+    ; in doubt use float!
+    (t                  'cl-cuda:float)
+    ;(t (error "Cannot convert ~S to a CFFI type."
+              ;(petalisp.type-inference:type-specifier ntype)))
+    ))
 
 (defun cl-cuda-type-from-buffer (buffer)
   (cl-cuda-type-from-ntype (petalisp.ir:buffer-ntype buffer)))
