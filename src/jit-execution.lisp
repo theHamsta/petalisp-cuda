@@ -5,6 +5,7 @@
         :petalisp
         :cl
         :let-plus
+        :trivia
         :cl-cuda)
   (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
                                             :kernel-manager-define-function
@@ -78,6 +79,20 @@
                 (pass-as-scalar-argument-p buffer))
       (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
 
+;; Remove stuff that cl-cuda does not like
+(defun remove-lispy-stuff (tree)
+  (match tree
+    ; unary +
+    ((list '+ b) `(+ 0 ,b))
+    ; 1+/1-
+    ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
+    ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))
+    ; ratios
+    ((list '* (guard r (and (rationalp r) (not (integerp r)))) s) `(/ (* ,(numerator r) ,s) ,(denominator r)))
+    ; rest
+    ((cons (guard a (listp a)) b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))
+    ((cons a b) (cons a (remove-lispy-stuff b)))))
+
 (defun upload-buffers-to-gpu (buffers)
   (mapcar #'upload-buffer-to-gpu buffers))
 
@@ -89,7 +104,7 @@
            (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-               (generated-kernel `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme)))
+               (generated-kernel (remove-lispy-stuff `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme))))
                (kernel-manager (make-kernel-manager)))  
             (when cl-cuda:*show-messages*
               (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
@@ -99,16 +114,6 @@
                                             'void
                                             kernel-parameters
                                             generated-kernel)
-            (kernel-manager-define-function kernel-manager
-                                            'plusOne
-                                            'int
-                                            '((a int))
-                                            '((return (+ a 1))))
-            (kernel-manager-define-function kernel-manager
-                                            'minusOne
-                                            'int
-                                            '((a int))
-                                            '((return (- a 1))))
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0

@@ -38,10 +38,6 @@
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'min)
       '(((float float) float nil "fminf")
         ((double double) double nil "fmin")))
-(setf (getf cl-cuda.lang.built-in::+built-in-functions+ '1+)
-      '(((int) int nil "petalisp_cuda_jitexecution_plusone")))
-(setf (getf cl-cuda.lang.built-in::+built-in-functions+ '1-)
-      '(((int) int nil "petalisp_cuda_jitexecution_minusone")))
 
 (defun cl-cuda-type-from-ntype (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype
