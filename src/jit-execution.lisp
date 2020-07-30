@@ -42,7 +42,7 @@
     rtn))
 
 (defstruct (jit-function)
-  kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager)
+  kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
 
 (defgeneric generate-iteration-scheme (kernel backend))
 
@@ -51,8 +51,13 @@
                                (preferred-block-size backend)
                                (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
-(defun generate-kernel-arguments (buffers)
-  (mapcar (lambda (buffer idx) (list (format-symbol t "buffer-~A" idx) (cl-cuda.lang.type:array-type (cl-cuda-type-from-buffer buffer) 1)))
+(defun generate-kernel-parameters (buffers)
+  (mapcar (lambda (buffer idx)
+            (list (format-symbol t "buffer-~A" idx)
+                  (let ((dtype (cl-cuda-type-from-buffer buffer)))
+                   (if (pass-as-scalar-argument-p buffer)
+                      dtype 
+                      (cl-cuda.lang.type:array-type dtype 1)))))
           buffers
           (iota (length buffers))))
 
@@ -69,23 +74,25 @@
   (petalisp.utilities:with-hash-table-memoization (kernel) ; TODO find out what I need to hash from kernel
       (compile-cache backend)
     (let* ((buffers (kernel-buffers kernel))
-           (kernel-arguments (generate-kernel-arguments buffers))
+           (kernel-parameters (generate-kernel-parameters buffers))
            (iteration-scheme (generate-iteration-scheme kernel backend)))
       (with-gensyms (function-name)
         (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-               (generated-kernel `(,(generate-kernel kernel kernel-arguments buffers iteration-scheme)))
+               (generated-kernel `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme)))
                (kernel-manager (make-kernel-manager)))  
             (when cl-cuda:*show-messages*
-              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-arguments generated-kernel))
+              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
             (kernel-manager-define-function kernel-manager
                                             kernel-symbol
                                             'void
-                                            kernel-arguments
+                                            kernel-parameters
                                             generated-kernel)
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager))))))
+                               :kernel-manager kernel-manager
+                               :kernel-parameters kernel-parameters
+                               :kernel-body generated-kernel))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -93,7 +100,7 @@
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
-  (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager) compiled-function))
+  (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
       (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol))
             (nargs (length kernel-arguments))
@@ -122,10 +129,10 @@
   ;; Loop over domain
   (iteration-code iteration-scheme
                   (let* ((instructions (kernel-instructions kernel))
-                         (buffer->kernel-argument (make-buffer->kernel-argument buffers kernel-arguments)))
+                         (buffer->kernel-parameter (make-buffer->kernel-parameter buffers kernel-arguments)))
                     ;; kernel body
                     (generate-instructions (sort instructions #'< :key #'instruction-number)
-                                          buffer->kernel-argument))))
+                                           buffer->kernel-parameter))))
 
 (defun linearize-instruction-transformation (instruction &optional buffer)
   (let* ((transformation (instruction-transformation instruction))
@@ -139,37 +146,59 @@
 (defun get-instruction-symbol (instruction)
   (format-symbol t "$~A"
                  (etypecase instruction
-                     (number instruction)
-                     (cons (instruction-number (cdr instruction)))
-                     (instruction (instruction-number instruction)))))
+                   (number instruction)
+                   (cons (instruction-number (cdr instruction)))
+                   (instruction (instruction-number instruction)))))
 
-(defun generate-instructions (instructions buffer->kernel-argument)
+(defun kernel-parameter-name (kernel-parameter)
+  (car kernel-parameter))
+
+(defun kernel-parameter-type (kernel-parameter)
+  (cadr kernel-parameter))
+
+(defun buffer-access (buffer buffer->kernel-parameter instruction)
+  (let ((kernel-parameter (kernel-parameter-name (funcall buffer->kernel-parameter buffer))))
+    (if (pass-as-scalar-argument-p buffer)
+        kernel-parameter
+        `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer)))))
+
+(defun generate-instructions (instructions buffer->kernel-parameter)
   (if instructions
       (let* ((instruction (pop instructions))
              ($i (get-instruction-symbol instruction)))
         (if (store-instruction-p instruction)
-            (let ((buffer (store-instruction-buffer instruction)))
-              `(progn
-                (set
-                 (aref ,(car (funcall buffer->kernel-argument buffer))
-                       ,(linearize-instruction-transformation instruction buffer))
+            ;; Instructions that produce no result in C code
+          (let ((buffer (store-instruction-buffer instruction)))
+            `(progn
+               ;; Store instructions
+               (set
+                 ,(buffer-access buffer
+                                 buffer->kernel-parameter
+                                 instruction)
                  ,(get-instruction-symbol (first (instruction-inputs instruction))))
-                ,(generate-instructions instructions buffer->kernel-argument)))
-            `(let ((,$i ,(etypecase instruction
-                           (call-instruction
-                             `(,(map-call-operator (call-instruction-operator instruction))
-                                ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
-                           (iref-instruction
-                             (linearize-instruction-transformation
-                               (instruction-transformation instruction)))
-                           (load-instruction
-                             `(aref ,(car (funcall buffer->kernel-argument (load-instruction-buffer instruction)))
-                                    ,(linearize-instruction-transformation instruction (load-instruction-buffer instruction)))))))
-               ,(generate-instructions instructions buffer->kernel-argument))))
+               ;; Rest
+               ,(generate-instructions instructions buffer->kernel-parameter)))
+          ;; Instructions that produce a result in C code
+          `(let ((,$i ,(etypecase instruction
+                         ;; Call instructions
+                         (call-instruction
+                           `(,(map-call-operator (call-instruction-operator instruction))
+                              ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
+                         ;; Iref instructions
+                         (iref-instruction
+                           (linearize-instruction-transformation
+                             (instruction-transformation instruction)))
+                         ;; Load instructions
+                         (load-instruction
+                           (buffer-access (load-instruction-buffer instruction)
+                                          buffer->kernel-parameter
+                                          instruction)))))
+             ;; Rest
+             ,(generate-instructions instructions buffer->kernel-parameter))))
       '(progn)))
 
-(defun make-buffer->kernel-argument (buffers kernel-arguments)
-    (lambda (buffer) (nth (position buffer buffers) kernel-arguments)))
+(defun make-buffer->kernel-parameter (buffers kernel-parameters)
+  (lambda (buffer) (nth (position buffer buffers) kernel-parameters)))
 
 (defun map-call-operator (operator)
   ;; LHS: Petalisp/code/type-inference/package.lisp
@@ -257,5 +286,5 @@
     ;((petalisp.type-inference:long-float-exp) 'exp)
 
     (t (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
-More copy paste required here!" operator))))
+              More copy paste required here!" operator))))
 
