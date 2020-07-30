@@ -7,6 +7,10 @@
                 :cuda-array
                 :cuda-array-type
                 :type-from-cl-cuda-type)
+  (:import-from :cl-cuda.lang.type
+                :float
+                :int
+                :double)
   (:export cuda-backend
            use-cuda-backend
            cl-cuda-type-from-buffer
@@ -34,6 +38,9 @@
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'min)
       '(((float float) float nil "fminf")
         ((double double) double nil "fmin")))
+(setf (getf cl-cuda.lang.built-in::+built-in-functions+ '1+)
+      '(((int) int nil "petalisp_cuda_jitexecution_plusone")
+        ((int) int nil "petalisp_cuda_jitexecution_minusone")))
 
 (defun cl-cuda-type-from-ntype (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype

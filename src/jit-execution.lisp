@@ -93,11 +93,22 @@
                (kernel-manager (make-kernel-manager)))  
             (when cl-cuda:*show-messages*
               (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
+            
             (kernel-manager-define-function kernel-manager
                                             kernel-symbol
                                             'void
                                             kernel-parameters
                                             generated-kernel)
+            (kernel-manager-define-function kernel-manager
+                                            'plusOne
+                                            'int
+                                            '((a int))
+                                            '((return (+ a 1))))
+            (kernel-manager-define-function kernel-manager
+                                            'minusOne
+                                            'int
+                                            '((a int))
+                                            '((return (- a 1))))
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
