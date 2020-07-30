@@ -109,6 +109,7 @@
             (when cl-cuda:*show-messages*
               (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
             
+            ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
             (kernel-manager-define-function kernel-manager
                                             kernel-symbol
                                             'void
