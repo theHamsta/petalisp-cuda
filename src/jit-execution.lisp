@@ -51,6 +51,13 @@
                                (preferred-block-size backend)
                                (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
+(defun pass-as-scalar-argument-p (buffer)
+  (and (scalar-buffer-p buffer)
+       (arrayp (buffer-storage buffer))
+       ; we pass the arguments with a pointer array right now
+       ; and all are types are 8 bytes or smaller
+       (= 8 (cffi:foreign-type-size :pointer))))
+
 (defun generate-kernel-parameters (buffers)
   (mapcar (lambda (buffer idx)
             (list (format-symbol t "buffer-~A" idx)
@@ -61,11 +68,15 @@
           buffers
           (iota (length buffers))))
 
+(defun scalar-buffer-p (buffer)
+  (= 0 (shape-rank (buffer-shape buffer))))
+
 (defun upload-buffer-to-gpu (buffer)
   (let ((storage (buffer-storage buffer)))
-    ; TODO: optimization for scalars, not upload via global memory
-    (unless (cuda-array-p storage)
-     (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
+    ; Do not upload cuda arrays or sclars 
+    (unless (or (cuda-array-p storage)
+                (pass-as-scalar-argument-p buffer))
+      (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
 
 (defun upload-buffers-to-gpu (buffers)
   (mapcar #'upload-buffer-to-gpu buffers))
@@ -94,9 +105,13 @@
                                :kernel-parameters kernel-parameters
                                :kernel-body generated-kernel))))))
 
-(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments)
+(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
-        (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr (nth i kernel-arguments)))
+        (let ((argument (nth i kernel-arguments)))
+          (if (arrayp argument)
+              (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
+               (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type) (cffi:convert-to-foreign (aref argument) ffi-type)))
+              (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
@@ -106,7 +121,7 @@
             (nargs (length kernel-arguments))
             (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
-          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments)
+          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
           (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
             (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
               (when cl-cuda:*show-messages*
