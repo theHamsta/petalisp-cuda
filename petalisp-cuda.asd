@@ -26,6 +26,7 @@
                (:module "src"
                 :components
                 ((:file "device")
+                 (:file "type-conversion")
                  (:file "backend")
                  (:file "iteration-scheme")
                  (:file "jit-execution")

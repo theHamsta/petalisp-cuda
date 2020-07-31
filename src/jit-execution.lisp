@@ -16,6 +16,7 @@
   (:import-from :alexandria :format-symbol :iota :with-gensyms)
   (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr :make-cuda-array :cuda-array-p)
+  (:import-from :petalisp-cuda.type-conversion :cl-cuda-type-from-buffer)
   (:export :compile-kernel
            :execute-kernel))
 
@@ -41,6 +42,8 @@
      (lambda (i) (push i rtn))
      kernel)
     rtn))
+
+(defvar *kernel-manager*)
 
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
@@ -98,43 +101,54 @@
 (defun upload-buffers-to-gpu (buffers)
   (mapcar #'upload-buffer-to-gpu buffers))
 
+;(defvar *kernel-lambdas*)
+
+;(defun define-kernel-lambdas (kernel-body)
+  ;(if (< 0 (length *kernel-lambdas*))
+      ;`(macrolet ,*kernel-lambdas*
+         ;,kernel-body)
+      ;kernel-body))
+
 (defun compile-kernel (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
-     ; TODO: compile we do not compile iteration-space independent
-     (petalisp.utilities:with-hash-table-memoization ((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
-    (compile-cache backend)
-        (let* ((buffers (kernel-buffers kernel))
-               (kernel-parameters (generate-kernel-parameters buffers))
-               (iteration-scheme (generate-iteration-scheme kernel backend)))
-          (with-gensyms (function-name)
-            (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-                   (generated-kernel (remove-lispy-stuff `(,(generate-kernel
-                                                              kernel kernel-parameters
-                                                              buffers
-                                                              iteration-scheme))))
-                   (kernel-manager (make-kernel-manager)))  
-              (when cl-cuda:*show-messages*
-                (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
+    ; TODO: compile we do not compile iteration-space independent
+    (petalisp.utilities:with-hash-table-memoization (kernel)
+      ;((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
+      (compile-cache backend)
+      (let* ((buffers (kernel-buffers kernel))
+             (kernel-parameters (generate-kernel-parameters buffers))
+             (iteration-scheme (generate-iteration-scheme kernel backend)))
+        (with-gensyms (function-name)
+          (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
+                 (kernel-manager (make-kernel-manager))
+                 (*kernel-manager* kernel-manager)
+                 (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
+                                                                           kernel-parameters
+                                                                           buffers
+                                                                           iteration-scheme)))))  
+            (when cl-cuda:*show-messages*
+              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
 
-              ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
-              (kernel-manager-define-function kernel-manager
-                                              kernel-symbol
-                                              'void
-                                              kernel-parameters
-                                              generated-kernel)
-              (make-jit-function :kernel-symbol kernel-symbol
-                                 :iteration-scheme iteration-scheme
-                                 :dynamic-shared-mem-bytes 0
-                                 :kernel-manager kernel-manager
-                                 :kernel-parameters kernel-parameters
-                                 :kernel-body generated-kernel)))))))
+            ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
+            (kernel-manager-define-function kernel-manager
+                                            kernel-symbol
+                                            'void
+                                            kernel-parameters
+                                            generated-kernel)
+            (make-jit-function :kernel-symbol kernel-symbol
+                               :iteration-scheme iteration-scheme
+                               :dynamic-shared-mem-bytes 0
+                               :kernel-manager kernel-manager
+                               :kernel-parameters kernel-parameters
+                               :kernel-body generated-kernel)))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
         (let ((argument (nth i kernel-arguments)))
           (if (arrayp argument)
               (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
-               (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type) (cffi:convert-to-foreign (aref argument) ffi-type)))
+                (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type)
+                      (cffi:convert-to-foreign (aref argument) ffi-type)))
               (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
@@ -196,6 +210,7 @@
   (cadr kernel-parameter))
 
 (defun buffer-access (buffer buffer->kernel-parameter instruction)
+  (assert (functionp buffer->kernel-parameter))
   (let ((kernel-parameter (kernel-parameter-name (funcall buffer->kernel-parameter buffer))))
     (if (pass-as-scalar-argument-p buffer)
         kernel-parameter
@@ -206,7 +221,7 @@
       (let* ((instruction (pop instructions))
              ($i (get-instruction-symbol instruction)))
         (if (store-instruction-p instruction)
-            ;; Instructions that produce no result in C code
+          ;; Instructions that produce no result in C code
           (let ((buffer (store-instruction-buffer instruction)))
             `(progn
                ;; Store instructions
@@ -267,6 +282,7 @@
     ((petalisp.type-inference:long-float/) '/)
 
     (= '==)
+    (CMPEQ '==)
     ((petalisp.type-inference:double-float=) '==)
     ((petalisp.type-inference:single-float=) '==)
     ((petalisp.type-inference:short-float=) '==)
@@ -333,11 +349,26 @@
     ((petalisp.type-inference:long-float-tan) 'tan)
 
     ;; Petalisp has no exp
-    ;((petalisp.type-inference:double-float-exp) 'exp)
-    ;((petalisp.type-inference:single-float-exp) 'exp)
-    ;((petalisp.type-inference:short-float-exp) 'exp)
-    ;((petalisp.type-inference:long-float-exp) 'exp)
+    (exp 'exp)
+    ((petalisp.type-inference::double-float-exp) 'exp)
+    ((petalisp.type-inference::single-float-exp) 'exp)
+    ((petalisp.type-inference::short-float-exp) 'exp)
+    ((petalisp.type-inference::long-float-exp) 'exp)
 
-    (t (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
-              More copy paste required here!" operator))))
+    (t (let ((source-form (function-lambda-expression operator)))
+             (if source-form
+                 (with-gensyms (device-lambda-without-package)
+                   (let ((device-lambda (format-symbol t "~A" device-lambda-without-package)))
+                     ;(push `(,device-lambda ,(nth 1 source-form)
+                                            ;,(backquote-kernel (nth 2 source-form) (nth 2 source-form))) *kernel-lambda*)
+                     (kernel-manager-define-function *kernel-manager*
+                                                     device-lambda
+                                                     'float
+                                                     (mapcar (lambda (name)
+                                                               (list name 'float))
+                                                             (nth 1 source-form))
+                                                     `((return ,(nth 2 source-form))))
+                     device-lambda))
+             (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
+More copy paste required here!~%" operator))))))
 
