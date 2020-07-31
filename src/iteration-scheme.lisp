@@ -117,7 +117,7 @@
                   kernel-body))
         (dim-range (first iteration-ranges))
         (dim-symbol (get-counter-symbol dim-idx)))
-    (if (or (range-empty-p dim-range)
+    (if (or (or (null dim-range) (range-empty-p dim-range))
             (member dim-idx xyz))
         body
         `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
