@@ -35,6 +35,8 @@
     ((equal element-type :double) 'double-float)     
     (t (error "Cannot convert ~S to ntype." element-type))))
 
+(defparameter *silence-cl-cuda* t)
+
 (defun lisp-type-cuda-array (cu-array)
   (type-from-cl-cuda-type (cuda-array-type cu-array)))
 
@@ -125,14 +127,16 @@
 
 (defun copy-cuda-array-to-lisp (array)
   (let ((memory-block (slot-value array 'memory-block))
-        (shape (slot-value array 'shape)))
+        (shape (slot-value array 'shape))
+        (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
     (progn
       (cl-cuda:sync-memory-block memory-block :device-to-host)
       (aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
 
 (defun copy-lisp-to-cuda-array (lisp-array cuda-array)
   (let ((memory-block (slot-value cuda-array 'memory-block))
-        (cuda-shape (slot-value cuda-array 'shape)))
+        (cuda-shape (slot-value cuda-array 'shape))
+        (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
     (progn
       (assert (equalp (array-dimensions lisp-array) cuda-shape))
       ;; TODO: probably very slow

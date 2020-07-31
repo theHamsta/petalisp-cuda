@@ -361,7 +361,8 @@
                    (let* ((device-lambda (format-symbol t "~A" device-lambda-without-package))
                          (lambda-body? (last source-form))
                          (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) lambda-body?)))
-                     (format t "~A~%" lambda-body)
+                       (when cl-cuda:*show-messages*
+                         (format t "Creating kernel lambda: ~A~%" lambda-body))
                      ;(push `(,device-lambda ,(nth 1 source-form)
                                             ;,(backquote-kernel (nth 2 source-form) (nth 2 source-form))) *kernel-lambda*)
                      (kernel-manager-define-function *kernel-manager*

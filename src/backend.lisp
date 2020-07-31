@@ -24,6 +24,8 @@
            execute-kernel))
 (in-package :petalisp-cuda.backend)
 
+(defparameter *silence-cl-cuda* t)
+
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
 (push '(int16 :int16 "int16_t") cl-cuda.lang.type::+scalar-types+)
@@ -42,12 +44,13 @@
         ((double double) double nil "fmin")))
 
 (defun use-cuda-backend ()
-  (if (typep petalisp:*backend* 'cuda-backend)
+  (let ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
+   (if (typep petalisp:*backend* 'cuda-backend)
       petalisp:*backend*
       (progn 
         (when petalisp:*backend*
           (petalisp.core:delete-backend petalisp:*backend*))
-        (setq petalisp:*backend* (make-instance 'cuda-backend)))))
+        (setq petalisp:*backend* (make-instance 'cuda-backend))))))
 
 (defclass cuda-backend (petalisp.core:backend)
   ((backend-context :initform nil
@@ -79,6 +82,7 @@
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
   (let* ((cl-cuda:*cuda-device* (backend-device-id backend))
          (cl-cuda:*cuda-context* (backend-context backend))
+         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
          (cl-cuda.api.nvcc:*nvcc-options*
            (if (cl-cuda.api.context::arch-exists-p
                  cl-cuda.api.nvcc:*nvcc-options*)
