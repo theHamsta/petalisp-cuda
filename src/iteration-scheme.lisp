@@ -95,6 +95,7 @@
 
 (defun filter-xyz-dimensions (list xyz-dimensions)
   (trivia:match (mapcar (lambda (idx) (nth idx list)) xyz-dimensions)
+    ((list)       (list 1 1 1))
     ((list x)     (list x 1 1))
     ((list x y)   (list x y 1))
     ((list x y z) (list x y z))
