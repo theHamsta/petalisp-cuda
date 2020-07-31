@@ -26,6 +26,7 @@ git clone git@github.com:theHamsta/petalisp-cuda.git
 ** TODOs
 
 - [ ] sort indices for fasted dimensions
+- [ ] compile kernels not only for fixed iteration spaces
 - [ ] implement reductions with CUDNN
 - [ ] implement convolutions with CUDNN
 - [ ] __restrict__ kernel parameters
