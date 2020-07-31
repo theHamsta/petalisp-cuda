@@ -85,6 +85,7 @@
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
   (match tree
+    ((cons 'declare _) '(progn))
     ; unary +
     ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
     ; 1+/1-
@@ -112,8 +113,8 @@
 (defun compile-kernel (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
     ; TODO: compile we do not compile iteration-space independent
-    (petalisp.utilities:with-hash-table-memoization (kernel)
-      ;((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
+    (petalisp.utilities:with-hash-table-memoization 
+      ((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
       (compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
