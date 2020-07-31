@@ -140,7 +140,9 @@
         (let ((args i))
           (progn
             (push lisp-array args)
-            (set-cuda-array-aref cuda-array i (apply #'aref args))))))
+            (set-cuda-array-aref cuda-array i (if (equal t (array-element-type lisp-array))
+                                                  (coerce (apply #'aref args) 'single-float)
+                                                  (apply #'aref args)))))))
       (cl-cuda:sync-memory-block memory-block :host-to-device)
       cuda-array))
 
