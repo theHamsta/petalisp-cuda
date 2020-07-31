@@ -85,7 +85,7 @@
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
   (match tree
-    ((cons 'declare _) '(progn))
+    ((cons (cons 'declare _) b) (remove-lispy-stuff b))
     ; unary +
     ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
     ; 1+/1-
@@ -113,8 +113,8 @@
 (defun compile-kernel (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
     ; TODO: compile we do not compile iteration-space independent
-    (petalisp.utilities:with-hash-table-memoization 
-      ((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
+    (petalisp.utilities:with-hash-table-memoization (kernel)
+      ;((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
       (compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
@@ -358,7 +358,10 @@
     (t (let ((source-form (function-lambda-expression operator)))
              (if source-form
                  (with-gensyms (device-lambda-without-package)
-                   (let ((device-lambda (format-symbol t "~A" device-lambda-without-package)))
+                   (let* ((device-lambda (format-symbol t "~A" device-lambda-without-package))
+                         (lambda-body? (last source-form))
+                         (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) lambda-body?)))
+                     (format t "~A~%" lambda-body)
                      ;(push `(,device-lambda ,(nth 1 source-form)
                                             ;,(backquote-kernel (nth 2 source-form) (nth 2 source-form))) *kernel-lambda*)
                      (kernel-manager-define-function *kernel-manager*
@@ -367,7 +370,7 @@
                                                      (mapcar (lambda (name)
                                                                (list name 'float)) ; TODO infer types or manually infline
                                                              (nth 1 source-form))
-                                                     `((return ,(nth 2 source-form))))
+                                                     `((return ,lambda-body)))
                      device-lambda))
              (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!~%" operator))))))
