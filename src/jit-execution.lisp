@@ -83,15 +83,17 @@
 (defun remove-lispy-stuff (tree)
   (match tree
     ; unary +
-    ((list '+ b) `(+ 0 ,b))
+    ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
     ; 1+/1-
     ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
     ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))
     ; ratios
-    ((list '* (guard r (and (rationalp r) (not (integerp r)))) s) `(/ (* ,(numerator r) ,s) ,(denominator r)))
+    ((list '* (guard r (and (rationalp r) (not (integerp r)))) s) `(/ (* ,(numerator r)
+                                                                         ,(remove-lispy-stuff s))
+                                                                      ,(denominator r)))
     ; rest
-    ((cons (guard a (listp a)) b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))
-    ((cons a b) (cons a (remove-lispy-stuff b)))))
+    ((guard a (atom a)) a)
+    ((cons a b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))))
 
 (defun upload-buffers-to-gpu (buffers)
   (mapcar #'upload-buffer-to-gpu buffers))
@@ -106,7 +108,10 @@
                (iteration-scheme (generate-iteration-scheme kernel backend)))
           (with-gensyms (function-name)
             (let* ((kernel-symbol (format-symbol (make-package function-name) "~A" function-name)) ;cl-cuda wants symbol with a package for the function name
-                   (generated-kernel (remove-lispy-stuff `(,(generate-kernel kernel kernel-parameters buffers iteration-scheme))))
+                   (generated-kernel (remove-lispy-stuff `(,(generate-kernel
+                                                              kernel kernel-parameters
+                                                              buffers
+                                                              iteration-scheme))))
                    (kernel-manager (make-kernel-manager)))  
               (when cl-cuda:*show-messages*
                 (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
