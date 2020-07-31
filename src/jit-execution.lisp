@@ -120,7 +120,7 @@
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
         (with-gensyms (function-name)
-          (let* ((kernel-symbol (format-symbol (make-package kernel_function) "_kernel_function")) ;cl-cuda wants symbol with a package for the function name
+          (let* ((kernel-symbol (format-symbol t "_kernel_function")) ;cl-cuda wants symbol with a package for the function name
                  (kernel-manager (make-kernel-manager))
                  (*kernel-manager* kernel-manager)
                  (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
