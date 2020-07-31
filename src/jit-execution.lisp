@@ -348,7 +348,6 @@
     ((petalisp.type-inference:short-float-tan) 'tan)
     ((petalisp.type-inference:long-float-tan) 'tan)
 
-    ;; Petalisp has no exp
     (exp 'exp)
     ((petalisp.type-inference::double-float-exp) 'exp)
     ((petalisp.type-inference::single-float-exp) 'exp)
@@ -365,7 +364,7 @@
                                                      device-lambda
                                                      'float
                                                      (mapcar (lambda (name)
-                                                               (list name 'float))
+                                                               (list name 'float)) ; TODO infer types or manually infline
                                                              (nth 1 source-form))
                                                      `((return ,(nth 2 source-form))))
                      device-lambda))
