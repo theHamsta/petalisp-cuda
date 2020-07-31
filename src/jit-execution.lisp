@@ -220,8 +220,7 @@
                               ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
                          ;; Iref instructions
                          (iref-instruction
-                           (linearize-instruction-transformation
-                             (instruction-transformation instruction)))
+                           (linearize-instruction-transformation instruction))
                          ;; Load instructions
                          (load-instruction
                            (buffer-access (load-instruction-buffer instruction)
