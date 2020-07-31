@@ -23,6 +23,17 @@ repository to your local projects folder:
 git clone git@github.com:theHamsta/petalisp-cuda.git
 #+END_SRC
 
+** TODOs
+
+- [ ] sort indices for fasted dimensions
+- [ ] implement reductions with CUDNN
+- [ ] implement convolutions with CUDNN
+- [ ] __restrict__ kernel parameters
+- [ ] fancy iteration schemes leveraging register sharing and shared memory
+- [ ] infer function parameters for generated __device__ functions
+- [ ] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
+- [ ] fast interpolation using textures (?)
+
 ** Debugging
 
 You can activate logging in CUDNN by setting
