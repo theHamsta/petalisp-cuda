@@ -43,8 +43,6 @@
      kernel)
     rtn))
 
-(defvar *kernel-manager*)
-
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
 
@@ -102,19 +100,11 @@
 (defun upload-buffers-to-gpu (buffers)
   (mapcar #'upload-buffer-to-gpu buffers))
 
-;(defvar *kernel-lambdas*)
-
-;(defun define-kernel-lambdas (kernel-body)
-  ;(if (< 0 (length *kernel-lambdas*))
-      ;`(macrolet ,*kernel-lambdas*
-         ;,kernel-body)
-      ;kernel-body))
-
 (defun compile-kernel (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
     ; TODO: compile we do not compile iteration-space independent
-    (petalisp.utilities:with-hash-table-memoization
-      ((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
+    (petalisp.utilities:with-hash-table-memoization (kernel)
+      ;((format nil "~S~S" blueprint (kernel-iteration-space kernel)))
       (compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
@@ -122,7 +112,6 @@
         (with-gensyms (function-name)
           (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
                  (kernel-manager (make-kernel-manager))
-                 (*kernel-manager* kernel-manager)
                  (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
                                                                            kernel-parameters
                                                                            buffers
@@ -222,7 +211,7 @@
       (let* ((instruction (pop instructions))
              ($i (get-instruction-symbol instruction)))
         (if (store-instruction-p instruction)
-          ;; Instructions that produce no result in C code
+            ;; Instructions that produce no result in C code
           (let ((buffer (store-instruction-buffer instruction)))
             `(progn
                ;; Store instructions
@@ -237,8 +226,11 @@
           `(let ((,$i ,(etypecase instruction
                          ;; Call instructions
                          (call-instruction
-                           `(,(map-call-operator (call-instruction-operator instruction))
-                              ,@(mapcar #'get-instruction-symbol (instruction-inputs instruction))))
+                           (let ((arguments (mapcar #'get-instruction-symbol (instruction-inputs instruction))))
+                             (multiple-value-bind (cuda-function inlined-expression) (map-call-operator (call-instruction-operator instruction) arguments)
+                               (if cuda-function
+                                   `(,cuda-function ,@arguments)
+                                   inlined-expression))))
                          ;; Iref instructions
                          (iref-instruction
                            (linearize-instruction-transformation instruction))
@@ -254,7 +246,7 @@
 (defun make-buffer->kernel-parameter (buffers kernel-parameters)
   (lambda (buffer) (nth (position buffer buffers) kernel-parameters)))
 
-(defun map-call-operator (operator)
+(defun map-call-operator (operator arguments)
   ;; LHS: Petalisp/code/type-inference/package.lisp
   ;; RHS: cl-cuda/src/lang/built-in.lisp
   (case operator 
@@ -356,23 +348,17 @@
     ((petalisp.type-inference::long-float-exp) 'exp)
 
     (t (let ((source-form (function-lambda-expression operator)))
-             (if source-form
-                 (with-gensyms (device-lambda-without-package)
-                   (let* ((device-lambda (format-symbol t "~A" device-lambda-without-package))
-                         (lambda-body? (last source-form))
-                         (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) lambda-body?)))
-                       (when cl-cuda:*show-messages*
-                         (format t "Creating kernel lambda: ~A~%" lambda-body))
-                     ;(push `(,device-lambda ,(nth 1 source-form)
-                                            ;,(backquote-kernel (nth 2 source-form) (nth 2 source-form))) *kernel-lambda*)
-                     (kernel-manager-define-function *kernel-manager*
-                                                     device-lambda
-                                                     'float
-                                                     (mapcar (lambda (name)
-                                                               (list name 'float)) ; TODO infer types or manually infline
-                                                             (nth 1 source-form))
-                                                     `((return ,lambda-body)))
-                     device-lambda))
-             (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
-More copy paste required here!~%" operator))))))
+         (if source-form
+             (let* ((lambda-arguments (nth 1 source-form))
+                    (lambda-body? (last source-form))
+                    (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) (car lambda-body?))))
+               (when cl-cuda:*show-messages*
+                 (format t "Creating kernel lambda: ~A~%" lambda-body))
+               (loop for ir-arg in arguments
+                     for arg in lambda-arguments do
+                     (setf lambda-body (subst ir-arg arg lambda-body)))
+               (values nil lambda-body))
+         (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
+More copy paste required here!~%
+You may also try to compile ~A with (debug 3) so that petalisp-cuda can retrieve its source from." operator operator))))))
 
