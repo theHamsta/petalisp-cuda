@@ -360,5 +360,5 @@
                (values nil lambda-body))
          (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!~%
-You may also try to compile ~A with (debug 3) so that petalisp-cuda can retrieve its source from." operator operator))))))
+You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator))))))
 
