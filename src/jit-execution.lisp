@@ -109,15 +109,14 @@
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
-        (with-gensyms (function-name)
-          (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
+        (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
                  (kernel-manager (make-kernel-manager))
                  (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
                                                                            kernel-parameters
                                                                            buffers
                                                                            iteration-scheme)))))  
             (when cl-cuda:*show-messages*
-              (format t "Generated kernel ~A:~%Arguments: ~A~%~A~%" function-name kernel-parameters generated-kernel))
+              (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
 
             ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
             (kernel-manager-define-function kernel-manager
@@ -130,7 +129,7 @@
                                :dynamic-shared-mem-bytes 0
                                :kernel-manager kernel-manager
                                :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel)))))))
+                               :kernel-body generated-kernel))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
