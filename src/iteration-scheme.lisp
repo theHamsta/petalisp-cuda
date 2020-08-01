@@ -122,5 +122,5 @@
             (member dim-idx xyz))
         body
         `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
-          ((<= ,dim-symbol ,(range-end dim-range)))
+          ((> ,dim-symbol ,(range-end dim-range)))
           ,body))))
