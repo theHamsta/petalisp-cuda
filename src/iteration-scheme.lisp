@@ -36,7 +36,7 @@
                                   count t into i
                                   unless (range-empty-p range)
                                   collect (list (1- i) stride)))
-         (fastest-dimensions (mapcar #'car (sort iteration-strides #'> :key #'second)))
+         (fastest-dimensions (mapcar #'car (sort iteration-strides #'< :key #'second)))
          (xyz (subseq fastest-dimensions 0 (min 3 (length fastest-dimensions))))
          (block-shape '())
          (rank (shape-rank iteration-shape)))
