@@ -180,16 +180,11 @@
 
 (defparameter *max-printing-length* 5)
 
-;(defun print-row (cuda-array stream row-indices shape)
-  ;(format stream "(")
-  ;(loop for x in )
-  ;(format stream ")~%"))
-
 (defmethod print-object :after ((cuda-array cuda-array) stream)
   (cl-cuda:sync-memory-block (cuda-array-memory-block cuda-array) :device-to-host)
   (let* ((shape (cuda-array-shape cuda-array))
          (rank (length shape))
-         (max-idx (mapcar (lambda (s) (1- s)) shape))
+         (max-idx (mapcar #'1- shape))
          (max-border (mapcar (lambda (i) (- i *max-printing-length*)) shape)))
     (format stream "~%~%")
     (iterate (for idx in-it (petalisp-cuda.memory.cuda-array:nd-iter shape))
