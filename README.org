@@ -27,13 +27,12 @@ git clone git@github.com:theHamsta/petalisp-cuda.git
 
 - [x] sort indices for fasted dimensions
 - [ ] hash CUDA array strides to recompile correctly with arrays not
-  allocated by petalisp-cuda with alternative memory layouts
-- [ ] fix super-slow lisp->native, native->lisp calls (use atik?/cffi?)
+  allocated in C-layout with alternative memory layouts
+- [ ] fix super-slow lisp->native, native->lisp calls
 - [ ] compile kernels not only for fixed iteration spaces
 - [ ] implement reductions with CUDNN
 - [ ] implement convolutions with CUDNN
 - [ ] __restrict__ kernel parameters
-- [ ] fancy iteration schemes leveraging register sharing and shared memory
 - [ ] infer function parameters for generated __device__ functions
 - [ ] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
 - [ ] fast interpolation using textures (?)
