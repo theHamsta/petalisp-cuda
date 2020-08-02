@@ -26,7 +26,7 @@
 (in-package :petalisp-cuda.backend)
 
 (defparameter *silence-cl-cuda* t)
-(defparameter *transfer-back-to-lisp* nil)
+(defparameter *transfer-back-to-lisp* t)
 
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
