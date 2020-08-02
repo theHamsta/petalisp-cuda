@@ -21,10 +21,12 @@
            cl-cuda-type-from-buffer
            compile-cache
            preferred-block-size
-           execute-kernel))
+           execute-kernel
+           *transfer-back-to-lisp*))
 (in-package :petalisp-cuda.backend)
 
 (defparameter *silence-cl-cuda* t)
+(defparameter *transfer-back-to-lisp* nil)
 
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
@@ -78,6 +80,22 @@
 
 
 (defgeneric execute-kernel (kernel backend))
+
+(defmethod petalisp.core:compute-on-backend ((lazy-arrays list) (backend cuda-backend))
+  (let* ((collapsing-transformations
+           (mapcar (alexandria:compose #'collapsing-transformation #'shape)
+                   lazy-arrays))
+         (immediates
+           (petalisp.core:compute-immediates
+            (mapcar #'transform lazy-arrays collapsing-transformations)
+            backend)))
+    (loop for lazy-array in lazy-arrays
+          for collapsing-transformation in collapsing-transformations
+          for immediate in immediates
+          do (petalisp.core:replace-lazy-array
+              lazy-array
+              (petalisp.core:lazy-reshape immediate (shape lazy-array) collapsing-transformation)))
+    (values-list (mapcar (if *transfer-back-to-lisp* petalisp.core:lisp-datum-from-immediate #'storage) immediates))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
   (let* ((cl-cuda:*cuda-device* (backend-device-id backend))
