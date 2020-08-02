@@ -95,7 +95,7 @@
           do (petalisp.core:replace-lazy-array
               lazy-array
               (petalisp.core:lazy-reshape immediate (shape lazy-array) collapsing-transformation)))
-    (values-list (mapcar (if *transfer-back-to-lisp* petalisp.core:lisp-datum-from-immediate #'storage) immediates))))
+    (values-list (mapcar (if *transfer-back-to-lisp* #'petalisp.core:lisp-datum-from-immediate #'storage) immediates))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
   (let* ((cl-cuda:*cuda-device* (backend-device-id backend))
