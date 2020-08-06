@@ -1,8 +1,5 @@
 (defpackage petalisp-cuda
-  (:shadowing-import-from #:petalisp #:set-difference)
-  (:use :cl
-        :petalisp
-        :iterate)
+  (:use :cl)
   (:import-from :petalisp-cuda.backend :use-cuda-backend
                                        :cuda-memory-pool
                                        :*transfer-back-to-lisp*)
