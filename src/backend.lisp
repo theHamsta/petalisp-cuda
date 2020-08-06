@@ -68,7 +68,7 @@
               :accessor backend-device-id)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
-   (%compile-cache :initform (make-hash-table :test 'equal) :reader compile-cache :type hash-table)))
+   (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
