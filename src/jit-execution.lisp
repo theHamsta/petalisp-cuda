@@ -74,7 +74,6 @@
 (defun scalar-buffer-p (buffer)
   (= 0 (shape-rank (buffer-shape buffer))))
 
-
 (defun upload-buffers-to-gpu (buffers backend)
   (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))
 
@@ -83,6 +82,7 @@
     ; Do not upload cuda arrays or scalars 
     (unless (or (cuda-array-p storage)
                 (pass-as-scalar-argument-p buffer))
+      (setf (buffer-reusablep buffer) t)
       (setf (buffer-storage buffer) (make-cuda-array storage
                                                      (cl-cuda-type-from-buffer buffer)
                                                      nil
