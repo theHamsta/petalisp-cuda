@@ -44,4 +44,4 @@
 
 
 (defmethod reclaim-cuda-memory ((memory-pool cuda-memory-pool))
-  (mapcar (lambda (a) (memory-pool-free memory-pool a)) (allocated-cuda-arrays memory-pool)))
+  (mapcar (lambda (array) (memory-pool-free memory-pool array)) (allocated-cuda-arrays memory-pool)))
