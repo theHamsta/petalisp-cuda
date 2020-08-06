@@ -9,6 +9,7 @@
            :cuda-array-shape
            :cuda-array-type
            :cuda-array-from-lisp
+           :cuda-array-memory-block
            :free-cuda-array
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp

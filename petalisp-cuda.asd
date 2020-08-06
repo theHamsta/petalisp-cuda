@@ -16,8 +16,8 @@
                "let-plus")
   :components ((:module "src/memory"
                 :components
-                ((:file "memory-pool")
-                 (:file "cuda-array")))
+                ((:file "cuda-array")
+                 (:file "memory-pool")))
                (:module "src/cudalibs"
                 :components
                 ((:file "cuda")

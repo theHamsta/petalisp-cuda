@@ -39,6 +39,10 @@
                        (array-table memory-pool)))
   (values))
 
+(defmethod memory-pool-free ((memory-pool cuda-memory-pool)
+                             (array petalisp-cuda.memory.cuda-array:cuda-array))
+   (memory-pool-free memory-pool (petalisp-cuda.memory.cuda-array:cuda-array-memory-block array)))
+
 (defmethod memory-pool-reset :before ((memory-pool cuda-memory-pool))
   (mapcar #'cl-cuda:free-memory-block (allocated-cuda-arrays memory-pool))
   (setf (allocated-cuda-arrays memory-pool) '()))
