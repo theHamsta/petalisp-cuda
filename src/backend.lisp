@@ -138,9 +138,7 @@
             (unless (null storage)
               (setf (buffer-storage buffer) nil)
               (when (buffer-reusablep buffer)
-                (petalisp-cuda.memory.cuda-array:free-cuda-array
-                  storage
-                  (lambda (mem-block) (memory-pool-free memory-pool mem-block)))))))))))
+                (memory-pool-free memory-pool storage)))))))))
 
 (defclass cuda-immediate (petalisp.core:immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
