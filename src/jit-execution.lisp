@@ -6,7 +6,8 @@
         :cl
         :let-plus
         :trivia
-        :cl-cuda)
+        :cl-cuda
+        :petalisp-cuda.memory.memory-pool)
   (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
                                             :kernel-manager-define-function
                                             :ensure-kernel-function-loaded
@@ -73,13 +74,22 @@
 (defun scalar-buffer-p (buffer)
   (= 0 (shape-rank (buffer-shape buffer))))
 
-(defun upload-buffer-to-gpu (buffer)
+
+(defun upload-buffers-to-gpu (buffers backend)
+  (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))
+
+(defun upload-buffer-to-gpu (buffer backend)
   (let ((storage (buffer-storage buffer)))
-    ; Do not upload cuda arrays or sclars 
+    ; Do not upload cuda arrays or scalars 
     (unless (or (cuda-array-p storage)
                 (pass-as-scalar-argument-p buffer))
-      (setf (buffer-storage buffer) (make-cuda-array storage (cl-cuda-type-from-buffer buffer))))))
-
+      (setf (buffer-storage buffer) (make-cuda-array storage
+                                                     (cl-cuda-type-from-buffer buffer)
+                                                     nil
+                                                     (lambda (type size)
+                                                                   (memory-pool-allocate (cuda-memory-pool backend)
+                                                                                         type
+                                                                                         size)))))))
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
   (match tree
@@ -96,9 +106,6 @@
     ; rest
     ((guard a (atom a)) a)
     ((cons a b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))))
-
-(defun upload-buffers-to-gpu (buffers)
-  (mapcar #'upload-buffer-to-gpu buffers))
 
 (defun compile-kernel (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
@@ -163,7 +170,7 @@
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
-    (upload-buffers-to-gpu buffers)
+    (upload-buffers-to-gpu buffers backend)
     (let ((arrays (mapcar #'buffer-storage buffers)))
       (run-compiled-function (compile-kernel kernel backend) arrays))))
 

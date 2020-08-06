@@ -17,6 +17,7 @@
                 :int
                 :double)
   (:export cuda-backend
+           cuda-memory-pool
            use-cuda-backend
            cl-cuda-type-from-buffer
            compile-cache
