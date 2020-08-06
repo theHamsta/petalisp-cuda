@@ -40,8 +40,8 @@
   (values))
 
 (defmethod memory-pool-reset :before ((memory-pool cuda-memory-pool))
-  (mapcar #'cl-cuda:free-memory-block (allocated-cuda-arrays memory-pool)))
-
+  (mapcar #'cl-cuda:free-memory-block (allocated-cuda-arrays memory-pool))
+  (setf (allocated-cuda-arrays memory-pool) '()))
 
 (defmethod reclaim-cuda-memory ((memory-pool cuda-memory-pool))
   (mapcar (lambda (array) (memory-pool-free memory-pool array)) (allocated-cuda-arrays memory-pool)))
