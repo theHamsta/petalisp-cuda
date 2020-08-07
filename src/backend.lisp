@@ -98,6 +98,20 @@
   (setf (backend-device-id backend) cl-cuda:*cuda-device*)
   (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*)))
 
+(defun cuda-stream-barrier (worker-pool)
+  (let ((events '()))
+    (dotimes (i (worker-pool-size worker-pool))
+      (let ((event (cffi:foreign-alloc :pointer)))
+        (petalisp-cuda.cudalibs::cuEventCreate event)
+        (push event events)
+        (trivial-garbage:finalize event (lambda (e) 
+                                          (petalisp-cuda.cudalibs::cuEventDestroy_v2 e)
+                                          (cffi:foreign-free e)))))
+   (worker-pool-enqueue
+   (lambda (worker-id)
+     (petalisp-cuda.cudalibs::cuEventRecord (nth worker-id events) cl-cuda:*cuda-stream*)
+     (mapcar (lambda (e) (petalisp-cuda.cudalibs::cuEventSynchronize e)) events))
+   worker-pool)))
 
 (defgeneric execute-kernel (kernel backend))
 
@@ -147,7 +161,7 @@
                          (execute-kernel kernel backend))
                        worker-pool)))))
         ;; Barrier. (synchronize with default stream)
-        (lambda () (petalisp-cuda.cudalibs::cuStreamSynchronize (cffi:null-pointer)))
+        (lambda () (cuda-stream-barrier worker-pool))
         ;; Allocate.
         (lambda (buffer)
           (setf (petalisp.ir:buffer-storage buffer)

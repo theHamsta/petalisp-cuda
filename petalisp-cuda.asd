@@ -12,6 +12,7 @@
                "cffi-libffi"
                "trivia"
                "alexandria"
+               "trivial-garbage"
                "cl-itertools"
                "let-plus")
   :components ((:module "src/memory"

@@ -5583,10 +5583,10 @@
   ::cudaStreamSynchronize"
   (hstream CUstream))
 
-(cffi:defcfun ("custreamdestroy_v2" custreamdestroy-v2) CUresult
+(cffi:defcfun ("cuStreamDestroy_v2" custreamdestroy-v2) CUresult
   (hstream CUstream))
 
-(cffi:defcfun "cueventcreate" CUresult
+(cffi:defcfun "cuEventCreate" CUresult
   "\brief Creates an event
  
   Creates an event phEvent for the current context with the flags specified via
@@ -5627,7 +5627,7 @@
   (phevent (:pointer CUevent))
   (flags :unsigned-int))
 
-(cffi:defcfun "cueventrecord" CUresult
+(cffi:defcfun "cuEventRecord" CUresult
   "\brief Records an event
  
   Captures in \p hEvent the contents of \p hStream at the time of this call.
@@ -5699,7 +5699,7 @@
   ::cudaEventQuery"
   (hevent CUevent))
 
-(cffi:defcfun "cueventsynchronize" CUresult
+(cffi:defcfun "cuEventSynchronize" CUresult
   "\brief Waits for an event to complete
  
   Waits until the completion of all work currently captured in \p hEvent.
@@ -5729,7 +5729,7 @@
   ::cudaEventSynchronize"
   (hevent CUevent))
 
-(cffi:defcfun ("cueventdestroy_v2" cueventdestroy-v2) CUresult
+(cffi:defcfun ("cuEventDestroy_v2" cueventdestroy-v2) CUresult
   (hevent CUevent))
 
 (cffi:defcfun "cueventelapsedtime" CUresult
