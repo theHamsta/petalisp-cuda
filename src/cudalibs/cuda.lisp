@@ -5555,7 +5555,7 @@
   ::cudaStreamQuery"
   (hstream CUstream))
 
-(cffi:defcfun "custreamsynchronize" CUresult
+(cffi:defcfun "cuStreamSynchronize" CUresult
   "\brief Wait until a stream's tasks are completed
  
   Waits until the device has completed all operations in the stream specified

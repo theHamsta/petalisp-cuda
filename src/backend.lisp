@@ -3,6 +3,11 @@
         :petalisp
         :petalisp.ir
         :petalisp-cuda.memory.memory-pool)
+  (:import-from :petalisp.native-backend
+                :worker-pool
+                :make-worker-pool
+                :worker-pool-size
+                :worker-pool-enqueue)
   (:import-from :petalisp-cuda.type-conversion
                 :cl-cuda-type-from-buffer
                 :ntype-cuda-array
@@ -28,6 +33,18 @@
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* t)
+
+;; from cl-cuda README (mgl-mat)
+(defmacro with-cuda-stream ((stream) &body body)
+  (alexandria:with-gensyms (stream-pointer)
+    `(cffi:with-foreign-objects
+         ((,stream-pointer 'cl-cuda.driver-api:cu-stream))
+       (cl-cuda.driver-api:cu-stream-create ,stream-pointer 0)
+       (let ((,stream (cffi:mem-ref ,stream-pointer
+                                    'cl-cuda.driver-api:cu-stream)))
+         (unwind-protect
+              (locally ,@body)
+           (cl-cuda.driver-api:cu-stream-destroy ,stream))))))
 
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
@@ -68,6 +85,8 @@
               :accessor backend-device-id)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
+   (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
+                :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
@@ -112,17 +131,23 @@
                  cl-cuda.api.nvcc:*nvcc-options*)
                cl-cuda.api.nvcc:*nvcc-options*
                (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
-    (let ((memory-pool (cuda-memory-pool backend)))
+    (let ((memory-pool (cuda-memory-pool backend))
+          (worker-pool (cuda-backend-worker-pool backend)))
       (petalisp.scheduler:schedule-on-workers
         lazy-arrays
-        1 ; single worker
+        (worker-pool-size worker-pool)
         ;; Execute.
         (lambda (tasks)
-          (loop for task in tasks do
-                (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                  (execute-kernel kernel backend))))
-        ;; Barrier.
-        (lambda () ())
+          (with-cuda-stream (cl-cuda:*cuda-stream*)
+            (loop for task in tasks do
+                  (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                    (worker-pool-enqueue
+                       (lambda (worker-id)
+                         (declare (ignore worker-id))
+                         (execute-kernel kernel backend))
+                       worker-pool)))))
+        ;; Barrier. (synchronize with default stream)
+        (lambda () (petalisp-cuda.cudalibs::cuStreamSynchronize (cffi:null-pointer)))
         ;; Allocate.
         (lambda (buffer)
           (setf (petalisp.ir:buffer-storage buffer)
