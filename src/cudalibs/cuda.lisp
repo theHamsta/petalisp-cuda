@@ -17,9 +17,8 @@
  
 (cl:handler-case (cffi:use-foreign-library libcudnn)
   (cffi:load-foreign-library-error (e)
-    (cl:princ e cl:*error-output*)
-    (cl:terpri cl:*error-output*)
-    (cl:format t "CUDNN will not be available for petalisp-cuda!~%")
+    (cl:format cl:*error-output* "~A~%" e )
+    (cl:format cl:*error-output* "CUDNN will not be available for petalisp-cuda!~%")
     (cl:setq *cudnn-found* nil)))
 
 ;(cffi:define-foreign-library libcudart
