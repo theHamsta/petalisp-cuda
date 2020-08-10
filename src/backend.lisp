@@ -117,7 +117,6 @@
         lazy-arrays
         1 ; single worker
         ;; Execute.
-
         (lambda (tasks)
           (loop for task in tasks do
                 (let* ((kernel (petalisp.scheduler:task-kernel task)))
