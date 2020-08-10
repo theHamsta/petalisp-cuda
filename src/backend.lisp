@@ -46,6 +46,17 @@
               (locally ,@body)
            (cl-cuda.driver-api:cu-stream-destroy ,stream))))))
 
+(defmacro with-backend-cuda-magic (backend &body body)
+`(let* ((cl-cuda:*cuda-device* (backend-device-id ,backend))
+         (cl-cuda:*cuda-context* (backend-context ,backend))
+         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
+         (cl-cuda.api.nvcc:*nvcc-options*
+           (if (cl-cuda.api.context::arch-exists-p
+                 cl-cuda.api.nvcc:*nvcc-options*)
+               cl-cuda.api.nvcc:*nvcc-options*
+               (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
+   body))
+
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
 (push '(int16 :int16 "int16_t") cl-cuda.lang.type::+scalar-types+)
@@ -129,23 +140,16 @@
           do (petalisp.core:replace-lazy-array
                lazy-array
                (petalisp.core:lazy-reshape immediate (shape lazy-array) collapsing-transformation)))
-    (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
-                                                       (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
-                                                         (memory-pool-free (cuda-memory-pool backend) (storage immediate))
-                                                         lisp-array))
-                             #'storage)
-                         immediates))))
+    (with-backend-cuda-magic backend
+      (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
+                                                         (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
+                                                           (memory-pool-free (cuda-memory-pool backend) (storage immediate))
+                                                           lisp-array))
+                               #'storage)
+                           immediates)))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
-  (let* ((cl-cuda:*cuda-device* (backend-device-id backend))
-         (cl-cuda:*cuda-context* (backend-context backend))
-         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
-         (cl-cuda.api.nvcc:*nvcc-options*
-           (if (cl-cuda.api.context::arch-exists-p
-                 cl-cuda.api.nvcc:*nvcc-options*)
-               cl-cuda.api.nvcc:*nvcc-options*
-               (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
-    (let ((memory-pool (cuda-memory-pool backend))
+  (let ((memory-pool (cuda-memory-pool backend))
           (worker-pool (cuda-backend-worker-pool backend)))
       (petalisp.scheduler:schedule-on-workers
         lazy-arrays
@@ -157,26 +161,31 @@
                   (let* ((kernel (petalisp.scheduler:task-kernel task)))
                     (worker-pool-enqueue
                        (lambda (worker-id)
-                         (declare (ignore worker-id))
-                         (execute-kernel kernel backend))
+                           (with-backend-cuda-magic backend
+                             (progn 
+                               (declare (ignore worker-id))
+                               (execute-kernel kernel backend))))
                        worker-pool)))))
         ;; Barrier. (synchronize with default stream)
-        (lambda () (cuda-stream-barrier worker-pool))
+        (lambda () (with-backend-cuda-magic backend
+                    (cuda-stream-barrier worker-pool)))
         ;; Allocate.
         (lambda (buffer)
-          (setf (petalisp.ir:buffer-storage buffer)
+          (with-backend-cuda-magic backend
+           (setf (petalisp.ir:buffer-storage buffer)
                 (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
                                                                  (cl-cuda-type-from-buffer buffer)
                                                                  nil
                                                                  (lambda (type size)
-                                                                   (memory-pool-allocate memory-pool type size)))))
+                                                                   (memory-pool-allocate memory-pool type size))))))
         ;; Deallocate.
         (lambda (buffer)
-          (let ((storage (buffer-storage buffer)))
-            (unless (null storage)
-              (setf (buffer-storage buffer) nil)
-              (when (buffer-reusablep buffer)
-                (memory-pool-free memory-pool storage)))))))))
+          (with-backend-cuda-magic backend
+            (let ((storage (buffer-storage buffer)))
+              (unless (null storage)
+                (setf (buffer-storage buffer) nil)
+                (when (buffer-reusablep buffer)
+                  (memory-pool-free memory-pool storage)))))))))
 
 (defclass cuda-immediate (petalisp.core:immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
