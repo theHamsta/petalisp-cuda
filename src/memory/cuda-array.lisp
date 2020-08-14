@@ -143,8 +143,15 @@
         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
     (assert (equalp (array-dimensions lisp-array) cuda-shape))
     (if (c-layout-p cuda-array)
-        (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))
-        ;; TODO: probably very slow
+        (handler-case (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))
+          (type-error (e)
+            (iterate (for i in-it (petalisp-cuda.memory.cuda-array:nd-iter cuda-shape))
+              (let ((args i))
+                (push lisp-array args)
+                (set-cuda-array-aref cuda-array i (if (equal t (array-element-type lisp-array))
+                                                      (coerce (apply #'aref args) 'single-float)
+                                                      (apply #'aref args)))))))
+          ;; TODO: probably very slow
         (iterate (for i in-it (petalisp-cuda.memory.cuda-array:nd-iter cuda-shape))
           (let ((args i))
             (push lisp-array args)
