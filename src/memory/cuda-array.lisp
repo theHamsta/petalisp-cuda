@@ -145,6 +145,7 @@
     (if (c-layout-p cuda-array)
         (handler-case (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))
           (type-error (e)
+            (declare (ignore e))
             (iterate (for i in-it (petalisp-cuda.memory.cuda-array:nd-iter cuda-shape))
               (let ((args i))
                 (push lisp-array args)
