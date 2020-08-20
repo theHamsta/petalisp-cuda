@@ -41,9 +41,6 @@
 (defun lisp-type-cuda-array (cu-array)
   (type-from-cl-cuda-type (cuda-array-type cu-array)))
 
-; TODO rename my shape to dimenstions
-
-; TODO rename cuda-nd-array? cu-ndarry?
 ; TODO: generalize to (memory-block memory-layout) ?
 (defstruct (cuda-array (:constructor %make-cuda-array))
   memory-block shape strides)
