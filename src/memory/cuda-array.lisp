@@ -181,6 +181,7 @@
 
 (defparameter *max-printing-length* 5)
 
+;; TODO: look up how to do this the official ways
 (defmethod print-object :after ((cuda-array cuda-array) stream)
   (let  ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
     (cl-cuda:sync-memory-block (cuda-array-memory-block cuda-array) :device-to-host)
