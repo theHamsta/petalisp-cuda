@@ -2059,10 +2059,10 @@
 (cffi:defcfun ("cuctxdestroy_v2" cuctxdestroy-v2) CUresult
   (ctx CUcontext))
 
-(cffi:defcfun ("cuctxpushcurrent_v2" cuctxpushcurrent-v2) CUresult
+(cffi:defcfun ("cuCtxPushCurrent_v2" cuCtxPushCurrent_v2) CUresult
   (ctx CUcontext))
 
-(cffi:defcfun ("cuctxpopcurrent_v2" cuctxpopcurrent-v2) CUresult
+(cffi:defcfun ("cuCtxPopCurrent_v2" cuCtxPopCurrent_v2) CUresult
   (pctx (:pointer CUcontext)))
 
 (cffi:defcfun "cuCtxSetCurrent" CUresult

@@ -18,6 +18,8 @@
   (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr :make-cuda-array :cuda-array-p)
   (:import-from :petalisp-cuda.type-conversion :cl-cuda-type-from-buffer)
+  (:import-from :cl-cuda.api.timer
+                :create-cu-event)
   (:export :compile-kernel
            :execute-kernel))
 
@@ -43,6 +45,9 @@
      (lambda (i) (push i rtn))
      kernel)
     rtn))
+
+(defun record-cu-event (cu-event)
+  (cl-cuda.driver-api:cu-event-record cu-event cl-cuda:*cuda-stream*))
 
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
@@ -77,19 +82,24 @@
 (defun upload-buffers-to-gpu (buffers backend)
   (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))
 
+;; TODO: make thread-safe it's possible that multiple threads try to upload the same buffer
 (defun upload-buffer-to-gpu (buffer backend)
   (let ((storage (buffer-storage buffer)))
     ; Do not upload cuda arrays or scalars 
     (unless (or (cuda-array-p storage)
                 (pass-as-scalar-argument-p buffer))
-      (setf (buffer-reusablep buffer) t)
-      (setf (buffer-storage buffer) (make-cuda-array storage
-                                                     (cl-cuda-type-from-buffer buffer)
-                                                     nil
-                                                     (lambda (type size)
-                                                                   (memory-pool-allocate (cuda-memory-pool backend)
-                                                                                         type
-                                                                                         size)))))))
+      (let ((cu-event (create-cu-event)))
+        (setf (buffer-reusablep buffer) t)
+        (setf (buffer-storage buffer) (values (make-cuda-array storage
+                                                               (cl-cuda-type-from-buffer buffer)
+                                                               nil
+                                                               (lambda (type size)
+                                                                 (memory-pool-allocate (cuda-memory-pool backend)
+                                                                                       type
+                                                                                       size)))
+                                              cu-event))
+        (record-cu-event cu-event)))))
+
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
   (match tree
@@ -168,11 +178,19 @@
                                 ptrs-to-device-ptrs
                                 extra-arguments))))))))
 
+(defun wait-for-buffer (buffer)
+  (cl-cuda.driver-api:cu-stream-wait-event cl-cuda:*cuda-stream* (nth-value 1 (buffer-storage buffer))))
+
+(defun mark-buffer-computed (buffer)
+  (record-cu-event (nth-value 1 (buffer-storage buffer))))
+
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
     (upload-buffers-to-gpu buffers backend)
+    (map-kernel-inputs #'wait-for-buffer kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
-      (run-compiled-function (compile-kernel kernel backend) arrays))))
+      (run-compiled-function (compile-kernel kernel backend) arrays))
+    (map-kernel-outputs #'mark-buffer-computed kernel)))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
@@ -190,7 +208,10 @@
          (index-space (get-counter-vector input-rank) )
          (transformed (transform index-space transformation)))
     (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
-      (if (= (length rtn) 1) 0 rtn))))
+      ;; Return 0 instead of '(+)
+      (if (= (length rtn) 1)
+          0
+          rtn))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol t "$~A"
