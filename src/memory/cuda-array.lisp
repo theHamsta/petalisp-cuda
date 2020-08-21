@@ -18,6 +18,7 @@
            :cuda-array-type
            :cuda-array-from-lisp
            :cuda-array-memory-block
+           :cuda-array-event
            :free-cuda-array
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp

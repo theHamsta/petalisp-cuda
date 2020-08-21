@@ -91,7 +91,7 @@
               :accessor backend-device-id)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
-   (worker-pool :initform (make-worker-pool 1 #|(petalisp.utilities:number-of-cpus)|#)
+   (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)))
 

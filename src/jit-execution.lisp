@@ -30,6 +30,7 @@
                 :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
+                :cuda-array-event
                 :device-ptr
                 :make-cuda-array
                 :cuda-array-p)
