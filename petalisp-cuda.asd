@@ -4,6 +4,7 @@
   :license "GPLv3"
   :depends-on ("petalisp"
                "petalisp.core"
+               "bordeaux-threads"
                "petalisp.ir"
                "cl-cuda"
                "iterate"
@@ -15,7 +16,10 @@
                "trivial-garbage"
                "cl-itertools"
                "let-plus")
-  :components ((:module "src/memory"
+  :components ((:module "src/utils"
+                :components
+                ((:file "cl-cuda")))
+               (:module "src/memory"
                 :components
                 ((:file "cuda-array")
                  (:file "memory-pool")))
