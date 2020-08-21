@@ -9,17 +9,34 @@
         :cl-cuda
         :petalisp-cuda.memory.memory-pool)
   (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
-                                            :kernel-manager-define-function
-                                            :ensure-kernel-function-loaded
-                                            :kernel-manager-module-handle)
-  (:import-from :cl-cuda.driver-api :cu-device-ptr :cu-launch-kernel)
-  (:import-from :petalisp.utilities :with-hash-table-memoization)
-  (:import-from :alexandria :format-symbol :iota :with-gensyms)
-  (:import-from :petalisp-cuda.iteration-scheme :call-parameters :iteration-code :make-block-iteration-scheme :get-counter-vector)
-  (:import-from :petalisp-cuda.memory.cuda-array :cuda-array-strides :device-ptr :make-cuda-array :cuda-array-p)
-  (:import-from :petalisp-cuda.type-conversion :cl-cuda-type-from-buffer)
-  (:import-from :cl-cuda.api.timer
-                :create-cu-event)
+                :kernel-manager-define-function
+                :ensure-kernel-function-loaded
+                :kernel-manager-module-handle)
+  (:import-from :cl-cuda.driver-api
+                :cu-device-ptr
+                :cu-launch-kernel)
+  (:import-from :petalisp.utilities
+                :with-hash-table-memoization)
+  (:import-from :alexandria
+                :when-let)
+  (:import-from :alexandria
+                :format-symbol
+                :iota
+                :with-gensyms)
+  (:import-from :petalisp-cuda.iteration-scheme
+                :call-parameters
+                :iteration-code
+                :make-block-iteration-scheme
+                :get-counter-vector)
+  (:import-from :petalisp-cuda.memory.cuda-array
+                :cuda-array-strides
+                :device-ptr
+                :make-cuda-array
+                :cuda-array-p)
+  (:import-from :petalisp-cuda.type-conversion
+                :cl-cuda-type-from-buffer)
+  (:import-from :petalisp-cuda.utils.cl-cuda
+                :record-cu-event)
   (:export :compile-kernel
            :execute-kernel))
 
@@ -45,9 +62,6 @@
      (lambda (i) (push i rtn))
      kernel)
     rtn))
-
-(defun record-cu-event (cu-event)
-  (cl-cuda.driver-api:cu-event-record cu-event cl-cuda:*cuda-stream*))
 
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
@@ -88,17 +102,14 @@
     ; Do not upload cuda arrays or scalars 
     (unless (or (cuda-array-p storage)
                 (pass-as-scalar-argument-p buffer))
-      (let ((cu-event (create-cu-event)))
         (setf (buffer-reusablep buffer) t)
-        (setf (buffer-storage buffer) (values (make-cuda-array storage
-                                                               (cl-cuda-type-from-buffer buffer)
-                                                               nil
-                                                               (lambda (type size)
-                                                                 (memory-pool-allocate (cuda-memory-pool backend)
-                                                                                       type
-                                                                                       size)))
-                                              cu-event))
-        (record-cu-event cu-event)))))
+        (setf (buffer-storage buffer) (make-cuda-array storage
+                                                       (cl-cuda-type-from-buffer buffer)
+                                                       nil
+                                                       (lambda (type size)
+                                                         (memory-pool-allocate (cuda-memory-pool backend)
+                                                                               type
+                                                                               size)))))))
 
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
@@ -178,11 +189,16 @@
                                 ptrs-to-device-ptrs
                                 extra-arguments))))))))
 
-(defun wait-for-buffer (buffer)
-  (cl-cuda.driver-api:cu-stream-wait-event cl-cuda:*cuda-stream* (nth-value 1 (buffer-storage buffer))))
+(defun wait-for-kernel (kernel)
+  (bt:with-lock-held (petalisp-cuda.backend::*kernel-events-lock*)
+    (let ((event (gethash kernel petalisp-cuda.backend::*kernel-events* (create-cu-event))))
+      (setf (gethash kernel petalisp-cuda.backend::*kernel-events*) event)
+      (cl-cuda.driver-api:cu-stream-wait-event cl-cuda:*cuda-stream* event))))
 
-(defun mark-buffer-computed (buffer)
-  (record-cu-event (nth-value 1 (buffer-storage buffer))))
+(defun wait-for-buffer (buffer)
+  (when-let (event (cuda-array-event(buffer-storage buffer)))
+            (cl-cuda.driver-api:cu-stream-wait-event cl-cuda:*cuda-stream* event)
+  (map-buffer-inputs #'wait-for-kernel buffer)))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
@@ -190,7 +206,10 @@
     (map-kernel-inputs #'wait-for-buffer kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
       (run-compiled-function (compile-kernel kernel backend) arrays))
-    (map-kernel-outputs #'mark-buffer-computed kernel)))
+    (bt:with-lock-held (petalisp-cuda.backend::*kernel-events-locks*)
+     (let ((event (gethash kernel petalisp-cuda.backend::*kernel-events* (create-cu-event))))
+       (setf (gethash kernel petalisp-cuda.backend::*kernel-events*) event)
+       (record-cu-event event)))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
