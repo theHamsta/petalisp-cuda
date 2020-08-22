@@ -5,6 +5,8 @@
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp.core
                 :rank)
+  (:import-from :petalisp-cuda.utils.cl-cuda
+                :sync-memory-block-async)
   (:export :make-cuda-array
            :cuda-array
            :cuda-array-shape
@@ -152,7 +154,7 @@
             (declare (ignore e))
             (copy-lisp-to-cuda-array-slow-fallback lisp-array cuda-array)))
           (copy-lisp-to-cuda-array-slow-fallback lisp-array cuda-array))
-        (cl-cuda:sync-memory-block memory-block :host-to-device))
+        (sync-memory-block-async memory-block :host-to-device))
     cuda-array)
 
 (defun mem-layout-from-shape (shape &optional strides)

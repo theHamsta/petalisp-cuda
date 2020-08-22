@@ -1,5 +1,9 @@
 (defpackage petalisp-cuda.utils.cl-cuda
-  (:use :cl)
+  (:use :cl
+        :cl-cuda.api.memory)
+  (:import-from :cl-cuda.api.memory
+                :memcpy-host-to-device-async
+                :memcpy-device-to-host-async)
   (:import-from :cl-cuda
                 :*cuda-stream*)
   (:import-from :cl-cuda.driver-api
@@ -11,7 +15,8 @@
            :record-corresponding-event
            :wait-for-correspoding-event
            :with-cuda-stream
-           :*cu-events*))
+           :*cu-events*
+           :sync-memory-block-async))
 
 (in-package petalisp-cuda.utils.cl-cuda)
 
@@ -45,3 +50,15 @@
          (unwind-protect
               (locally ,@body)
            (cl-cuda.driver-api:cu-stream-destroy ,stream))))))
+
+(defun sync-memory-block-async (memory-block direction)
+  (declare ((member :host-to-device :device-to-host) direction))
+  (let ((device-ptr (memory-block-device-ptr memory-block))
+        (host-ptr (memory-block-host-ptr memory-block))
+        (type (memory-block-type memory-block))
+        (size (memory-block-size memory-block)))
+    (ecase direction
+      (:host-to-device
+       (memcpy-host-to-device-async device-ptr host-ptr type size cl-cuda:*cuda-stream*))
+      (:device-to-host
+       (memcpy-device-to-host-async host-ptr device-ptr type size cl-cuda:*cuda-stream*)))))
