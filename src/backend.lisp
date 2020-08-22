@@ -39,12 +39,13 @@
            compile-cache
            preferred-block-size
            execute-kernel
+           cuda-backend-event-map
            *transfer-back-to-lisp*))
 (in-package :petalisp-cuda.backend)
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* nil)
-(defparameter *single-threaded* t)
+(defparameter *single-threaded* nil)
 (defparameter *single-stream* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
@@ -104,7 +105,8 @@
                          :accessor preferred-block-size)
    (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
-   (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)))
+   (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
+   (event-map :initform (make-hash-table) :accessor cuda-backend-event-map)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
@@ -143,7 +145,7 @@
   (let* ((memory-pool (cuda-memory-pool backend))
          (worker-pool (cuda-backend-worker-pool backend))
          (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
-         (*cu-events* (make-hash-table))
+         (event-map (cuda-backend-event-map backend))
          (rtn (petalisp.scheduler:schedule-on-workers
                 lazy-arrays
                 (worker-pool-size worker-pool)
@@ -156,7 +158,7 @@
                           (mapcar (lambda (buffer)
                                     (unless (or (cuda-array-p (buffer-storage buffer))
                                                 (pass-as-scalar-argument-p buffer))
-                                      (create-corresponding-event buffer)))
+                                      (create-corresponding-event buffer event-map)))
                                   (kernel-buffers kernel))))
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
@@ -188,9 +190,10 @@
                         (setf (buffer-storage buffer) nil)
                         (when (buffer-reusablep buffer)
                           (memory-pool-free memory-pool storage)))))))))
-    (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values *cu-events*))
-    (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values *cu-events*))
+    (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values event-map))
+    (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values event-map))
     (cl-cuda.api.context:synchronize-context)
+    (clrhash event-map)
     rtn))
 
 (defclass cuda-immediate (petalisp.core:immediate)

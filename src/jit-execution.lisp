@@ -103,7 +103,7 @@
                                                        (memory-pool-allocate (cuda-memory-pool backend)
                                                                              type
                                                                              size))))
-      (record-corresponding-event buffer))))
+      (record-corresponding-event buffer (cuda-backend-event-map backend)))))
 
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
@@ -183,17 +183,17 @@
                                 ptrs-to-device-ptrs
                                 extra-arguments))))))))
 
-(defun wait-for-buffer (buffer)
-  (wait-for-correspoding-event buffer)
-  (map-buffer-inputs #'wait-for-correspoding-event buffer))
+(defun wait-for-buffer (buffer backend)
+  (wait-for-correspoding-event buffer (cuda-backend-event-map backend))
+  (map-buffer-inputs (lambda (kernel) (wait-for-correspoding-event kernel (cuda-backend-event-map backend))) buffer))
 
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
     (upload-buffers-to-gpu buffers backend)
-    (map-kernel-inputs #'wait-for-buffer kernel)
+    (map-kernel-inputs (lambda (buffer) (wait-for-buffer buffer backend)) kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
       (run-compiled-function (compile-kernel kernel backend) arrays))
-    (record-corresponding-event kernel)))
+    (record-corresponding-event kernel (cuda-backend-event-map backend))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
   ;; Loop over domain
