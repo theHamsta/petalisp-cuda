@@ -10,7 +10,8 @@
            :record-cu-event
            :record-corresponding-event
            :wait-for-correspoding-event
-           :with-cuda-stream))
+           :with-cuda-stream
+           :*cu-events*))
 
 (in-package petalisp-cuda.utils.cl-cuda)
 

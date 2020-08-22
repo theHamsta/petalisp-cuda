@@ -28,6 +28,8 @@
                 :*cu-events*
                 :create-corresponding-event
                 :record-corresponding-event)
+  (:import-from :petalisp-cuda.utils.petalisp
+                :pass-as-scalar-argument-p)
   (:export cuda-backend
            cuda-memory-pool
            use-cuda-backend
@@ -146,7 +148,7 @@
                           (create-corresponding-event kernel)
                           (mapcar (lambda (buffer)
                                     (unless (or (cuda-array-p (buffer-storage buffer))
-                                                (petalisp-cuda.jitexecution::pass-as-scalar-argument-p buffer))
+                                                (pass-as-scalar-argument-p buffer))
                                       (create-corresponding-event buffer)))
                                     (kernel-buffers kernel))))
                   (loop for task in tasks do

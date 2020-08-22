@@ -30,7 +30,6 @@
                 :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
-                :cuda-array-event
                 :device-ptr
                 :make-cuda-array
                 :cuda-array-p)
@@ -39,6 +38,8 @@
   (:import-from :petalisp-cuda.utils.cl-cuda
                 :record-corresponding-event
                 :wait-for-correspoding-event)
+  (:import-from :petalisp-cuda.utils.petalisp
+                :pass-as-scalar-argument-p)
   (:export :compile-kernel
            :execute-kernel))
 
@@ -75,13 +76,6 @@
                                (preferred-block-size backend)
                                (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
-(defun pass-as-scalar-argument-p (buffer)
-  (and (scalar-buffer-p buffer)
-       (arrayp (buffer-storage buffer))
-       ; we pass the arguments with a pointer array right now
-       ; and all are types are 8 bytes or smaller
-       (= 8 (cffi:foreign-type-size :pointer))))
-
 (defun generate-kernel-parameters (buffers)
   (mapcar (lambda (buffer idx)
             (list (format-symbol t "buffer-~A" idx)
@@ -91,9 +85,6 @@
                       (cl-cuda.lang.type:array-type dtype 1)))))
           buffers
           (iota (length buffers))))
-
-(defun scalar-buffer-p (buffer)
-  (= 0 (shape-rank (buffer-shape buffer))))
 
 (defun upload-buffers-to-gpu (buffers backend)
   (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))

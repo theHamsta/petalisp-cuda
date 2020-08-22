@@ -5,20 +5,12 @@
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp.core
                 :rank)
-  (:import-from :alexandria
-                :when-let)
-  (:import-from :cl-cuda.api.timer
-                :create-cu-event
-                :destroy-cu-event)
-  (:import-from :petalisp-cuda.utils.cl-cuda
-                :record-cu-event)
   (:export :make-cuda-array
            :cuda-array
            :cuda-array-shape
            :cuda-array-type
            :cuda-array-from-lisp
            :cuda-array-memory-block
-           :cuda-array-event
            :free-cuda-array
            :copy-memory-block-to-lisp
            :copy-cuda-array-to-lisp
@@ -52,7 +44,7 @@
 
 ; TODO: generalize to (memory-block memory-layout) ?
 (defstruct (cuda-array (:constructor %make-cuda-array))
-  memory-block shape strides event)
+  memory-block shape strides)
 
 (declaim (inline nd-iter))
 (defiter nd-iter (shape)
@@ -74,38 +66,33 @@
                    (loop-finish)))))))
 
 ;TODO: redo this with allocator type
-(defgeneric make-cuda-array (shape dtype &optional strides alloc-function cu-event)
-  (:method ((array array) dtype &optional strides alloc-function cu-event)
-    (cuda-array-from-lisp array dtype strides alloc-function cu-event))
+(defgeneric make-cuda-array (shape dtype &optional strides alloc-function)
+  (:method ((array array) dtype &optional strides alloc-function)
+    (cuda-array-from-lisp array dtype strides alloc-function))
   ;; from raw shape
-  (:method ((shape list) dtype &optional strides alloc-function cu-event)
+  (:method ((shape list) dtype &optional strides alloc-function)
     (let ((alloc-function (or alloc-function
                               #'cl-cuda:alloc-memory-block)))
       (multiple-value-bind (size strides) (mem-layout-from-shape shape strides)
         (%make-cuda-array :memory-block (funcall alloc-function dtype size)
                           :shape shape
-                          :strides strides
-                          :event cu-event))))
+                          :strides strides))))
   ;; from raw petalisp:shape
-  (:method ((shape petalisp:shape) dtype &optional strides alloc-function cu-event)
+  (:method ((shape petalisp:shape) dtype &optional strides alloc-function)
     (let ((dimensions (mapcar #'petalisp:range-size (petalisp:shape-ranges shape))))
-      (make-cuda-array dimensions dtype strides alloc-function cu-event))))
+      (make-cuda-array dimensions dtype strides alloc-function))))
 
-(defun cuda-array-from-lisp (lisp-array dtype &optional strides alloc-function event)
+(defun cuda-array-from-lisp (lisp-array dtype &optional strides alloc-function)
   (let* ((shape (array-dimensions lisp-array))
-         (event (or event (create-cu-event)))
-         (cuda-array (make-cuda-array shape dtype strides alloc-function event)))
-    (copy-lisp-to-cuda-array lisp-array cuda-array)
-    (record-cu-event event)))
+         (cuda-array (make-cuda-array shape dtype strides alloc-function)))
+    (copy-lisp-to-cuda-array lisp-array cuda-array)))
 
 (defun free-cuda-array (array &optional free-function)
   ;TODO: redo this with allocator type
   (let ((free-function (or free-function
                            #'cl-cuda:free-memory-block)))
     (funcall free-function (cuda-array-memory-block array))
-    (setf (cuda-array-memory-block array) nil))
-  (when-let (event (cuda-array-event array))
-    (destroy-cu-event event)))
+    (setf (cuda-array-memory-block array) nil)))
 
 
 (defun cuda-array-aref (array indices)

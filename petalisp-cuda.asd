@@ -18,7 +18,8 @@
                "let-plus")
   :components ((:module "src/utils"
                 :components
-                ((:file "cl-cuda")))
+                ((:file "cl-cuda")
+                 (:file "petalisp")))
                (:module "src/memory"
                 :components
                 ((:file "cuda-array")
