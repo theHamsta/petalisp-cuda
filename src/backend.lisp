@@ -45,7 +45,7 @@
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* nil)
-(defparameter *single-threaded* nil)
+(defparameter *single-threaded* t)
 (defparameter *single-stream* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
