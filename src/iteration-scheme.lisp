@@ -41,8 +41,8 @@
          (block-shape '())
          (rank (shape-rank iteration-shape)))
     (dotimes (i rank)
-      (push (range 0 0) block-shape))
-    (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range 0 (1- range-size)))) xyz block-shape-as-list)
+      (push (range 0) block-shape))
+    (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range range-size))) xyz block-shape-as-list)
     (make-instance 'block-iteration-scheme
                    :shape iteration-shape
                    :xyz-dimensions xyz
@@ -78,7 +78,7 @@
                                         (z '(+ thread-idx-z (* block-idx-z block-dim-z)))))))))
        ;; return out-of-bounds threads
        ,@(loop for dim-idx in xyz
-               collect `(if (> ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
+               collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
                             (return)))
        ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
        ;; and append kernel-body
@@ -122,5 +122,5 @@
             (member dim-idx xyz))
         body
         `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
-          ((> ,dim-symbol ,(range-end dim-range)))
+          ((>= ,dim-symbol ,(range-end dim-range)))
           ,body))))
