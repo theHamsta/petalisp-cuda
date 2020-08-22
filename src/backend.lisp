@@ -16,6 +16,7 @@
                 :ntype-cuda-array)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array
+                :cuda-array-p
                 :cuda-array-type
                 :type-from-cl-cuda-type)
   (:import-from :cl-cuda.lang.type
@@ -23,7 +24,10 @@
                 :int
                 :double)
   (:import-from :petalisp-cuda.utils.cl-cuda
-                :with-cuda-stream)
+                :with-cuda-stream
+                :*cu-events*
+                :create-corresponding-event
+                :record-corresponding-event)
   (:export cuda-backend
            cuda-memory-pool
            use-cuda-backend
@@ -35,9 +39,7 @@
 (in-package :petalisp-cuda.backend)
 
 (defparameter *silence-cl-cuda* t)
-(defparameter *transfer-back-to-lisp* t)
-(defvar *kernel-events*)
-(defvar *kernel-events-lock*)
+(defparameter *transfer-back-to-lisp* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -132,19 +134,29 @@
   (let* ((memory-pool (cuda-memory-pool backend))
          (worker-pool (cuda-backend-worker-pool backend))
          (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
-         (*kernel-events* (make-hash-table))
-         (*kernel-events-lock* (bt:make-lock))
+         (*cu-events* (make-hash-table))
          (rtn (petalisp.scheduler:schedule-on-workers
                 lazy-arrays
                 (worker-pool-size worker-pool)
                 ;; Execute.
                 (lambda (tasks)
+                  ;; Ensure all kernels and buffers have events to wait for
+                  (loop for task in tasks do
+                        (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                          (create-corresponding-event kernel)
+                          (mapcar (lambda (buffer)
+                                    (unless (or (cuda-array-p (buffer-storage buffer))
+                                                (petalisp-cuda.jitexecution::pass-as-scalar-argument-p buffer))
+                                      (create-corresponding-event buffer)))
+                                    (kernel-buffers kernel))))
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
                           (worker-pool-enqueue
                             (lambda (worker-id)
+                              (declare (ignore worker-id))
                               (with-cuda-backend-magic backend
-                                (execute-kernel kernel backend)))
+                                (let ((*cu-events* *cu-events*))
+                                 (execute-kernel kernel backend))))
                             worker-pool))))
                 ;; Barrier. (synchronize with default stream)
                 (lambda () ())
@@ -165,7 +177,7 @@
                         (setf (buffer-storage buffer) nil)
                         (when (buffer-reusablep buffer)
                           (memory-pool-free memory-pool storage)))))))))
-    (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values *kernel-events*))
+    (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values *cu-events*))
     (cl-cuda.api.context:synchronize-context)
     rtn))
 
