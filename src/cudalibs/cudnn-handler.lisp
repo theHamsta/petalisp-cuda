@@ -46,13 +46,13 @@
       (cffi:mem-ref cudnn-handle-ptr :pointer))))
 
 (cl:defun finalize-cudnn-handler (cudnn-handler)
-  (cl:progn 
-      (clear-foreign-hashtable (tensor-descriptors cudnn-handler) #'cudnnDestroyTensorDescriptor)
-      (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
-      (cl-cuda:free-device-memory (workspace cudnn-handler))
-      (cl:setf (workspace cudnn-handler) nil)
-      (cl:setf (workspace-size cudnn-handler) 0)
-      (cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler))))))
+  (clear-foreign-hashtable (tensor-descriptors cudnn-handler) #'cudnnDestroyTensorDescriptor)
+  (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
+  (alexandria:when-let ((workspace-mem (workspace cudnn-handler)))
+    (cl-cuda:free-device-memory workspace-mem))
+  (cl:setf (workspace cudnn-handler) nil)
+  (cl:setf (workspace-size cudnn-handler) 0)
+  (cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler)))))
 
 (cl:defun cudnn-type (type)
   (trivia:match type
