@@ -28,6 +28,8 @@
                 :*cu-events*
                 :create-corresponding-event
                 :record-corresponding-event)
+  (:import-from :cl-cuda.driver-api
+                :cu-stream-wait-event)
   (:import-from :petalisp-cuda.utils.petalisp
                 :pass-as-scalar-argument-p)
   (:export cuda-backend
@@ -42,6 +44,7 @@
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* nil)
+(defparameter *single-threaded* t)
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -53,8 +56,11 @@
                 cl-cuda.api.nvcc:*nvcc-options*
                 (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
      (petalisp-cuda.cudalibs::cuCtxPushCurrent_v2 cl-cuda:*cuda-context*)
-     (with-cuda-stream (cl-cuda:*cuda-stream*)
-       ,@body)))
+         (if *single-threaded*
+             (let ((cl-cuda:*cuda-stream* (cffi:null-pointer)))
+               ,@body)
+             (with-cuda-stream (cl-cuda:*cuda-stream*)
+               ,@body))))
 
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
@@ -150,16 +156,18 @@
                                     (unless (or (cuda-array-p (buffer-storage buffer))
                                                 (pass-as-scalar-argument-p buffer))
                                       (create-corresponding-event buffer)))
-                                    (kernel-buffers kernel))))
+                                  (kernel-buffers kernel))))
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (worker-pool-enqueue
-                            (lambda (worker-id)
-                              (declare (ignore worker-id))
+                          (if *single-threaded*
                               (with-cuda-backend-magic backend
-                                (let ((*cu-events* *cu-events*))
-                                 (execute-kernel kernel backend))))
-                            worker-pool))))
+                                (execute-kernel kernel backend))
+                              (worker-pool-enqueue
+                                (lambda (worker-id)
+                                  (declare (ignore worker-id))
+                                  (with-cuda-backend-magic backend
+                                    (execute-kernel kernel backend)))
+                                worker-pool)))))
                 ;; Barrier. (synchronize with default stream)
                 (lambda () ())
                 ;; Allocate.
@@ -179,6 +187,7 @@
                         (setf (buffer-storage buffer) nil)
                         (when (buffer-reusablep buffer)
                           (memory-pool-free memory-pool storage)))))))))
+    (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values *cu-events*))
     (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values *cu-events*))
     (cl-cuda.api.context:synchronize-context)
     rtn))
