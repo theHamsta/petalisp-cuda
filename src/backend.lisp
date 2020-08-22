@@ -44,7 +44,7 @@
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* nil)
-(defparameter *single-threaded* t)
+(defparameter *single-threaded* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -159,7 +159,7 @@
                                   (kernel-buffers kernel))))
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (if *single-threaded*
+                          (if t ; TODO: only multiple streams single thread works right now
                               (with-cuda-backend-magic backend
                                 (execute-kernel kernel backend))
                               (worker-pool-enqueue
@@ -168,7 +168,7 @@
                                   (with-cuda-backend-magic backend
                                     (execute-kernel kernel backend)))
                                 worker-pool)))))
-                ;; Barrier. (synchronize with default stream)
+                ;; Barrier.
                 (lambda () ())
                 ;; Allocate.
                 (lambda (buffer)
@@ -221,7 +221,6 @@
                      (cl-cuda:destroy-cuda-context context?) 
                      (setf (backend-context backend) nil))))
   (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
-
 
 (defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
   (change-class instance (class-of replacement)
