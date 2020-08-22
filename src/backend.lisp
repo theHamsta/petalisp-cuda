@@ -154,7 +154,7 @@
                   ;; Ensure all kernels and buffers have events to wait for
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (create-corresponding-event kernel)
+                          (create-corresponding-event kernel event-map)
                           (mapcar (lambda (buffer)
                                     (unless (or (cuda-array-p (buffer-storage buffer))
                                                 (pass-as-scalar-argument-p buffer))
