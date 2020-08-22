@@ -178,9 +178,8 @@
 (defmethod petalisp.core:shape ((array cuda-array))
   (let* ((shape (cuda-array-shape array))
          (rank (length shape)))
-    (petalisp.core::%make-shape
-      (mapcar (lambda (s) (petalisp.core:range s)) shape)
-      rank)))
+    (petalisp.core::make-shape
+      (mapcar (lambda (s) (petalisp.core:range s)) shape))))
 
 (defparameter *max-printing-length* 5)
 
