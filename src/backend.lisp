@@ -44,7 +44,8 @@
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* nil)
-(defparameter *single-threaded* nil)
+(defparameter *single-threaded* t)
+(defparameter *single-stream* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -56,7 +57,7 @@
                 cl-cuda.api.nvcc:*nvcc-options*
                 (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
      (petalisp-cuda.cudalibs::cuCtxPushCurrent_v2 cl-cuda:*cuda-context*)
-         (if *single-threaded*
+         (if *single-stream*
              (let ((cl-cuda:*cuda-stream* (cffi:null-pointer)))
                ,@body)
              (with-cuda-stream (cl-cuda:*cuda-stream*)
@@ -159,7 +160,7 @@
                                   (kernel-buffers kernel))))
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (if t ; TODO: only multiple streams single thread works right now
+                          (if *single-threaded* ; TODO: only multiple streams single thread works right now
                               (with-cuda-backend-magic backend
                                 (execute-kernel kernel backend))
                               (worker-pool-enqueue
