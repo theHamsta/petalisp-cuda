@@ -121,7 +121,7 @@
 
 (defmethod petalisp.core:compute-on-backend ((lazy-arrays list) (backend cuda-backend))
   (let* ((collapsing-transformations
-           (mapcar (alexandria:compose #'collapsing-transformation #'shape)
+           (mapcar (alexandria:compose #'collapsing-transformation #'array-shape)
                    lazy-arrays))
          (immediates
            (petalisp.core:compute-immediates
@@ -132,7 +132,7 @@
           for immediate in immediates
           do (petalisp.core:replace-lazy-array
                lazy-array
-               (petalisp.core:lazy-reshape immediate (shape lazy-array) collapsing-transformation)))
+               (petalisp.core:lazy-reshape immediate (array-shape lazy-array) collapsing-transformation)))
     (with-cuda-backend-magic backend
       (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
                                                          (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
@@ -199,7 +199,7 @@
 (defclass cuda-immediate (petalisp.core:immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
    (%ntype :initarg :ntype :initform nil :accessor petalisp.core:element-ntype)
-   (%shape :initarg :shape :initform nil :accessor petalisp.core:shape)
+   (%shape :initarg :shape :initform nil :accessor petalisp.core:array-shape)
    (%storage :initarg :storage :accessor petalisp.core:storage)))
 
 (defun make-cuda-immediate (cu-array &optional reusablep)
@@ -230,4 +230,4 @@
   (change-class instance (class-of replacement)
     :storage (storage replacement)
     :ntype (petalisp.core:element-ntype replacement)
-    :shape (shape replacement)))
+    :shape (array-shape replacement)))
