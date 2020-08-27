@@ -40,10 +40,12 @@
            preferred-block-size
            execute-kernel
            cuda-backend-event-map
-           *transfer-back-to-lisp*))
+           *transfer-back-to-lisp*
+           with-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
 (defparameter *silence-cl-cuda* t)
+(defparameter *cuda-backend* nil)
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
@@ -84,12 +86,32 @@
 
 (defun use-cuda-backend ()
   (let ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
-   (if (typep petalisp:*backend* 'cuda-backend)
+   (if (cuda-backend-p petalisp:*backend*)
       petalisp:*backend*
       (progn 
         (when petalisp:*backend*
           (petalisp.core:delete-backend petalisp:*backend*))
-        (setq petalisp:*backend* (make-instance 'cuda-backend))))))
+        (setq petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend)))))))
+
+(defmacro with-cuda-backend-raii (&body body)
+  `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
+          (petalisp:*backend* (make-instance 'cuda-backend))
+          (*transfer-back-to-lisp* T)
+          (result (unwind-protect
+                      (progn
+                        ,@body)
+                    (petalisp.core:delete-backend petalisp:*backend*))))
+     result))
+
+(defmacro with-cuda-backend (&body body)
+  `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
+          (backend (or *cuda-backend* (make-instance 'cuda-backend)))
+          (petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend)))
+          (*transfer-back-to-lisp* T))
+     (unless *cuda-backend*
+       (setq *cuda-backend* backend))
+     (progn
+       ,@body)))
 
 (defclass cuda-backend (petalisp.core:backend)
   ((backend-context :initform nil
@@ -108,6 +130,12 @@
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
    (event-map :initform (make-hash-table) :accessor cuda-backend-event-map)))
+
+(defgeneric cuda-backend-p (thing))
+(defmethod cuda-backend-p ((thing T))
+  nil)
+(defmethod cuda-backend-p ((thing cuda-backend))
+  T)
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
@@ -152,7 +180,7 @@
                 (worker-pool-size worker-pool)
                 ;; Execute.
                 (lambda (tasks)
-                  ;; Ensure all kernels and buffers have events to wait for
+                  ;; Ensure all kernels and buffers to be uploaded have events to wait for
                   (loop for task in tasks do
                         (let* ((kernel (petalisp.scheduler:task-kernel task)))
                           (create-corresponding-event kernel event-map)
@@ -219,11 +247,11 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
-  (let ((context? (backend-context backend)))
+  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))
+  (let ((context? nil #|(backend-context backend)|#))
     (when context? (progn
                      (cl-cuda:destroy-cuda-context context?) 
-                     (setf (backend-context backend) nil))))
-  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
+                     (setf (backend-context backend) nil)))))
 
 (defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
   (change-class instance (class-of replacement)
