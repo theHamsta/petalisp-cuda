@@ -198,7 +198,6 @@
 
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
-   (%ntype :initarg :ntype :initform nil :accessor petalisp.core:element-ntype)
    (%storage :initarg :storage :accessor petalisp.core:storage)))
 
 (defun make-cuda-immediate (cu-array &optional reusablep)
