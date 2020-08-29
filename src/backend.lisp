@@ -47,22 +47,23 @@
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
+(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "-v"))
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
           (cl-cuda:*cuda-device* (backend-device-id ,backend))
           (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
           (cl-cuda.api.nvcc:*nvcc-options*
-            (if (cl-cuda.api.context::arch-exists-p
-                  cl-cuda.api.nvcc:*nvcc-options*)
+            (if (cl-cuda.api.context::arch-exists-p cl-cuda.api.nvcc:*nvcc-options*)
                 cl-cuda.api.nvcc:*nvcc-options*
                 (cl-cuda.api.context::append-arch cl-cuda.api.nvcc:*nvcc-options* cl-cuda:*cuda-device*))))
+     (nconc cl-cuda:*nvcc-options* *nvcc-extra-options*)
      (petalisp-cuda.cudalibs::cuCtxPushCurrent_v2 cl-cuda:*cuda-context*)
-         (if *single-stream*
-             (let ((cl-cuda:*cuda-stream* (cffi:null-pointer)))
-               ,@body)
-             (with-cuda-stream (cl-cuda:*cuda-stream*)
-               ,@body))))
+     (if *single-stream*
+         (let ((cl-cuda:*cuda-stream* (cffi:null-pointer)))
+           ,@body)
+         (with-cuda-stream (cl-cuda:*cuda-stream*)
+           ,@body))))
 
 ; push missing cffi types
 (push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
