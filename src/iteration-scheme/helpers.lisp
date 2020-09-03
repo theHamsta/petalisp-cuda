@@ -46,3 +46,14 @@
         `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
           ((>= ,dim-symbol ,(range-end dim-range)))
           ,body))))
+
+(defun linearize-instruction-transformation (instruction &optional buffer)
+  (let* ((transformation (instruction-transformation instruction))
+         (input-rank (transformation-input-rank transformation))
+         (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (make-list input-rank :initial-element 1)))
+         (index-space (get-counter-vector input-rank) )
+         (transformed (transform index-space transformation)))
+    (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
+      (if (= (length rtn) 1)
+          0 ; '+ with zero arguments
+          rtn))))

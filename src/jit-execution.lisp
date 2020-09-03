@@ -27,7 +27,9 @@
                 :call-parameters
                 :iteration-code
                 :select-iteration-scheme
-                :get-counter-vector)
+                :get-counter-vector
+                :linearize-instruction-transformation
+                :iteration-scheme-buffer-access)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
                 :device-ptr
@@ -202,19 +204,9 @@
                          (buffer->kernel-parameter (make-buffer->kernel-parameter buffers kernel-arguments)))
                     ;; kernel body
                     (generate-instructions (sort instructions #'< :key #'instruction-number)
-                                           buffer->kernel-parameter))))
+                                           buffer->kernel-parameter
+                                           iteration-scheme))))
 
-(defun linearize-instruction-transformation (instruction &optional buffer)
-  (let* ((transformation (instruction-transformation instruction))
-         (input-rank (transformation-input-rank transformation))
-         (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (make-list input-rank :initial-element 1)))
-         (index-space (get-counter-vector input-rank) )
-         (transformed (transform index-space transformation)))
-    (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
-      ;; Return 0 instead of '(+)
-      (if (= (length rtn) 1)
-          0
-          rtn))))
 
 (defun get-instruction-symbol (instruction)
   (format-symbol t "$~A"
@@ -229,14 +221,14 @@
 (defun kernel-parameter-type (kernel-parameter)
   (cadr kernel-parameter))
 
-(defun buffer-access (buffer buffer->kernel-parameter instruction)
+(defun buffer-access (buffer buffer->kernel-parameter instruction iteration-scheme)
   (assert (functionp buffer->kernel-parameter))
   (let ((kernel-parameter (kernel-parameter-name (funcall buffer->kernel-parameter buffer))))
     (if (pass-as-scalar-argument-p buffer)
         kernel-parameter
-        `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer)))))
+        (iteration-scheme-buffer-access iteration-scheme instruction buffer kernel-parameter))))
 
-(defun generate-instructions (instructions buffer->kernel-parameter)
+(defun generate-instructions (instructions buffer->kernel-parameter iteration-scheme)
   (if instructions
       (let* ((instruction (pop instructions))
              ($i (get-instruction-symbol instruction)))
@@ -248,10 +240,11 @@
                (set
                  ,(buffer-access buffer
                                  buffer->kernel-parameter
-                                 instruction)
+                                 instruction
+                                 iteration-scheme)
                  ,(get-instruction-symbol (first (instruction-inputs instruction))))
                ;; Rest
-               ,(generate-instructions instructions buffer->kernel-parameter)))
+               ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme)))
           ;; Instructions that produce a result in C code
           `(let ((,$i ,(etypecase instruction
                          ;; Call instructions
@@ -268,9 +261,10 @@
                          (load-instruction
                            (buffer-access (load-instruction-buffer instruction)
                                           buffer->kernel-parameter
-                                          instruction)))))
+                                          instruction
+                                          iteration-scheme)))))
              ;; Rest
-             ,(generate-instructions instructions buffer->kernel-parameter))))
+             ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme))))
       '(progn)))
 
 (defun make-buffer->kernel-parameter (buffers kernel-parameters)
