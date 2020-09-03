@@ -26,7 +26,7 @@
   (:import-from :petalisp-cuda.iteration-scheme
                 :call-parameters
                 :iteration-code
-                :make-block-iteration-scheme
+                :select-iteration-scheme
                 :get-counter-vector)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
@@ -72,9 +72,9 @@
 (defgeneric generate-iteration-scheme (kernel backend))
 
 (defmethod generate-iteration-scheme (kernel backend)
-  (make-block-iteration-scheme (kernel-iteration-space kernel)
-                               (preferred-block-size backend)
-                               (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
+  (select-iteration-scheme (kernel-iteration-space kernel)
+                           (preferred-block-size backend)
+                           (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
 (defun generate-kernel-parameters (buffers)
   (mapcar (lambda (buffer idx)

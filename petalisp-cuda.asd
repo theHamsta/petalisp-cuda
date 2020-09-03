@@ -29,12 +29,18 @@
                 ((:file "cuda")
                  (:file "cudnn")
                  (:file "cudnn-handler")))
+               (:module "src/iteration-scheme"
+                :components
+                ((:file "package")
+                 (:file "helpers")
+                 (:file "block-iteration-scheme")
+                 (:file "slow-coordinate-transposed-scheme")
+                 (:file "selection")))
                (:module "src"
                 :components
                 ((:file "device")
                  (:file "type-conversion")
                  (:file "backend")
-                 (:file "iteration-scheme")
                  (:file "jit-execution")
                  (:file "package")))))
 
