@@ -1,8 +1,11 @@
 (defpackage petalisp-cuda.iteration-scheme
   (:use :cl
         :petalisp.core
-        :petalisp.ir)
+        :petalisp.ir
+        :cl-cuda)
   (:import-from :alexandria :iota :format-symbol)
+  (:import-from :petalisp-cuda.memory.type-conversion
+                :cl-cuda-type-from-buffer)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides)
   (:import-from :cl-cuda :block-dim-x :block-dim-y :block-dim-z

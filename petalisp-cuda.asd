@@ -23,6 +23,7 @@
                (:module "src/memory"
                 :components
                 ((:file "cuda-array")
+                 (:file "type-conversion")
                  (:file "memory-pool")))
                (:module "src/cudalibs"
                 :components
@@ -39,7 +40,6 @@
                (:module "src"
                 :components
                 ((:file "device")
-                 (:file "type-conversion")
                  (:file "backend")
                  (:file "jit-execution")
                  (:file "package")))))

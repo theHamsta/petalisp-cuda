@@ -9,7 +9,7 @@
                 :make-worker-pool
                 :worker-pool-size
                 :worker-pool-enqueue)
-  (:import-from :petalisp-cuda.type-conversion
+  (:import-from :petalisp-cuda.memory.type-conversion
                 :cl-cuda-type-from-buffer
                 :ntype-cuda-array
                 :ntype-from-cl-cuda-type

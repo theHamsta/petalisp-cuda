@@ -8,7 +8,8 @@
         :trivia
         :cl-cuda
         :petalisp-cuda.memory.memory-pool)
-  (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
+  (:import-from :cl-cuda.api.kernel-manager
+                :make-kernel-manager
                 :kernel-manager-define-function
                 :ensure-kernel-function-loaded
                 :kernel-manager-module-handle)
@@ -35,7 +36,7 @@
                 :device-ptr
                 :make-cuda-array
                 :cuda-array-p)
-  (:import-from :petalisp-cuda.type-conversion
+  (:import-from :petalisp-cuda.memory.type-conversion
                 :cl-cuda-type-from-buffer)
   (:import-from :petalisp-cuda.utils.cl-cuda
                 :record-corresponding-event
@@ -74,7 +75,7 @@
 (defgeneric generate-iteration-scheme (kernel backend))
 
 (defmethod generate-iteration-scheme (kernel backend)
-  (select-iteration-scheme (kernel-iteration-space kernel)
+  (select-iteration-scheme kernel
                            (preferred-block-size backend)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 

@@ -1,4 +1,4 @@
-(defpackage :petalisp-cuda.type-conversion
+(defpackage :petalisp-cuda.memory.type-conversion
   (:use :cl)
   (:import-from petalisp-cuda.memory.cuda-array :cuda-array-type
                                                 :type-from-cl-cuda-type)
@@ -6,7 +6,7 @@
            :cl-cuda-type-from-buffer
            :ntype-from-cl-cuda-type
            :ntype-cuda-array))
-(in-package :petalisp-cuda.type-conversion)
+(in-package :petalisp-cuda.memory.type-conversion)
 
 (defun cl-cuda-type-from-ntype (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype
