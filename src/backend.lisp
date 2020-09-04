@@ -43,7 +43,7 @@
            *transfer-back-to-lisp*))
 (in-package :petalisp-cuda.backend)
 
-(defparameter *silence-cl-cuda* t)
+(defparameter *silence-cl-cuda* nil)
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
