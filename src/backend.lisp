@@ -47,7 +47,7 @@
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
-(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "-v"))
+(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--extra-device-vectorization"))
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -66,14 +66,14 @@
            ,@body))))
 
 ; push missing cffi types
-(push '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
-(push '(int16 :int16 "int16_t") cl-cuda.lang.type::+scalar-types+)
-(push '(int64 :int64 "int64_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(int8 :int8 "int8_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(int16 :int16 "int16_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(int64 :int64 "int64_t") cl-cuda.lang.type::+scalar-types+)
 
-(push '(uint8 :uint8 "uint8_t") cl-cuda.lang.type::+scalar-types+)
-(push '(uint16 :uint16 "uint16_t") cl-cuda.lang.type::+scalar-types+)
-(push '(uint32 :uint32 "uint32_t") cl-cuda.lang.type::+scalar-types+)
-(push '(uint64 :uint64 "uint64_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(uint8 :uint8 "uint8_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(uint16 :uint16 "uint16_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(uint32 :uint32 "uint32_t") cl-cuda.lang.type::+scalar-types+)
+(pushnew '(uint64 :uint64 "uint64_t") cl-cuda.lang.type::+scalar-types+)
 
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'max)
       '(((float float) float nil "fmaxf")
