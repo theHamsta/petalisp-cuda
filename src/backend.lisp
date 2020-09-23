@@ -47,7 +47,7 @@
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
-(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--extra-device-vectorization"))
+(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
