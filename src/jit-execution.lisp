@@ -30,7 +30,8 @@
                 :select-iteration-scheme
                 :get-counter-vector
                 :linearize-instruction-transformation
-                :iteration-scheme-buffer-access)
+                :iteration-scheme-buffer-access
+                :iteration-scheme-prepare-instruction)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
                 :device-ptr
@@ -114,6 +115,8 @@
     ((cons (cons 'declare _) b) (remove-lispy-stuff b))
     ; unary +
     ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
+    ; unary progn
+    ((list 'progn a) (remove-lispy-stuff a))
     ; 1+/1-
     ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
     ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))
@@ -247,25 +250,27 @@
                ;; Rest
                ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme)))
           ;; Instructions that produce a result in C code
-          `(let ((,$i ,(etypecase instruction
-                         ;; Call instructions
-                         (call-instruction
-                           (let ((arguments (mapcar #'get-instruction-symbol (instruction-inputs instruction))))
-                             (multiple-value-bind (cuda-function inlined-expression) (map-call-operator (call-instruction-operator instruction) arguments)
-                               (if cuda-function
-                                   `(,cuda-function ,@arguments)
-                                   inlined-expression))))
-                         ;; Iref instructions
-                         (iref-instruction
-                           (linearize-instruction-transformation instruction))
-                         ;; Load instructions
-                         (load-instruction
-                           (buffer-access (load-instruction-buffer instruction)
-                                          buffer->kernel-parameter
-                                          instruction
-                                          iteration-scheme)))))
-             ;; Rest
-             ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme))))
+          `(progn
+             ,@(iteration-scheme-prepare-instruction iteration-scheme instruction buffer->kernel-parameter)
+             (let ((,$i ,(etypecase instruction
+                           ;; Call instructions
+                           (call-instruction
+                             (let ((arguments (mapcar #'get-instruction-symbol (instruction-inputs instruction))))
+                               (multiple-value-bind (cuda-function inlined-expression) (map-call-operator (call-instruction-operator instruction) arguments)
+                                 (if cuda-function
+                                     `(,cuda-function ,@arguments)
+                                     inlined-expression))))
+                           ;; Iref instructions
+                           (iref-instruction
+                             (linearize-instruction-transformation instruction))
+                           ;; Load instructions
+                           (load-instruction
+                             (buffer-access (load-instruction-buffer instruction)
+                                            buffer->kernel-parameter
+                                            instruction
+                                            iteration-scheme)))))
+               ;; Rest
+               ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme)))))
       '(progn)))
 
 (defun make-buffer->kernel-parameter (buffers kernel-parameters)

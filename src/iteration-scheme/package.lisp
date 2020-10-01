@@ -15,7 +15,8 @@
            :call-parameters
            :iteration-code
            :get-counter-symbol
-           :linearize-instruction-transformation))
+           :linearize-instruction-transformation
+           :iteration-scheme-prepare-instruction ))
 
 (in-package petalisp-cuda.iteration-scheme)
 
@@ -30,6 +31,8 @@
 (defgeneric call-parameters (iteration-scheme))
 (defgeneric iteration-code (iteration-scheme kernel-body))
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
+(defgeneric iteration-scheme-prepare-instruction (iteration-scheme instruction buffer->kernel-parameter))
+(defgeneric iterminate-of-bounds-threads-p (iteration-scheme))
 
 (defun linearize-instruction-transformation (instruction &optional buffer)
   (let* ((transformation (instruction-transformation instruction))
@@ -45,3 +48,9 @@
 (defmethod iteration-scheme-buffer-access ((iteration-scheme iteration-scheme) instruction buffer kernel-parameter)
   ;; We can always do a uncached memory access
   `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer)))
+
+(defmethod terminate-of-bounds-threads-p ((iteration-scheme iteration-scheme))
+  t)
+
+(defmethod iteration-scheme-prepare-instruction ((iteration-scheme iteration-scheme) instruction buffer->kernel-parameter)
+  )

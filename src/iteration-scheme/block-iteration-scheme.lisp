@@ -29,13 +29,11 @@
                                         (y '(+ thread-idx-y (* block-idx-y block-dim-y)))
                                         (z '(+ thread-idx-z (* block-idx-z block-dim-z)))))))))
        ;; return out-of-bounds threads
-       ,@(when (terminate-of-bounds-threads-p iteration-scheme)
-           (loop for dim-idx in xyz
-                 collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
-                              (return))))
+       ,@(loop for dim-idx in xyz
+               collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
+                            ,(if (terminate-of-bounds-threads-p iteration-scheme)
+                                 `(return)
+                                 `(set out-of-bounds 1))))
        ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
        ;; and append kernel-body
        ,(make-range-loop iteration-ranges 0 xyz kernel-body))))
-
-(defmethod terminate-of-bounds-threads-p ((iteration-scheme slow-coordinate-transposed-scheme))
-  nil)

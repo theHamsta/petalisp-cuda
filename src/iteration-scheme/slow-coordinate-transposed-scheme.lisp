@@ -11,10 +11,14 @@
   (let* ((first-slow-load (first (slow-loads iteration-scheme)))
          (cached-buffer (load-instruction-buffer first-slow-load))
          (block-shape (filtered-block-shape iteration-scheme)))
-   (call-next-method iteration-scheme 
-                    `(with-shared-memory ((shared-mem ,(cl-cuda-type-from-buffer cached-buffer) ,(first block-shape) ,(1+ (second block-shape))))
-                       ,kernel-body))))
+    `(let ((out-of-bounds 0))
+       ,(call-next-method iteration-scheme 
+                          `(with-shared-memory ((shared-mem ,(cl-cuda-type-from-buffer cached-buffer) ,(first block-shape) ,(1+ (second block-shape))))
+                             ,kernel-body)))))
 
 (defmethod iteration-scheme-buffer-access ((iteration-scheme slow-coordinate-transposed-scheme) instruction buffer kernel-parameter)
   ;; else unchached
   (call-next-method iteration-scheme instruction buffer kernel-parameter))
+
+(defmethod iteration-scheme-prepare-instruction ((iteration-scheme slow-coordinate-transposed-scheme) instruction buffer->kernel-parameter)
+  )
