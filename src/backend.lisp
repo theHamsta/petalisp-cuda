@@ -137,9 +137,9 @@
     (with-cuda-backend-magic backend
       (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
                                                          (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
-                                                           (memory-pool-free (cuda-memory-pool backend) (storage immediate))
+                                                           (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate))
                                                            lisp-array))
-                               #'storage)
+                               #'cuda-immediate-storage)
                            immediates)))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
@@ -199,7 +199,7 @@
 
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
-   (%storage :initarg :storage :accessor petalisp.core:storage)))
+   (%storage :initarg :storage :accessor cuda-immediate-storage)))
 
 (defun make-cuda-immediate (cu-array &optional reusablep)
     (check-type cu-array cuda-array)
@@ -216,7 +216,7 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
 
 (defmethod petalisp.core:lisp-datum-from-immediate ((cuda-immediate cuda-immediate))
-  (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (petalisp.core:storage cuda-immediate))) 
+  (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
   (let ((context? (backend-context backend)))
