@@ -6,7 +6,18 @@ A CUDA backend for [[https://github.com/marcoheisig/Petalisp/][Petalisp]]. The p
 
 #+BEGIN_SRC lisp
 (quicklisp:quickload :petalisp-cuda)
+
+;; when you want to use petalisp-cuda for everything
 (petalisp-cuda:use-cuda-backend)
+
+;; when you want to the petalisp-cuda for a specific code section
+(petalisp-cuda:with-cuda-backend
+    ...)
+
+;; with-cuda-backend-raii will free all CUDA resources
+;; and destroy the backend after the calculations
+(petalisp-cuda:with-cuda-backend-raii
+    ...)
 #+END_SRC
 
 ** Requirements
