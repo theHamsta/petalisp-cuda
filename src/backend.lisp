@@ -227,6 +227,6 @@
 
 (defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
   (change-class instance (class-of replacement)
-    :storage (storage replacement)
+    :storage (cuda-immediate-storage replacement)
     :ntype (petalisp.core:element-ntype replacement)
     :shape (array-shape replacement)))
