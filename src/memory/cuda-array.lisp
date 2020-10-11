@@ -76,7 +76,7 @@
     (let ((alloc-function (or alloc-function
                               #'cl-cuda:alloc-memory-block)))
       (multiple-value-bind (size strides) (mem-layout-from-shape shape strides)
-        (%make-cuda-array :memory-block (funcall alloc-function dtype size)
+        (%make-cuda-array :memory-block (funcall alloc-function dtype (max size 1))
                           :shape shape
                           :strides strides))))
   ;; from raw petalisp:shape
