@@ -50,6 +50,7 @@
   :license "GPLv3"
   :depends-on ("petalisp-cuda"
                "petalisp"
+               "petalisp.test-suite"
                "petalisp.core"
                "cl-cuda"
                "array-operations"
