@@ -132,9 +132,11 @@
         (shape (slot-value array 'shape))
         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
     (cl-cuda:sync-memory-block memory-block :device-to-host)
-    (if (c-layout-p array) 
-        (cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block array)) `(:array ,(cuda-array-type array) ,@(cuda-array-shape array)))
-        (aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))))
+    (if shape
+        (if (c-layout-p array) 
+            (cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block array)) `(:array ,(cuda-array-type array) ,@(cuda-array-shape array)))
+            (aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))
+        (cuda-array-aref array '(0)))))
 
 (defun copy-lisp-to-cuda-array-slow-fallback (lisp-array cuda-array)
   (declare (optimize (debug 0)(speed 3)(safety 0)))
