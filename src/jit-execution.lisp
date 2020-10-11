@@ -371,6 +371,12 @@
     ((petalisp.type-inference::short-float-exp) 'exp)
     ((petalisp.type-inference::long-float-exp) 'exp)
 
+    (log 'logf)
+    ((petalisp.type-inference::double-float-ln) 'log)
+    ((petalisp.type-inference::single-float-ln) 'logf)
+    ((petalisp.type-inference::short-float-ln) 'logf)
+    ((petalisp.type-inference::long-float-ln) 'log)
+
     (t (let ((source-form (function-lambda-expression operator)))
          (if source-form
              (let* ((lambda-arguments (nth 1 source-form))
