@@ -47,6 +47,9 @@
 
 (in-package petalisp-cuda.jitexecution)
 
+(defun weird-rational-p (r)
+  (and (rationalp r) (not (integerp r))))
+
 (defun kernel-inputs (kernel)
   (let ((buffers '()))
     (petalisp.ir:map-kernel-inputs
@@ -161,7 +164,9 @@
           (if (arrayp argument)
               (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
                 (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type)
-                      (cffi:convert-to-foreign (aref argument) ffi-type)))
+                      (cffi:convert-to-foreign (if (weird-rational-p (aref argument))
+                                                                     (coerce (aref argument) 'single-float)
+                                                                     (aref argument)) ffi-type)))
               (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
@@ -376,6 +381,8 @@
     ((petalisp.type-inference::single-float-ln) 'logf)
     ((petalisp.type-inference::short-float-ln) 'logf)
     ((petalisp.type-inference::long-float-ln) 'log)
+    (floor 'floor)
+    (ceiling 'ceil)
 
     (t (let ((source-form (function-lambda-expression operator)))
          (if source-form
