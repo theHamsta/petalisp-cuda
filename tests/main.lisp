@@ -1,15 +1,11 @@
-(defpackage petalisp-cuda/tests
-  (:use :cl
-        :petalisp
-        :petalisp.core
-        :petalisp-cuda
-        :cl-cuda
-        :rove)
-  (:import-from :petalisp-cuda.memory.cuda-array :make-cuda-array)
-  (:export :run-tests))
 (in-package :petalisp-cuda/tests)
 
+(petalisp.test-suite:check-package ':petalisp-cuda)
+(petalisp.test-suite:check-package '#:petalisp-cuda.backend)
+(petalisp.test-suite:check-package '#:petalisp-cuda.jitexecution)
 ; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
+
+(defparameter *test-backend* (make-testing-backend))
 
 (deftest test-make-cuda-backend
   (let ((cl-cuda:*show-messages* nil))
@@ -24,6 +20,40 @@
   (let ((cl-cuda:*show-messages* nil))
    (with-cuda (0)
     (make-cuda-array '(10 20) 'float))))
+
+(deftest jacobi-test
+  (with-testing-backend
+    (ok (compute (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5)))))
+
+(deftest jacobi-test-recompile
+  (with-testing-backend
+    (ok (compute (jacobi (ndarray 1) 0.0 1.0 2)))
+    (ok (compute (jacobi (ndarray 2) 0.0 1.0 2)))
+    (ok (compute (jacobi (ndarray 3) 0.0 1.0 2)))
+    (ok (compute (jacobi (ndarray 3) 0.0 1.0 5)))))
+
+(deftest multiple-arguments
+  (with-testing-backend
+    (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
+
+(deftest rbgs-test
+  (with-testing-backend
+    (compute (rbgs (ndarray 1) 0.0 1.0 2))
+    (compute (rbgs (ndarray 2) 0.0 1.0 2))
+    (compute (rbgs (ndarray 3) 0.0 1.0 2))
+    (compute (rbgs (ndarray 3) 0.0 1.0 5))))
+
+(deftest v-cycle-test
+  (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
+  (compute (v-cycle (reshape 1.0 (~ 9 ~ 9)) 0.0 1.0 2 1))
+  (compute (v-cycle (reshape 1.0 (~ 17 ~ 17)) 0.0 1.0 2 1))
+  #+(or)
+  (compute (v-cycle (reshape 1.0 (~ 33 ~ 33)) 0.0 1.0 2 1))
+  #+(or)
+  (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3)))
 
 
 ;(deftest test-descriptor
@@ -55,46 +85,8 @@
                      (assert (equal (row-major-aref foo i) (row-major-aref b i))))))))))
 
 
-(defclass cuda-testing-backend (petalisp.test-suite::testing-backend)
-  ((%cuda-backend
-    :reader cuda-backend
-    :initform (make-instance 'petalisp-cuda.backend:cuda-backend))))
-
-(defun make-testing-backend ()
-  (make-instance 'cuda-testing-backend))
-
-(defmethod compute-immediates ((data-structures list) (testing-backend cuda-testing-backend))
-  (with-accessors ((reference-backend petalisp.test-suite::reference-backend)
-                   (ir-backend petalisp.test-suite::ir-backend)
-                   (native-backend petalisp.test-suite::native-backend)
-                   (cuda-backend cuda-backend)) testing-backend
-    (let ((reference-solutions
-            (compute-immediates data-structures reference-backend))
-          (ir-backend-solutions
-            (compute-immediates data-structures ir-backend))
-          (native-backend-solutions
-            (compute-immediates data-structures native-backend))
-          (cuda-backend-solutions
-            (compute-immediates data-structures cuda-backend)))
-      (petalisp.test-suite::compare-solutions reference-solutions ir-backend-solutions)
-      (petalisp.test-suite::compare-solutions reference-solutions native-backend-solutions)
-      (petalisp.test-suite::compare-solutions reference-solutions cuda-backend-solutions)
-      reference-solutions)))
-
-(defmethod delete-backend ((testing-backend cuda-testing-backend))
-  (delete-backend (cuda-backend testing-backend))
-  (call-next-method))
-
-(defun call-with-testing-backend (thunk)
-  (let ((*backend* (make-testing-backend)))
-    (unwind-protect (funcall thunk)
-      (delete-backend *backend*))))
-
-(defmacro with-testing-backend (&body body)
-  `(call-with-testing-backend (lambda () ,@body)))
-
 (deftest test-petalisp.test-suite
-  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t)
-        (cl-cuda:*show-messages* nil))
-    (with-testing-backend
-      (mapcar (lambda (test) (testing (format nil "~A" test) (petalisp.test-suite:run-tests test))) (petalisp.test-suite::all-tests)))))
+  (with-testing-backend
+    (mapcar (lambda (test) (testing (format nil "~A" test) (petalisp.test-suite:run-tests test))) (petalisp.test-suite::all-tests))))
+
+

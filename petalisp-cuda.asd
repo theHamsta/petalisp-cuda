@@ -58,7 +58,9 @@
                "rove")
   :components ((:module "tests"
                 :components
-                ((:file "main"))))
+                ((:file "package")
+                 (:file "testing-backend")
+                 (:file "main"))))
   :description "Test system for petalisp-cuda"
 
   :perform (test-op (op c) (with-standard-io-syntax (symbol-call :rove :run c))))

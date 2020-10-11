@@ -7,10 +7,11 @@ A CUDA backend for [[https://github.com/marcoheisig/Petalisp/][Petalisp]]. The p
 #+BEGIN_SRC lisp
 (quicklisp:quickload :petalisp-cuda)
 
-;; when you want to use petalisp-cuda for everything
+;; use petalisp-cuda as petalisp:*backend*
 (petalisp-cuda:use-cuda-backend)
 
 ;; when you want to the petalisp-cuda for a specific code section
+;; with potential re-use of already allocated CUDA resources
 (petalisp-cuda:with-cuda-backend
     ...)
 
@@ -37,8 +38,7 @@ git clone git@github.com:theHamsta/petalisp-cuda.git
 ** TODOs
 
 - [x] sort indices for fasted dimensions
-- [ ] hash CUDA array strides to recompile correctly with arrays not
-  allocated in C-layout with alternative memory layouts
+- [ ] hash CUDA array strides to recompile correctly with arrays not allocated in C-layout with alternative memory layouts
 - [ ] fix super-slow lisp->native, native->lisp calls
 - [ ] compile kernels not only for fixed iteration spaces
 - [ ] implement reductions with CUDNN
