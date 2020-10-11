@@ -10,6 +10,8 @@
                 :rbgs
                 :v-cycle)
   (:import-from :petalisp-cuda.memory.cuda-array :make-cuda-array)
-  (:import-from :petalisp.test-suite :ndarray)
+  (:import-from :petalisp.test-suite
+                :ndarray
+                :approximately-equal)
   (:export :run-tests))
 (in-package :petalisp-cuda/tests)

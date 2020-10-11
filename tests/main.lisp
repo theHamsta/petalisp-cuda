@@ -55,6 +55,36 @@
   #+(or)
   (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3)))
 
+(defmethod approximately-equal ((a t) (b single-float))
+  (< (abs (- a b)) (* 100 single-float-epsilon)))
+(defmethod approximately-equal ((a single-float) (b t))
+  (< (abs (- a b)) (* 100 single-float-epsilon)))
+(defmethod approximately-equal ((a t) (b double-float))
+  (< (abs (- a b)) (* 100 single-float-double)))
+(defmethod approximately-equal ((a double-float) (b t))
+  (< (abs (- a b)) (* 100 single-float-double)))
+
+(deftest network-test
+  (with-testing-backend
+  (let* ((shape (~ 10))
+         (x1 (make-instance 'parameter :shape shape :element-type 'double-float))
+         (x2 (make-instance 'parameter :shape shape :element-type 'double-float))
+         (v1 (α #'+
+                (α #'coerce (α #'log x1) 'double-float)
+                (α #'* x1 x2)
+                (α #'sin x2)))
+         (network
+           (make-network v1))
+         (g1 (make-instance 'parameter
+               :shape (array-shape v1)
+               :element-type (element-type v1)))
+         (gradient-fn (differentiator (list v1) (list g1)))
+         (gradient-network
+           (make-network
+            (funcall gradient-fn x1)
+            (funcall gradient-fn x2))))
+    (call-network network x1 5d0 x2 1d0)
+    (call-network gradient-network x1 1d0 x2 1d0 g1 1d0))))
 
 ;(deftest test-descriptor
   ;(unless petalisp-cuda.cudalibs::*cudnn-found*
