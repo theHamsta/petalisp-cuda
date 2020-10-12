@@ -40,10 +40,12 @@
     (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
 
 (deftest mixed-culculations
-  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t))
-   (compute
-    (α #'1+ (with-cuda-backend
-             (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
+  (= (compute
+      (α #'1+ (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
+    (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t))
+      (compute
+        (α #'1+ (with-cuda-backend
+                  (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))))))
 
 (deftest mixed-culculations-no-explict-transfer
   (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
