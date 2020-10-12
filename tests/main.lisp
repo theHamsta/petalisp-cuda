@@ -39,6 +39,24 @@
   (with-testing-backend
     (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
 
+(deftest mixed-culculations
+  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t))
+   (compute
+    (α #'1+ (with-cuda-backend
+             (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
+
+(deftest mixed-culculations-no-explict-transfer
+  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
+   (compute
+    (α #'1+ (with-cuda-backend
+             (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
+
+(deftest resume-cuda-calculations
+  (with-cuda-backend
+    (compute
+      (α #'1+ (with-cuda-backend
+                (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
+
 (deftest rbgs-test
   (with-testing-backend
     (compute (rbgs (ndarray 1) 0.0 1.0 2))

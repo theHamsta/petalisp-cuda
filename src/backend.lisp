@@ -106,8 +106,7 @@
 (defmacro with-cuda-backend (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
           (backend (or *cuda-backend* (make-instance 'cuda-backend)))
-          (petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend)))
-          (*transfer-back-to-lisp* T))
+          (petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend))))
      (unless *cuda-backend*
        (setq *cuda-backend* backend))
      (progn
@@ -225,9 +224,14 @@
     (clrhash event-map)
     rtn))
 
+
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
    (%storage :initarg :storage :accessor cuda-immediate-storage)))
+
+(defgeneric cuda-immediate-storage (immediate))
+(defmethod cuda-immediate-storage ((immediate array-immediate))
+  (petalisp.core:array-immediate-storage immediate))
 
 (defun make-cuda-immediate (cu-array &optional reusablep)
     (check-type cu-array cuda-array)
