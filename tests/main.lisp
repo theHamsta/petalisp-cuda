@@ -77,6 +77,11 @@
     (compute
       (α #'floor #(1 2.5 1/2) 2))))
 
+(deftest sqrt-test
+  (with-testing-backend
+    (compute
+      (α #'sqrt 4))))
+
 (deftest reshape-test
   (with-testing-backend
     (compute (reshape 4 (~ 5)))
@@ -166,7 +171,7 @@
         ;(petalisp-cuda.cudalibs::cudnn-reduce-array a b #'+)))))
 
 (deftest test-mem-roundtrip
-  (let ((cl-cuda:*show-messages* t))
+  (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
       (progn
         (let* ((foo (aops:rand* 'single-float '(20 9)))

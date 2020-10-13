@@ -49,7 +49,7 @@
 (defparameter *transfer-back-to-lisp* nil)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
-(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
+(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--expt-relaxed-constexpr" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -89,6 +89,8 @@
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'ceil)
       '(((float) float nil "ceil")
         ((double) double nil "ceil")))
+(setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'sqrt)
+      '(((int) float nil "sqrt")))
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'mod)
       '(((float float) float nil "fmodf")
         ((float int) float nil "fmodf")

@@ -387,6 +387,7 @@
     ((petalisp.type-inference::long-float-ln) 'log)
     (floor 'floor)
     (ceiling 'ceil)
+    (sqrt 'sqrt)
 
     (t (cond
         ((eql operator #'floor) 'floor)
