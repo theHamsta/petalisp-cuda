@@ -66,6 +66,31 @@
     (compute (rbgs (ndarray 3) 0.0 1.0 2))
     (compute (rbgs (ndarray 3) 0.0 1.0 5))))
 
+(deftest lazy-map-test
+  (with-testing-backend
+    (compute
+      (α #'+ 2 3))
+    (compute
+      (α #'+ #(2 3 4) #(5 4 3)))
+    (compute
+      (α #'+ #2A((1 2) (3 4)) #2A((4 3) (2 1))))
+    (compute
+      (α #'floor #(1 2.5 1/2) 2))))
+
+(deftest reshape-test
+  (with-testing-backend
+    (compute (reshape 4 (~ 5)))
+    (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
+    (compute (reshape #(1 2 3 4) (~ 1 3)))
+    (compute (reshape (shape-indices (~ 1 10)) (~ 3 ~ 3)))
+    (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
+    (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
+    (compute
+      (fuse*
+        (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
+        (reshape 9 (τ () (3 4)))))
+    ))
+
 (deftest v-cycle-test
   (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
   (compute (v-cycle (reshape 1.0 (~ 9 ~ 9)) 0.0 1.0 2 1))
@@ -76,13 +101,30 @@
   (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3)))
 
 (defmethod approximately-equal ((a t) (b single-float))
-  (< (abs (- a b)) (* 100 single-float-epsilon)))
+  (< (abs (- a b)) (* 64 single-float-epsilon)))
 (defmethod approximately-equal ((a single-float) (b t))
-  (< (abs (- a b)) (* 100 single-float-epsilon)))
+  (< (abs (- a b)) (* 64 single-float-epsilon)))
 (defmethod approximately-equal ((a t) (b double-float))
-  (< (abs (- a b)) (* 100 double-float-epsilon)))
+  (< (abs (- a b)) (* 64 double-float-epsilon)))
 (defmethod approximately-equal ((a double-float) (b t))
-  (< (abs (- a b)) (* 100 double-float-epsilon)))
+  (< (abs (- a b)) (* 64 double-float-epsilon)))
+
+(deftest reduction-test
+  (with-testing-backend
+  (compute
+   (β #'+ #(1 2 3)))
+  (compute
+   (β #'+ #2A((1 2 3) (6 5 4))))
+  ;;; lambdas with multiple return values do not work currently
+  ;(compute
+   ;(β (lambda (lmax lmin rmax rmin)
+        ;(values (max lmax rmax) (min lmin rmin)))
+      ;#(+1 -1 +2 -2 +3 -3)
+      ;#(+1 -1 +2 -2 +3 -3)))
+  ;(compute
+   ;(β (lambda (a b) (values a b)) #(3 2 1))
+   ;(β (lambda (a b) (values b a)) #(3 2 1)))
+    ))
 
 (deftest network-test
   (with-testing-backend
@@ -124,7 +166,7 @@
         ;(petalisp-cuda.cudalibs::cudnn-reduce-array a b #'+)))))
 
 (deftest test-mem-roundtrip
-  (let ((cl-cuda:*show-messages* nil))
+  (let ((cl-cuda:*show-messages* t))
     (cl-cuda:with-cuda (0)
       (progn
         (let* ((foo (aops:rand* 'single-float '(20 9)))

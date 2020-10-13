@@ -116,6 +116,10 @@
     ((cons (cons 'declare _) b) (remove-lispy-stuff b))
     ; unary +
     ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
+    ; binary floor/ceiling
+    ((list 'floor a b) `(floor (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
+    ((list 'ceiling a b) `(ceiling (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
+    ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
     ; 1+/1-
     ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
     ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))
@@ -384,7 +388,27 @@
     (floor 'floor)
     (ceiling 'ceil)
 
-    (t (let ((source-form (function-lambda-expression operator)))
+    (t (cond
+        ((eql operator #'floor) 'floor)
+        ((eql operator #'ceiling) 'ceiling)
+        ((eql operator #'log) 'log)
+        ((eql operator #'exp) 'exp)
+        ((eql operator #'tan) 'tan)
+        ((eql operator #'cos) 'cos)
+        ((eql operator #'sin) 'sin)
+        ((eql operator #'abs) 'abs)
+        ((eql operator #'max) 'max)
+        ((eql operator #'min) 'min)
+        ((eql operator #'+) '+)
+        ((eql operator #'-) '-)
+        ((eql operator #'*) '*)
+        ((eql operator #'/) '/)
+        ((eql operator #'=) '==)
+        ((eql operator #'>) '>)
+        ((eql operator #'<) '<)
+        ((eql operator #'<=) '<=)
+        ((eql operator #'>=) '>=)
+        (t (let ((source-form (function-lambda-expression operator)))
          (if source-form
              (let* ((lambda-arguments (nth 1 source-form))
                     (lambda-body? (last source-form))
@@ -397,5 +421,5 @@
                (values nil lambda-body))
          (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!~%
-You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator))))))
+You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator))))))))
 
