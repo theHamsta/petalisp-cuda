@@ -15,8 +15,8 @@
       :block-dim ,filtered-block-shape)))
 
 (defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
-  (let ((iteration-ranges (shape-ranges (iteration-shape iteration-scheme)))
-        (xyz (xyz-dimensions iteration-scheme)))
+  (let ((iteration-ranges (or (shape-ranges (iteration-shape iteration-scheme)) (list (range 1))))
+        (xyz (or (xyz-dimensions iteration-scheme) '(0))))
     ;; define x,y,z dimensions
     `(let ,(loop for dim-idx in xyz
                  for letter in (list 'x 'y 'z)
