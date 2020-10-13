@@ -80,9 +80,9 @@
 (defmethod approximately-equal ((a single-float) (b t))
   (< (abs (- a b)) (* 100 single-float-epsilon)))
 (defmethod approximately-equal ((a t) (b double-float))
-  (< (abs (- a b)) (* 100 single-float-double)))
+  (< (abs (- a b)) (* 100 double-float-epsilon)))
 (defmethod approximately-equal ((a double-float) (b t))
-  (< (abs (- a b)) (* 100 single-float-double)))
+  (< (abs (- a b)) (* 100 double-float-epsilon)))
 
 (deftest network-test
   (with-testing-backend
