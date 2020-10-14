@@ -93,8 +93,35 @@
     (compute
       (fuse*
         (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
-        (reshape 9 (τ () (3 4)))))
-    ))
+        (reshape 9 (τ () (3 4)))))))
+
+(deftest linear-algebra-test
+  (with-testing-backend
+  (compute (petalisp.examples.linear-algebra:dot #(1 2 3) #(4 5 6)))
+  (compute (norm #(1 2 3)))
+  ;(compute (max* #(2 4 1 2 1)))
+  ;(compute (nth-value 1 (max* #(2 4 1 2 1))))
+  ;(multiple-value-call #'compute (max* #(2 4 1 2 1)))
+  (loop repeat 10 do
+    (let* ((a (generate-matrix))
+           (b (compute (transpose a))))
+      (compute (matmul a b))))
+
+  (let ((invertible-matrices
+          '(#2A((42))
+            #2A((1 1) (1 2))
+            #2A((1 3 5) (2 4 7) (1 1 0))
+            #2A((2 3 5) (6 10 17) (8 14 28))
+            #2A((1 2 3) (4 5 6) (7 8 0))
+            #2A(( 1 -1  1 -1  5)
+                (-1  1 -1  4 -1)
+                ( 1 -1  3 -1  1)
+                (-1  2 -1  1 -1)
+                ( 1 -1  1 -1  1)))))
+    (loop for matrix in invertible-matrices do
+      (multiple-value-bind (P L R) (lu matrix)
+        (compute
+         (matmul P (matmul L R))))))))
 
 (deftest v-cycle-test
   (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
