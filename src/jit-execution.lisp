@@ -99,7 +99,6 @@
     ; Do not upload cuda arrays or scalars 
     (unless (or (cuda-array-p storage)
                 (pass-as-scalar-argument-p buffer))
-      (setf (buffer-reusablep buffer) t)
       (setf (buffer-storage buffer) (make-cuda-array storage
                                                      (cl-cuda-type-from-buffer buffer)
                                                      nil
@@ -118,7 +117,6 @@
     ; binary floor/ceiling
     ((list 'floor a b) `(floor (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
     ((list 'ceiling a b) `(ceiling (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
-    ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
     ; 1+/1-
     ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
     ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))

@@ -237,7 +237,7 @@
                     (let ((storage (buffer-storage buffer)))
                       (unless (null storage)
                         (setf (buffer-storage buffer) nil)
-                        (when (buffer-reusablep buffer)
+                        (when (petalisp.ir:interior-buffer-p buffer)
                           (memory-pool-free memory-pool storage)))))))))
     (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values event-map))
     (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values event-map))
@@ -247,19 +247,17 @@
 
 
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
-  ((%reusablep :initarg :reusablep :initform nil :accessor reusablep)
-   (%storage :initarg :storage :accessor cuda-immediate-storage)))
+  ((%storage :initarg :storage :accessor cuda-immediate-storage)))
 
 (defgeneric cuda-immediate-storage (immediate))
 (defmethod cuda-immediate-storage ((immediate array-immediate))
   (petalisp.core:array-immediate-storage immediate))
 
-(defun make-cuda-immediate (cu-array &optional reusablep)
+(defun make-cuda-immediate (cu-array)
     (check-type cu-array cuda-array)
     (make-instance 'cuda-immediate
                    :shape (shape cu-array)
                    :storage cu-array
-                   :reusablep reusablep
                    :ntype (ntype-cuda-array cu-array)))
 
 (defmethod petalisp.core:lazy-array ((array cuda-array))
