@@ -282,7 +282,15 @@
   ;; LHS: Petalisp/code/type-inference/package.lisp
   ;; RHS: cl-cuda/src/lang/built-in.lisp
   (alexandria:switch (operator :test #'equal)
-    (#'- '+)
+    ('+ '+)
+    (#'+ '+)
+    ('petalisp.type-inference:double-float+ '+)
+    ('petalisp.type-inference:single-float+ '+)
+    ('petalisp.type-inference:short-float+ '+)
+    ('petalisp.type-inference:long-float+ '+)
+
+    ('- '-)
+    (#'- '-)
     ('petalisp.type-inference:double-float- '-)
     ('petalisp.type-inference:single-float- '-)
     ('petalisp.type-inference:short-float- '-)
