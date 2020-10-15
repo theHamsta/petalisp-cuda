@@ -99,7 +99,7 @@
         ((float) float nil "abs")
         ((double) float nil "abs")
         ))
-(setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'mod)
+(setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'rem)
       '(((float float) float nil "fmodf")
         ((float int) float nil "fmodf")
         ((double int) double nil "fmod")

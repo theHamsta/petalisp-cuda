@@ -13,7 +13,6 @@
                 :make-cuda-array)
   (:import-from :petalisp.examples.linear-algebra
                 :norm
-                :max*
                 :matmul
                 :transpose
                 :LU)

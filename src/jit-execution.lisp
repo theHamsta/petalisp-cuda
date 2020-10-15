@@ -108,6 +108,12 @@
                                                                              size))))
       (record-corresponding-event buffer (cuda-backend-event-map backend)))))
 
+(defun make-multiple-value-let (lhs rhs more-rhs)
+  `((,lhs ,rhs)
+    ,@(loop for r in more-rhs
+            for i from 1
+            collect (list (format-symbol t "~A_~A" lhs i) r))))
+
 ;; Remove stuff that cl-cuda does not like
 (defun remove-lispy-stuff (tree)
   (match tree
@@ -124,16 +130,19 @@
     ((list '* (guard r (and (rationalp r) (not (integerp r)))) s) `(/ (* ,(numerator r)
                                                                          ,(remove-lispy-stuff s))
                                                                       ,(denominator r)))
+    ; multiple values set
+    ((cons 'let (cons (list (list lhs (list 'floor a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(floor ,a ,b)) (list (remove-lispy-stuff `(rem ,a ,b)))) ,@(remove-lispy-stuff body)))
+    ((cons 'let (cons (list (list lhs (list 'ceiling a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(ceiling ,a ,b)) (list (remove-lispy-stuff `(rem ,a ,b)))) ,@(remove-lispy-stuff body)))
+    ((guard (cons 'let (cons (list (cons lhs (cons rhs more-rhs))) body)) more-rhs) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff rhs) (remove-lispy-stuff more-rhs)) ,@(remove-lispy-stuff body)))
     ; rest
     ((guard a (atom a)) a)
     ((cons a b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))))
 
 (defun compile-kernel (kernel backend)
-  (let ((blueprint (kernel-blueprint kernel)))
+  (let* ((blueprint (kernel-blueprint kernel))
+        (hash (cons blueprint (kernel-iteration-space kernel))))
     ; TODO: compile we do not compile iteration-space independent
-    (petalisp.utilities:with-hash-table-memoization 
-      ((cons blueprint (kernel-iteration-space kernel))) ; TODO: hash strides of kernel buffers
-      (compile-cache backend)
+    (petalisp.utilities:with-hash-table-memoization (hash) (compile-cache backend) ; TODO: hash strides of kernel buffers 
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
@@ -152,6 +161,11 @@
                                             'void
                                             kernel-parameters
                                             generated-kernel)
+              ;(simple-error (e)
+                ;(declare (ignore e))
+                ;(remhash hash (compile-cache backend))
+                ;(format t "failed to compile kernel:~%~A~%" generated-kernel)
+                ;(error e)))
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
@@ -213,13 +227,17 @@
                                            buffer->kernel-parameter
                                            iteration-scheme))))
 
-
 (defun get-instruction-symbol (instruction)
-  (format-symbol t "$~A"
-                 (etypecase instruction
-                   (number instruction)
-                   (cons (instruction-number (cdr instruction)))
-                   (instruction (instruction-number instruction)))))
+  (trivia:match instruction
+    ;; weird multiple value instruction
+    ((guard (cons a b ) (> a 0)) (format-symbol t "$~A_~A" (instruction-number b) a))   
+    ;; normal instruction
+    (_
+      (format-symbol t "$~A"
+                     (etypecase instruction
+                       (number instruction)
+                       (cons (instruction-number (cdr instruction)))
+                       (instruction (instruction-number instruction)))))))
 
 (defun kernel-parameter-name (kernel-parameter)
   (car kernel-parameter))
@@ -239,7 +257,7 @@
       (let* ((instruction (pop instructions))
              ($i (get-instruction-symbol instruction)))
         (if (store-instruction-p instruction)
-            ;; Instructions that produce no result in C code
+          ;; Instructions that produce no result in C code
           (let ((buffer (store-instruction-buffer instruction)))
             `(progn
                ;; Store instructions
@@ -252,173 +270,27 @@
                ;; Rest
                ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme)))
           ;; Instructions that produce a result in C code
-          `(let ((,$i ,(etypecase instruction
+          `(let ((,$i ,@(etypecase instruction
                          ;; Call instructions
                          (call-instruction
                            (let ((arguments (mapcar #'get-instruction-symbol (instruction-inputs instruction))))
                              (multiple-value-bind (cuda-function inlined-expression) (map-call-operator (call-instruction-operator instruction) arguments)
                                (if cuda-function
-                                   `(,cuda-function ,@arguments)
+                                   `((,cuda-function ,@arguments))
                                    inlined-expression))))
                          ;; Iref instructions
                          (iref-instruction
-                           (linearize-instruction-transformation instruction))
+                           (list (linearize-instruction-transformation instruction)))
                          ;; Load instructions
                          (load-instruction
-                           (buffer-access (load-instruction-buffer instruction)
+                           (list (buffer-access (load-instruction-buffer instruction)
                                           buffer->kernel-parameter
                                           instruction
-                                          iteration-scheme)))))
+                                          iteration-scheme))))))
              ;; Rest
              ,(generate-instructions instructions buffer->kernel-parameter iteration-scheme))))
       '(progn)))
 
 (defun make-buffer->kernel-parameter (buffers kernel-parameters)
   (lambda (buffer) (nth (position buffer buffers) kernel-parameters)))
-
-(defun map-call-operator (operator arguments)
-  ;; LHS: Petalisp/code/type-inference/package.lisp
-  ;; RHS: cl-cuda/src/lang/built-in.lisp
-  (alexandria:switch (operator :test #'equal)
-    ('+ '+)
-    (#'+ '+)
-    ('petalisp.type-inference:double-float+ '+)
-    ('petalisp.type-inference:single-float+ '+)
-    ('petalisp.type-inference:short-float+ '+)
-    ('petalisp.type-inference:long-float+ '+)
-
-    ('- '-)
-    (#'- '-)
-    ('petalisp.type-inference:double-float- '-)
-    ('petalisp.type-inference:single-float- '-)
-    ('petalisp.type-inference:short-float- '-)
-    ('petalisp.type-inference:long-float- '-)
-
-    ('* '*)
-    (#'* '*)
-    ('petalisp.type-inference:double-float* '*)
-    ('petalisp.type-inference:single-float* '*)
-    ('petalisp.type-inference:short-float* '*)
-    ('petalisp.type-inference:long-float* '*)
-
-    ('/ '/)
-    (#'/ '/)
-    ('petalisp.type-inference:double-float/ '/)
-    ('petalisp.type-inference:single-float/ '/)
-    ('petalisp.type-inference:short-float/ '/)
-    ('petalisp.type-inference:long-float/ '/)
-
-    ('= '==)
-    (#'= '==)
-    ;(CMPEQ '==)
-    ('petalisp.type-inference:double-float= '==)
-    ('petalisp.type-inference:single-float= '==)
-    ('petalisp.type-inference:short-float= '==)
-    ('petalisp.type-inference:long-float= '==)
-
-    ('> '>)
-    (#'> '>)
-    ('petalisp.type-inference:double-float> '>)
-    ('petalisp.type-inference:single-float> '>)
-    ('petalisp.type-inference:short-float> '>)
-    ('petalisp.type-inference:long-float> '>)
-
-    ('< '<)
-    (#'< '<)
-    ('petalisp.type-inference:double-float< '<)
-    ('petalisp.type-inference:single-float< '<)
-    ('petalisp.type-inference:short-float< '<)
-    ('petalisp.type-inference:long-float< '<)
-
-    ('<= '<=)
-    (#'<= '<=)
-    ('petalisp.type-inference:double-float<= '<=)
-    ('petalisp.type-inference:single-float<= '<=)
-    ('petalisp.type-inference:short-float<= '<=)
-    ('petalisp.type-inference:long-float<= '<=)
-
-    ('>= '>=)
-    (#'>= '>=)
-    ('petalisp.type-inference:double-float>= '>=)
-    ('petalisp.type-inference:single-float>= '>=)
-    ('petalisp.type-inference:short-float>= '>=)
-    ('petalisp.type-inference:long-float>= '>=)
-
-    ('min 'min)
-    (#'min 'min)
-    ('petalisp.type-inference:double-float-min 'min)
-    ('petalisp.type-inference:single-float-min 'min)
-    ('petalisp.type-inference:short-float-min 'min)
-    ('petalisp.type-inference:long-float-min 'min)
-
-    ('max 'max)
-    (#'max 'max)
-    ('petalisp.type-inference:double-float-max 'max)
-    ('petalisp.type-inference:single-float-max 'max)
-    ('petalisp.type-inference:short-float-max 'max)
-    ('petalisp.type-inference:long-float-max 'max)
-
-    ('abs 'abs)
-    (#'abs 'abs)
-    ('petalisp.type-inference:double-float-abs 'abs)
-    ('petalisp.type-inference:single-float-abs 'abs)
-    ('petalisp.type-inference:short-float-abs 'abs)
-    ('petalisp.type-inference:long-float-abs 'abs)
-
-    ('cos 'cos)
-    (#'cos 'cos)
-    ('petalisp.type-inference:double-float-cos 'cos)
-    ('petalisp.type-inference:single-float-cos 'cos)
-    ('petalisp.type-inference:short-float-cos 'cos)
-    ('petalisp.type-inference:long-float-cos 'cos)
-
-    ('sin 'sin)
-    (#'sin 'sin)
-    ('petalisp.type-inference:double-float-sin 'sin)
-    ('petalisp.type-inference:single-float-sin 'sin)
-    ('petalisp.type-inference:short-float-sin 'sin)
-    ('petalisp.type-inference:long-float-sin 'sin)
-
-    ('tan 'tan)
-    (#'tan 'tan)
-    ('petalisp.type-inference:double-float-tan 'tan)
-    ('petalisp.type-inference:single-float-tan 'tan)
-    ('petalisp.type-inference:short-float-tan 'tan)
-    ('petalisp.type-inference:long-float-tan 'tan)
-
-    ('exp 'exp)
-    (#'exp 'exp)
-    ('petalisp.type-inference::double-float-exp 'exp)
-    ('petalisp.type-inference::single-float-exp 'exp)
-    ('petalisp.type-inference::short-float-exp 'exp)
-    ('petalisp.type-inference::long-float-exp 'exp)
-
-    ('log 'log)
-    (#'log 'log)
-    ('petalisp.type-inference::double-float-ln 'log)
-    ('petalisp.type-inference::single-float-ln 'logf)
-    ('petalisp.type-inference::short-float-ln 'logf)
-    ('petalisp.type-inference::long-float-ln 'log)
-
-    ('floor 'floor)
-    (#'floor 'floor)
-    ('ceiling 'ceiling)
-    (#'ceiling 'ceiling)
-    ('sqrt 'sqrt)
-    (#'sqrt 'sqrt)
-
-    (t (let ((source-form (function-lambda-expression operator)))
-         (if source-form
-             (let* ((lambda-arguments (nth 1 source-form))
-                    (lambda-body? (last source-form))
-                    (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) (car lambda-body?))))
-               (when cl-cuda:*show-messages*
-                 (format t "Creating kernel lambda: ~A~%" lambda-body))
-               (loop for ir-arg in arguments
-                     for arg in lambda-arguments do
-                     (setf lambda-body (subst ir-arg arg lambda-body)))
-               (values nil lambda-body))
-         (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
-More copy paste required here!~%
-You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator))))))
 

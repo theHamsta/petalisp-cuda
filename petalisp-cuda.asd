@@ -42,6 +42,7 @@
                  (:file "type-conversion")
                  (:file "backend")
                  (:file "jit-execution")
+                 (:file "map-call-operator")
                  (:file "package")))))
 
 

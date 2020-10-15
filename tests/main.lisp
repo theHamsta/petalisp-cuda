@@ -95,12 +95,26 @@
         (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
         (reshape 9 (τ () (3 4)))))))
 
+(declaim (optimize (debug 3)))
+(defun max* (x)
+  (β (lambda (lv li rv ri)
+       (if (> lv rv)
+           (values lv li)
+           (values rv ri)))
+     x (array-indices x)))
+
+(deftest multi-value-floor
+  (with-testing-backend
+  (compute (nth-value 1 (max* #(2 4 2 1 2 1))))
+  (multiple-value-call #'compute (max* #(2 2 3 2 4 1 2 1)))
+  (compute (α #'+ (α #'floor #(2 2 .2 3 2 2 2 3 3) 0.5)))))
+
 (deftest linear-algebra-test
   (with-testing-backend
   (compute (petalisp.examples.linear-algebra:dot #(1 2 3) #(4 5 6)))
   (compute (norm #(1 2 3)))
-  ;(compute (max* #(2 4 1 2 1)))
-  ;(compute (nth-value 1 (max* #(2 4 1 2 1))))
+  (compute (max* #(2 4 1 2 1)))
+  (compute (nth-value 1 (max* #(2 4 1 2 1))))
   ;(multiple-value-call #'compute (max* #(2 4 1 2 1)))
   (loop repeat 10 do
     (let* ((a (generate-matrix))
@@ -122,6 +136,33 @@
       (multiple-value-bind (P L R) (lu matrix)
         (compute
          (matmul P (matmul L R))))))))
+
+(deftest num-values
+    (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))
+    (ok (= 2 (petalisp-cuda.jitexecution::num-values '(values 2 3))))
+    (ok (= 2 (petalisp-cuda.jitexecution::num-values '(defun (a)
+                                                         (foo (values 2 3))))))
+    (ok (= 1 (petalisp-cuda.jitexecution::num-values '(defun (a)
+                                                         (foo 2))))))
+
+(deftest nth-value-lambda
+  (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))
+  (ok (= 2 (petalisp-cuda.jitexecution::nth-value-lambda 0 '(values 2 3))))
+  (ok (= 3 (petalisp-cuda.jitexecution::nth-value-lambda 1 '(values 2 3))))
+  (ok (= 2 (petalisp-cuda.jitexecution::nth-value-lambda 0 '(defun (a)
+                                                                (foo (values 2 3))))))
+  (ok (equal '(defun (a) (foo 3))
+             (petalisp-cuda.jitexecution::nth-value-lambda 1 '(defun (a)
+                                                                  (foo (values 2 3)))))))
+(deftest analyze-multiple-value-lambda
+  (ok (equal 
+        '((DEFUN (A) (FOO 2)))
+        (petalisp-cuda.jitexecution::analyze-multiple-value-lambda '(defun (a)
+                                                                        (foo 2)))))
+  (ok (equal 
+        '((DEFUN (A) (FOO 2)) (DEFUN (A) (FOO 3)))
+        (petalisp-cuda.jitexecution::analyze-multiple-value-lambda '(defun (a)
+                                                                        (foo (values 2 3)))))))
 
 (deftest v-cycle-test
   (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
@@ -153,9 +194,10 @@
         ;(values (max lmax rmax) (min lmin rmin)))
       ;#(+1 -1 +2 -2 +3 -3)
       ;#(+1 -1 +2 -2 +3 -3)))
-  ;(compute
+(multiple-value-bind (a b c)  (compute
    ;(β (lambda (a b) (values a b)) #(3 2 1))
-   ;(β (lambda (a b) (values b a)) #(3 2 1)))
+   (β (lambda (a b) (values b a)) #(3 2 1)))
+  (format t "~A ~A ~A" a b c))
     ))
 
 (deftest network-test
