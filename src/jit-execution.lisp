@@ -71,7 +71,7 @@
     rtn))
 
 (defstruct (jit-function)
-  kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
+  kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body hfunc)
 
 (defun generate-iteration-scheme (kernel backend)
   (select-iteration-scheme (kernel-iteration-space kernel)
@@ -138,37 +138,35 @@
 
 (defun compile-kernel (kernel backend)
   (let* ((blueprint (kernel-blueprint kernel))
-        (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel)))))
-    ; TODO: compile we do not compile iteration-space independent
-    (let* ((buffers (kernel-buffers kernel))
+           (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel)))))
+      ; TODO: compile we do not compile iteration-space independent
+      (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
         (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
-                 (kernel-manager (make-kernel-manager))
-                 (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
-                                                                           kernel-parameters
-                                                                           buffers
-                                                                           iteration-scheme)))))  
-            (when cl-cuda:*show-messages*
-              (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
+               (kernel-manager (make-kernel-manager))
+               (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
+                                                                         kernel-parameters
+                                                                         buffers
+                                                                         iteration-scheme)))))  
+          (when cl-cuda:*show-messages*
+            (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
 
-            ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
-            (kernel-manager-define-function kernel-manager
-                                            kernel-symbol
-                                            'void
-                                            kernel-parameters
-                                            generated-kernel)
-              ;(simple-error (e)
-                ;(declare (ignore e))
-                ;(remhash hash (compile-cache backend))
-                ;(format t "failed to compile kernel:~%~A~%" generated-kernel)
-                ;(error e)))
+          ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
+          (kernel-manager-define-function kernel-manager
+                                          kernel-symbol
+                                          'void
+                                          kernel-parameters
+                                          generated-kernel)
+          ;; Load function here that only loadable function get into the compile cache
+          (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
             (make-jit-function :kernel-symbol kernel-symbol
                                :iteration-scheme iteration-scheme
                                :dynamic-shared-mem-bytes 0
                                :kernel-manager kernel-manager
                                :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel)))))
+                               :kernel-body generated-kernel
+                               :hfunc hfunc))))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -183,10 +181,9 @@
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
-  (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters) compiled-function))
+  (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-parameters hfunc) compiled-function))
     (let ((parameters (call-parameters iteration-scheme)))
-      (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol))
-            (nargs (length kernel-arguments))
+      (let ((nargs (length kernel-arguments))
             (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
           (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)

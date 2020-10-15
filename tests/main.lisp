@@ -30,7 +30,7 @@
 
 (deftest jacobi-test-recompile
   (with-testing-backend
-    (ok (with-testing-backend(compute (jacobi (aops:rand* 'single-float '(12)) 0.0 1.0 1))))
+    (ok (compute (jacobi (aops:rand* 'single-float '(12)) 0.0 1.0 1)))
     (ok (compute (jacobi (ndarray 1) 0.0 1.0 2)))
     (ok (compute (jacobi (ndarray 2) 0.0 1.0 2)))
     (ok (compute (jacobi (ndarray 3) 0.0 1.0 2)))
