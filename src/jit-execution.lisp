@@ -73,9 +73,7 @@
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body)
 
-(defgeneric generate-iteration-scheme (kernel backend))
-
-(defmethod generate-iteration-scheme (kernel backend)
+(defun generate-iteration-scheme (kernel backend)
   (select-iteration-scheme (kernel-iteration-space kernel)
                            (preferred-block-size backend)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
