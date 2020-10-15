@@ -1,14 +1,5 @@
 (in-package petalisp-cuda.iteration-scheme)
 
-;; Helpers
-(defun range-divup (range-a range-b)
-  "How often fits range-b in range-a when considering in partial range-b at start and end"
-  (let ((a range-a)
-        (b range-b))
-    (assert (equal (range-step a) (range-step b)))
-    (assert (equal (range-start a) (range-start b))) ; for now. TODO: drop that restriction
-    (ceiling (range-size a) (range-size b)))) ; so it's basically ceiling + assertions right now
-
 (defun filter-xyz-dimensions (list xyz-dimensions)
   (trivia:match (mapcar (lambda (idx) (nth idx list)) xyz-dimensions)
     ((list)       (list 1 1 1))
