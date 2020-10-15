@@ -138,8 +138,13 @@
 
 (defun compile-kernel (kernel backend)
   (let* ((blueprint (kernel-blueprint kernel))
-           (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel)))))
-      ; TODO: compile we do not compile iteration-space independent
+         ;; TODO: compile we do not compile iteration-space independent
+         ;; TODO: hash strides of kernel buffers
+         ;(hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel))))
+         )
+    ;(petalisp.utilities:with-hash-table-memoization 
+      ;(hash)
+      ;(compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
@@ -151,22 +156,26 @@
                                                                          iteration-scheme)))))  
           (when cl-cuda:*show-messages*
             (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
-
-          ; TODO(seitz): probably faster compilation with all kernels of a run in one single kernel-manager
           (kernel-manager-define-function kernel-manager
                                           kernel-symbol
                                           'void
                                           kernel-parameters
                                           generated-kernel)
           ;; Load function here that only loadable function get into the compile cache
-          (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
-            (make-jit-function :kernel-symbol kernel-symbol
-                               :iteration-scheme iteration-scheme
-                               :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager
-                               :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel
-                               :hfunc hfunc))))))
+          (handler-case
+              (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
+                (make-jit-function :kernel-symbol kernel-symbol
+                                   :iteration-scheme iteration-scheme
+                                   :dynamic-shared-mem-bytes 0
+                                   :kernel-manager kernel-manager
+                                   :kernel-parameters kernel-parameters
+                                   :kernel-body generated-kernel
+                                   :hfunc hfunc))
+
+              (t (e) 
+                (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel)
+                (error e)))))))
+  ;)
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
