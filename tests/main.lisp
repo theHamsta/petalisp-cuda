@@ -30,6 +30,7 @@
 
 (deftest jacobi-test-recompile
   (with-testing-backend
+    (ok (with-testing-backend(compute (jacobi (aops:rand* 'single-float '(12)) 0.0 1.0 1))))
     (ok (compute (jacobi (ndarray 1) 0.0 1.0 2)))
     (ok (compute (jacobi (ndarray 2) 0.0 1.0 2)))
     (ok (compute (jacobi (ndarray 3) 0.0 1.0 2)))
@@ -61,6 +62,8 @@
 
 (deftest rbgs-test
   (with-testing-backend
+    (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1))
+    (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2))
     (compute (rbgs (ndarray 1) 0.0 1.0 2))
     (compute (rbgs (ndarray 2) 0.0 1.0 2))
     (compute (rbgs (ndarray 3) 0.0 1.0 2))
@@ -111,19 +114,19 @@
 
 (deftest linear-algebra-test
   (with-testing-backend
-  (compute (petalisp.examples.linear-algebra:dot #(1 2 3) #(4 5 6)))
-  (compute (norm #(1 2 3)))
-  (compute (max* #(2 4 1 2 1)))
-  (compute (nth-value 1 (max* #(2 4 1 2 1))))
-  ;(multiple-value-call #'compute (max* #(2 4 1 2 1)))
+  (ok (compute (petalisp.examples.linear-algebra:dot #(1 2 3) #(4 5 6))))
+  (ok (compute (norm #(1 2 3))))
+  (ok (compute (max* #(2 4 1 2 1))))
+  (ok (compute (nth-value 1 (max* #(2 4 1 2 1)))))
+  (ok (multiple-value-call #'compute (max* #(2 4 1 2 1))))
   (loop repeat 10 do
-    (let* ((a (generate-matrix))
+    (ok (let* ((a (generate-matrix))
            (b (compute (transpose a))))
-      (compute (matmul a b))))
+      (compute (matmul a b)))))
 
   (let ((invertible-matrices
           '(#2A((42))
-            #2A((1 1) (1 2))
+            #2A((1. 1.) (1. 2.))
             #2A((1 3 5) (2 4 7) (1 1 0))
             #2A((2 3 5) (6 10 17) (8 14 28))
             #2A((1 2 3) (4 5 6) (7 8 0))
@@ -133,9 +136,9 @@
                 (-1  2 -1  1 -1)
                 ( 1 -1  1 -1  1)))))
     (loop for matrix in invertible-matrices do
-      (multiple-value-bind (P L R) (lu matrix)
-        (compute
-         (matmul P (matmul L R))))))))
+      (ok (multiple-value-bind (P L R) (lu matrix)
+        (ok (compute
+         (matmul P (matmul L R))))))))))
 
 (deftest num-values
     (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))

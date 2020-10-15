@@ -140,10 +140,9 @@
 
 (defun compile-kernel (kernel backend)
   (let* ((blueprint (kernel-blueprint kernel))
-        (hash (cons blueprint (kernel-iteration-space kernel))))
+        (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel)))))
     ; TODO: compile we do not compile iteration-space independent
-    (petalisp.utilities:with-hash-table-memoization (hash) (compile-cache backend) ; TODO: hash strides of kernel buffers 
-      (let* ((buffers (kernel-buffers kernel))
+    (let* ((buffers (kernel-buffers kernel))
              (kernel-parameters (generate-kernel-parameters buffers))
              (iteration-scheme (generate-iteration-scheme kernel backend)))
         (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
@@ -171,7 +170,7 @@
                                :dynamic-shared-mem-bytes 0
                                :kernel-manager kernel-manager
                                :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel))))))
+                               :kernel-body generated-kernel)))))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
