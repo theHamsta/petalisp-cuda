@@ -133,7 +133,7 @@
     (#'sqrt 'sqrt)
     (#'rem 'rem)
 
-    (t (let ((source-form (function-lambda-expression operator)))
+    (t (let ((source-form (when (functionp operator) (function-lambda-expression operator))))
          (if source-form
              (let* ((lambda-arguments (nth 1 source-form))
                     (lambda-body? (last source-form))
