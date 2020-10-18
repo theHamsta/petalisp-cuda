@@ -142,7 +142,7 @@
          ;; TODO: hash strides of kernel buffers
          ;(hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel))))
          )
-    (cl-cuda:*show-messages*
+    (when cl-cuda:*show-messages*
       (format t "~A~%" blueprint))
     ;(petalisp.utilities:with-hash-table-memoization 
       ;(hash)
