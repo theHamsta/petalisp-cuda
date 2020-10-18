@@ -41,10 +41,17 @@
 (defun linearize-instruction-transformation (instruction &optional buffer)
   (let* ((transformation (instruction-transformation instruction))
          (input-rank (transformation-input-rank transformation))
-         (strides (if buffer (cuda-array-strides (buffer-storage buffer)) (make-list input-rank :initial-element 1)))
+         (strides (or (if buffer
+                          (cuda-array-strides (buffer-storage buffer))
+                          (make-list input-rank :initial-element 1))
+                      '(1)))
          (index-space (get-counter-vector input-rank) )
          (transformed (transform index-space transformation)))
     (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
       (if (= (length rtn) 1)
           0 ; '+ with zero arguments
           rtn))))
+
+(defmethod iteration-scheme-buffer-access ((iteration-scheme iteration-scheme) instruction buffer kernel-parameter)
+  ;; We can always do a uncached memory access
+  `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer)))
