@@ -142,6 +142,8 @@
          ;; TODO: hash strides of kernel buffers
          ;(hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel))))
          )
+    (cl-cuda:*show-messages*
+      (format t "~A~%" blueprint))
     ;(petalisp.utilities:with-hash-table-memoization 
       ;(hash)
       ;(compile-cache backend)
@@ -162,20 +164,18 @@
                                           kernel-parameters
                                           generated-kernel)
           ;; Load function here that only loadable function get into the compile cache
-          (handler-case
-              (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
+          (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
                 (make-jit-function :kernel-symbol kernel-symbol
                                    :iteration-scheme iteration-scheme
                                    :dynamic-shared-mem-bytes 0
                                    :kernel-manager kernel-manager
                                    :kernel-parameters kernel-parameters
                                    :kernel-body generated-kernel
-                                   :hfunc hfunc))
-
-              (t (e) 
-                (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel)
-                (error e)))))))
+                                   :hfunc hfunc))))))
   ;)
+
+(defun kernel-parameter-type (kernel-parameter)
+  (cadr kernel-parameter))
 
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
   (loop for i from 0 to (1- (length kernel-arguments)) do
@@ -183,11 +183,13 @@
           (if (arrayp argument)
               (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
                 (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type)
-                      (cffi:convert-to-foreign (if (weird-rational-p (aref argument))
-                                                                     (coerce (aref argument) 'single-float)
-                                                                     (aref argument)) ffi-type)))
+                      (cffi:convert-to-foreign
+                        (cond ((weird-rational-p (aref argument)) (coerce (aref argument) 'single-float))
+                              ((symbolp (aref argument)) 0.0)
+                              (t (aref argument)))
+                        ffi-type)))
               (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
-        (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
+  (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
 
 (defun run-compiled-function (compiled-function kernel-arguments)
   (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-parameters hfunc) compiled-function))
@@ -244,9 +246,6 @@
 
 (defun kernel-parameter-name (kernel-parameter)
   (car kernel-parameter))
-
-(defun kernel-parameter-type (kernel-parameter)
-  (cadr kernel-parameter))
 
 (defun buffer-access (buffer buffer->kernel-parameter instruction iteration-scheme)
   (assert (functionp buffer->kernel-parameter))

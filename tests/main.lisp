@@ -109,7 +109,9 @@
 (deftest multi-value-floor
   (with-testing-backend
   (compute (nth-value 1 (max* #(2 4 2 1 2 1))))
+  (compute (nth-value 1 (α* 2 #'floor #(2 4 2 1 2 1.1) 0.5)))
   (multiple-value-call #'compute (max* #(2 2 3 2 4 1 2 1)))
+  (multiple-value-call #'compute (α* 2 #'floor #(2 4 2 1 2 1.1) 0.5))
   (compute (α #'+ (α #'floor #(2 2 .2 3 2 2 2 3 3) 0.5)))))
 
 (deftest linear-algebra-test
@@ -123,7 +125,6 @@
     (ok (let* ((a (generate-matrix))
            (b (compute (transpose a))))
       (compute (matmul a b)))))
-
   (let ((invertible-matrices
           '(#2A((42))
             #2A((1. 1.) (1. 2.))
@@ -139,6 +140,10 @@
       (ok (multiple-value-bind (P L R) (lu matrix)
         (ok (compute
          (matmul P (matmul L R))))))))))
+
+(deftest pivot-and-value
+  (with-testing-backend
+    (pivot-and-value #2A((1. 1.) (1. 2.)) 0)))
 
 (deftest num-values
     (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))

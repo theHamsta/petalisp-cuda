@@ -15,7 +15,8 @@
                 :norm
                 :matmul
                 :transpose
-                :LU)
+                :LU
+                :pivot-and-value)
   (:import-from :petalisp.test-suite
                 :ndarray
                 :approximately-equal

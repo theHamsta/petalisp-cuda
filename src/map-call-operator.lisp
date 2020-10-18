@@ -126,6 +126,11 @@
     ('petalisp.type-inference::long-float-ln 'log)
 
     ('floor 'floor)
+    ('coerce (case (second arguments)
+               (single-float 'coerce-float)
+               (double-float 'coerce-double)
+               (int 'coerce-int)
+               (t 'coerce)))
     (#'floor 'floor)
     ('ceiling 'ceiling)
     (#'ceiling 'ceiling)
