@@ -47,6 +47,8 @@ git clone git@github.com:theHamsta/petalisp-cuda.git
 - [ ] infer function parameters for generated __device__ functions
 - [ ] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
 - [ ] fast interpolation using textures (?)
+- [ ] half float, bfloat support
+- [ ] native sub-int8 support, e.g. (signed bit 1), without upgrading to i8
 
 ** Debugging
 
