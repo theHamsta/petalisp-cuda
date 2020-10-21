@@ -24,6 +24,8 @@
 (deftest jacobi-test
   (with-testing-backend
     (ok (compute (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(25)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(26)) 0.0 1.0 2)))
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5)))))
@@ -62,12 +64,21 @@
 
 (deftest rbgs-test
   (with-testing-backend
-    (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1))
-    (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2))
-    (compute (rbgs (ndarray 1) 0.0 1.0 2))
-    (compute (rbgs (ndarray 2) 0.0 1.0 2))
-    (compute (rbgs (ndarray 3) 0.0 1.0 2))
-    (compute (rbgs (ndarray 3) 0.0 1.0 5))))
+    (ok (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(5)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(6)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(7)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(25)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2)))))
+
+(deftest rbgs-test
+  (with-testing-backend
+    (ok (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (compute (rbgs (ndarray 1) 0.0 1.0 2)))
+    (ok (compute (rbgs (ndarray 2) 0.0 1.0 2)))
+    (ok (compute (rbgs (ndarray 3) 0.0 1.0 2)))
+    (ok (compute (rbgs (ndarray 3) 0.0 1.0 5)))))
 
 (deftest lazy-map-test
   (with-testing-backend
@@ -116,6 +127,7 @@
 
 (deftest linear-algebra-test
   (with-testing-backend
+  (ok (compute (eye 3)))
   (ok (compute (petalisp.examples.linear-algebra:dot #(1 2 3) #(4 5 6))))
   (ok (compute (norm #(1 2 3))))
   (ok (compute (max* #(2 4 1 2 1))))
@@ -140,6 +152,25 @@
       (ok (multiple-value-bind (P L R) (lu matrix)
         (ok (compute
          (matmul P (matmul L R))))))))))
+
+(deftest lu
+  (mapcar (lambda (matrix)
+            (format t "Lisp: ~A~%CUDA: ~A~%"
+                    (multiple-value-bind (P L R) (lu matrix)
+                      (multiple-value-list (compute P L R)))
+                    (with-cuda-backend-raii
+                     (multiple-value-bind (P L R) (lu matrix)
+                      (multiple-value-list (compute P L R))))))
+          '(#2A((42))
+            #2A((1. 1.) (1. 2.))
+            #2A((1 3 5) (2 4 7) (1 1 0))
+            #2A((2 3 5) (6 10 17) (8 14 28))
+            #2A((1 2 3) (4 5 6) (7 8 0))
+            #2A(( 1 -1  1 -1  5)
+                (-1  1 -1  4 -1)
+                ( 1 -1  3 -1  1)
+                (-1  2 -1  1 -1)
+                ( 1 -1  1 -1  1)))))
 
 (deftest pivot-and-value
   (with-testing-backend
