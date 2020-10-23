@@ -2,6 +2,7 @@
   :version "0.1.0"
   :author "Stephan Seitz <stephan.seitz@fau.de>"
   :license "GPLv3"
+  :serial t
   :depends-on ("petalisp"
                "petalisp.core"
                "bordeaux-threads"
@@ -16,7 +17,10 @@
                "trivial-garbage"
                "cl-itertools"
                "let-plus")
-  :components ((:module "src/utils"
+  :components ((:module "src/options"
+                :components
+                ((:file "package")))
+               (:module "src/utils"
                 :components
                 ((:file "cl-cuda")
                  (:file "petalisp")))
@@ -33,7 +37,9 @@
                 :components
                 ((:file "package")
                  (:file "helpers")
+                 ;(:file "symbolic-shape")
                  (:file "block-iteration-scheme")
+                 (:file "symbolic-block-iteration-scheme")
                  (:file "slow-coordinate-transposed-scheme")
                  (:file "selection")))
                (:module "src"
@@ -49,6 +55,7 @@
 (defsystem "petalisp-cuda/tests"
   :author "Stephan Seitz"
   :license "GPLv3"
+  :serial t
   :depends-on ("petalisp-cuda"
                "petalisp"
                "petalisp.test-suite"

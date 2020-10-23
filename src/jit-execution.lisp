@@ -28,7 +28,9 @@
                 :select-iteration-scheme
                 :get-counter-vector
                 :linearize-instruction-transformation
-                :iteration-scheme-buffer-access)
+                :iteration-scheme-buffer-access
+                :shape-independent-p
+                :iteration-space)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
                 :device-ptr
@@ -78,15 +80,25 @@
                            (preferred-block-size backend)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
-(defun generate-kernel-parameters (buffers)
-  (mapcar (lambda (buffer idx)
-            (list (format-symbol t "buffer-~A" idx)
-                  (let ((dtype (cl-cuda-type-from-buffer buffer)))
-                   (if (pass-as-scalar-argument-p buffer)
-                      dtype 
-                      (cl-cuda.lang.type:array-type dtype 1)))))
-          buffers
-          (iota (length buffers))))
+(defun generate-kernel-parameters (buffers iteration-scheme)
+  (concatenate 'list (mapcar (lambda (buffer idx)
+                               (list (format-symbol t "buffer-~A" idx)
+                                     (let ((dtype (cl-cuda-type-from-buffer buffer)))
+                                       (if (pass-as-scalar-argument-p buffer)
+                                           dtype 
+                                           (cl-cuda.lang.type:array-type dtype 1)))))
+                             buffers
+                             (iota (length buffers)))
+               (when (shape-independent-p iteration-scheme)
+                 (loop for s in (shape-ranges (iteration-space iteration-scheme))
+                       for i from 0
+                       collect `(,(format-symbol t "iteration-start-~A" i) int)
+                       collect `(,(format-symbol t "iteration-end-~A" i) int)))
+               (when (shape-independent-p iteration-scheme)
+                 (apply #'concatenate `(list ,@(loop for b in buffers
+                                                     for i from 0
+                                                     collect (loop for j below (shape-rank (buffer-shape b))
+                                                                   collect `(,(format-symbol t "buffer-~A-stride-~A" i j) int))))))))
 
 (defun upload-buffers-to-gpu (buffers backend)
   (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))
@@ -148,8 +160,8 @@
       ;(hash)
       ;(compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
-             (kernel-parameters (generate-kernel-parameters buffers))
-             (iteration-scheme (generate-iteration-scheme kernel backend)))
+             (iteration-scheme (generate-iteration-scheme kernel backend))
+             (kernel-parameters (generate-kernel-parameters buffers iteration-scheme)))
         (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
                (kernel-manager (make-kernel-manager))
                (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
@@ -177,8 +189,8 @@
 (defun kernel-parameter-type (kernel-parameter)
   (cadr kernel-parameter))
 
-(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
-  (loop for i from 0 to (1- (length kernel-arguments)) do
+(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme)
+  (loop for i from 0 below (length kernel-arguments) do
         (let ((argument (nth i kernel-arguments)))
           (if (arrayp argument)
               (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
@@ -189,15 +201,37 @@
                               (t (aref argument)))
                         ffi-type)))
               (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
-  (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i))))
+        (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))
+  (when (shape-independent-p iteration-scheme)
+    (loop for i from 0
+          for r in (shape-ranges (iteration-space iteration-scheme)) do
+          (let ((offset (+ (* 2 i) (length kernel-arguments))))
+          (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
+                (cffi:convert-to-foreign (range-start r) :int))
+          (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
+          (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr (1+ offset)) :int)
+                (cffi:convert-to-foreign (range-end r) :int))
+          (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) (1+ offset)) (cffi:mem-aptr device-ptrs 'cu-device-ptr (1+ offset)))))
+    (let ((offset (+ (length kernel-arguments) (* 2 (shape-rank (iteration-space iteration-scheme))))))
+      (loop for p in kernel-arguments do
+            (when (cuda-array-p p)
+              (loop for s in (cuda-array-strides p) do
+                    (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
+                          (cffi:convert-to-foreign s :int))
+                    (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
+                    (incf offset)))))))
 
-(defun run-compiled-function (compiled-function kernel-arguments)
+(defun run-compiled-function (compiled-function kernel-arguments iteration-space)
   (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-parameters hfunc) compiled-function))
-    (let ((parameters (call-parameters iteration-scheme)))
-      (let ((nargs (length kernel-arguments))
+    (let ((parameters (call-parameters iteration-scheme iteration-space)))
+      (let ((nargs (+ (length kernel-arguments)
+                      (if (shape-independent-p iteration-scheme)
+                              (+ (* 2 (shape-rank iteration-space)) (reduce #'+ (mapcar (lambda (b) (if (cuda-array-p b) (rank b) 0)) kernel-arguments)))
+                              0)))
             (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
+        (assert (= nargs (length kernel-parameters)))
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
-          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters)
+          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme)
           (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
             (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
               (when cl-cuda:*show-messages*
@@ -219,7 +253,7 @@
     (upload-buffers-to-gpu buffers backend)
     (map-kernel-inputs (lambda (buffer) (wait-for-buffer buffer backend)) kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
-      (run-compiled-function (compile-kernel kernel backend) arrays))
+      (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel)))
     (record-corresponding-event kernel (cuda-backend-event-map backend))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)

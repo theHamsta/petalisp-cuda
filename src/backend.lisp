@@ -2,7 +2,8 @@
   (:use :cl
         :petalisp
         :petalisp.ir
-        :petalisp-cuda.memory.memory-pool)
+        :petalisp-cuda.memory.memory-pool
+        :petalisp-cuda.options)
   (:import-from :petalisp.core
                 :identity-transformation)
   (:import-from :petalisp.native-backend
@@ -44,12 +45,7 @@
            with-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
-(defparameter *silence-cl-cuda* t)
 (defparameter *cuda-backend* nil)
-(defparameter *transfer-back-to-lisp* nil)
-(defparameter *single-threaded* t)
-(defparameter *single-stream* t)
-(defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--expt-relaxed-constexpr" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -293,11 +289,10 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
-  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend))
-  (let ((context? nil #|(backend-context backend)|#))
-    (when context? (progn
-                     (cl-cuda:destroy-cuda-context context?) 
-                     (setf (backend-context backend) nil)))))
+  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
+  ;(let ((context? nil (backend-context backend)))
+    ;(when context?
+      ;(cl-cuda:destroy-cuda-context context?))))
 
 (defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
   (change-class instance (class-of replacement)

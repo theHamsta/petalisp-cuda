@@ -7,6 +7,9 @@
                 :rank)
   (:import-from :petalisp-cuda.utils.cl-cuda
                 :sync-memory-block-async)
+  (:import-from :petalisp-cuda.options
+                :*max-array-printing-length*
+                :*silence-cl-cuda*)
   (:export :make-cuda-array
            :cuda-array
            :cuda-array-shape
@@ -38,8 +41,6 @@
     ((equal element-type :float)  'single-float)
     ((equal element-type :double) 'double-float)     
     (t (error "Cannot convert ~S to ntype." element-type))))
-
-(defparameter *silence-cl-cuda* t)
 
 (defun lisp-type-cuda-array (cu-array)
   (type-from-cl-cuda-type (cuda-array-type cu-array)))
@@ -183,25 +184,23 @@
     (petalisp.core::make-shape
       (mapcar (lambda (s) (petalisp.core:range s)) shape))))
 
-(defparameter *max-printing-length* 5)
-
 (defmethod print-object :after ((cuda-array cuda-array) stream)
-  (unless *print-readably*
+  (unless (*print-readably* (or (= *max-array-printing-length* 0)))
     (let  ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
       (cl-cuda:sync-memory-block (cuda-array-memory-block cuda-array) :device-to-host)
       (let* ((shape (cuda-array-shape cuda-array))
              (rank (length shape))
              (max-idx (mapcar #'1- shape))
-             (max-border (mapcar (lambda (i) (- i *max-printing-length*)) shape)))
+             (max-border (mapcar (lambda (i) (- i *max-array-printing-length*)) shape)))
         (format stream "~%~%")
         (if (= rank 0)
             (format stream "~A~%" (cuda-array-aref cuda-array '(0)))
             (iterate (for idx in-it (petalisp-cuda.memory.cuda-array:nd-iter shape))
-              (when (every (lambda (i max) (or (<= i *max-printing-length*) (> i max))) idx max-border)
+              (when (every (lambda (i max) (or (<= i *max-array-printing-length*) (> i max))) idx max-border)
                 (dotimes (i rank)
                   (when (every (lambda (i) (= i 0)) (subseq idx i))
                     (format stream "(")))
-                  (if (some (lambda (i) (= i *max-printing-length*)) idx)
+                  (if (some (lambda (i) (= i *max-array-printing-length*)) idx)
                       (format stream "... ")
                       (format stream "~A " (cuda-array-aref cuda-array idx)))
                   (dotimes (i rank)

@@ -62,7 +62,7 @@
       (α #'1+ (with-cuda-backend
                 (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
 
-(deftest rbgs-test
+(deftest rbgs-test-fixed-size
   (with-testing-backend
     (ok (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1)))
     (ok (compute (rbgs (aops:rand* 'single-float '(5)) 0.0 1.0 1)))
@@ -79,6 +79,16 @@
     (ok (compute (rbgs (ndarray 2) 0.0 1.0 2)))
     (ok (compute (rbgs (ndarray 3) 0.0 1.0 2)))
     (ok (compute (rbgs (ndarray 3) 0.0 1.0 5)))))
+
+(deftest indices-test
+  (with-testing-backend
+    (compute (array-indices #(5 6 7)))
+    (let ((a (make-array '(2 3 4))))
+      (compute (array-indices a 1))
+      (compute (α #'+
+                  (array-indices a 0)
+                  (array-indices a 1)
+                  (array-indices a 2))))))
 
 (deftest lazy-map-test
   (with-testing-backend

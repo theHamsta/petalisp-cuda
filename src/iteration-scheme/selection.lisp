@@ -13,7 +13,9 @@
     (dotimes (i rank)
       (push (range 0) block-shape))
     (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range range-size))) xyz block-shape-as-list)
-    (make-instance 'slow-coordinate-transposed-scheme
+    (make-instance (if *shape-independent-code*
+                       'symbolic-block-iteration-scheme
+                       'block-iteration-scheme)
                    :shape iteration-shape
                    :xyz-dimensions xyz
                    :block-shape block-shape)))

@@ -6,8 +6,8 @@
                  :accessor block-shape
                  :type petalisp.core:shape)))
 
-(defmethod call-parameters ((iteration-scheme block-iteration-scheme))
-  (let ((filtered-iteration-shape (filtered-iteration-shape iteration-scheme))
+(defmethod call-parameters ((iteration-scheme block-iteration-scheme) (iteration-shape shape))
+  (let ((filtered-iteration-shape (filtered-iteration-shape iteration-scheme iteration-shape))
         (filtered-block-shape (filtered-block-shape iteration-scheme)))
     `(:grid-dim  ,(mapcar #'ceiling
                           filtered-iteration-shape
@@ -15,7 +15,7 @@
       :block-dim ,filtered-block-shape)))
 
 (defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
-  (let ((iteration-ranges (or (shape-ranges (iteration-shape iteration-scheme)) (list (range 1))))
+  (let ((iteration-ranges (or (shape-ranges (iteration-space iteration-scheme)) (list (range 1))))
         (xyz (or (xyz-dimensions iteration-scheme) '(0))))
     ;; define x,y,z dimensions
     `(let ,(loop for dim-idx in xyz

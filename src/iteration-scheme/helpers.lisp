@@ -13,8 +13,8 @@
     (filter-xyz-dimensions xyz-size
                            (xyz-dimensions iteration-scheme))))
 
-(defun filtered-iteration-shape (iteration-scheme)
-  (filter-xyz-dimensions (mapcar #'range-size (shape-ranges (iteration-shape iteration-scheme))) (xyz-dimensions iteration-scheme)))
+(defun filtered-iteration-shape (iteration-scheme iteration-shape)
+  (filter-xyz-dimensions (mapcar #'range-size (shape-ranges iteration-shape)) (xyz-dimensions iteration-scheme)))
 
 (defun range-empty-p (range)
   (= (range-size range) 0))
@@ -38,11 +38,14 @@
           ((>= ,dim-symbol ,(range-end dim-range)))
           ,body))))
 
-(defun linearize-instruction-transformation (instruction &optional buffer)
+(defun linearize-instruction-transformation (instruction &optional buffer kernel-parameter)
   (let* ((transformation (instruction-transformation instruction))
          (input-rank (transformation-input-rank transformation))
          (strides (or (if buffer
-                          (cuda-array-strides (buffer-storage buffer))
+                          (if *shape-independent-code*
+                              (loop for i below (shape-rank (buffer-shape buffer))
+                                    collect (format-symbol t "~A-stride-~A" kernel-parameter i))
+                           (cuda-array-strides (buffer-storage buffer)))
                           (make-list input-rank :initial-element 1))
                       '(1)))
          (index-space (get-counter-vector input-rank) )
@@ -54,4 +57,8 @@
 
 (defmethod iteration-scheme-buffer-access ((iteration-scheme iteration-scheme) instruction buffer kernel-parameter)
   ;; We can always do a uncached memory access
-  `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer)))
+  `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer kernel-parameter)))
+
+(defmethod shape-independent-p ((iteration-scheme iteration-scheme))
+  )
+
