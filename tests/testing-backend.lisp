@@ -11,7 +11,7 @@
 
 (defmethod compute-immediates ((data-structures list) (testing-backend cuda-testing-backend))
   (with-accessors ((reference-backend petalisp.test-suite::reference-backend)
-                   (ir-backend petalisp.test-suite::ir-backend)
+                   (ir-backend petalisp.test-suite::ir-backend-compiled)
                    (native-backend petalisp.test-suite::native-backend)
                    (cuda-backend cuda-backend)) testing-backend
     (let ((reference-solutions
