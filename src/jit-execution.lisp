@@ -51,6 +51,11 @@
 (defun weird-rational-p (r)
   (and (rationalp r) (not (integerp r))))
 
+(defun get-offset-vector (kernel)
+  (loop for i in (kernel-instructions kernel)
+        when (not (typep i 'call-instruction))
+        collect (transformation-offsets (instruction-transformation i))))
+
 (defun kernel-inputs (kernel)
   (let ((buffers '()))
     (petalisp.ir:map-kernel-inputs
@@ -145,20 +150,24 @@
     ((cons 'let (cons (list (list lhs (list 'ceiling a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(ceiling ,a ,b)) (list (remove-lispy-stuff `(rem ,a ,b)))) ,@(remove-lispy-stuff body)))
     ((guard (cons 'let (cons (list (cons lhs (cons rhs more-rhs))) body)) more-rhs) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff rhs) (remove-lispy-stuff more-rhs)) ,@(remove-lispy-stuff body)))
     ; rest
+    ;((guard a (numberp a)) (or (loop for s in (mapcar #'range-start (shape-ranges iteration-space))
+                                     ;for i from 0
+                                     ;when (and (/= s 0) (/= s 1) (= s i))
+                                     ;return (format t "iteration-start-~A" s))  a))
     ((guard a (atom a)) a)
     ((cons a b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))))
 
 (defun compile-kernel (kernel backend)
   (let* ((blueprint (kernel-blueprint kernel))
          ;; TODO: compile we do not compile iteration-space independent
-         ;; TODO: hash strides of kernel buffers
-         ;(hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-inputs kernel))))
+         ; TODO: hash strides of kernel buffers
+         (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-buffers kernel)) (get-offset-vector kernel)))
          )
     (when cl-cuda:*show-messages*
       (format t "~A~%" blueprint))
-    ;(petalisp.utilities:with-hash-table-memoization 
-      ;(hash)
-      ;(compile-cache backend)
+    (petalisp.utilities:with-hash-table-memoization 
+      (hash)
+      (compile-cache backend)
       (let* ((buffers (kernel-buffers kernel))
              (iteration-scheme (generate-iteration-scheme kernel backend))
              (kernel-parameters (generate-kernel-parameters buffers iteration-scheme)))
@@ -184,7 +193,7 @@
                                    :kernel-parameters kernel-parameters
                                    :kernel-body generated-kernel
                                    :hfunc hfunc))))))
-  ;)
+  )
 
 (defun kernel-parameter-type (kernel-parameter)
   (cadr kernel-parameter))
