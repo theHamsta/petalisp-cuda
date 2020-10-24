@@ -29,7 +29,3 @@
 
 (defmethod shape-independent-p ((iteration-scheme symbolic-block-iteration-scheme))
   t)
-
-(defmethod iteration-scheme-buffer-access :around ((iteration-scheme symbolic-block-iteration-scheme) instruction buffer kernel-parameter)
-  (let ((*shape-independent-code* t))
-    (call-next-method)))

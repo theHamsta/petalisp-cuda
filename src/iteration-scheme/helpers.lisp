@@ -38,11 +38,11 @@
           ((>= ,dim-symbol ,(range-end dim-range)))
           ,body))))
 
-(defun linearize-instruction-transformation (instruction &optional buffer kernel-parameter)
+(defun linearize-instruction-transformation (instruction &optional buffer kernel-parameter shape-independent-p)
   (let* ((transformation (instruction-transformation instruction))
          (input-rank (transformation-input-rank transformation))
          (strides (or (if buffer
-                          (if *shape-independent-code*
+                          (if shape-independent-p
                               (loop for i below (shape-rank (buffer-shape buffer))
                                     collect (format-symbol t "~A-stride-~A" kernel-parameter i))
                            (cuda-array-strides (buffer-storage buffer)))
@@ -57,7 +57,7 @@
 
 (defmethod iteration-scheme-buffer-access ((iteration-scheme iteration-scheme) instruction buffer kernel-parameter)
   ;; We can always do a uncached memory access
-  `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer kernel-parameter)))
+  `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer kernel-parameter (shape-independent-p iteration-scheme))))
 
 (defmethod shape-independent-p ((iteration-scheme iteration-scheme))
   )
