@@ -185,7 +185,7 @@
       (mapcar (lambda (s) (petalisp.core:range s)) shape))))
 
 (defmethod print-object :after ((cuda-array cuda-array) stream)
-  (unless (*print-readably* (or (= *max-array-printing-length* 0)))
+  (unless (or *print-readably* (= *max-array-printing-length* 0))
     (let  ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
       (cl-cuda:sync-memory-block (cuda-array-memory-block cuda-array) :device-to-host)
       (let* ((shape (cuda-array-shape cuda-array))
