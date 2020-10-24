@@ -30,6 +30,7 @@
                 :linearize-instruction-transformation
                 :iteration-scheme-buffer-access
                 :shape-independent-p
+                :generic-offsets-p
                 :iteration-space)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
@@ -52,9 +53,12 @@
   (and (rationalp r) (not (integerp r))))
 
 (defun get-offset-vector (kernel)
-  (loop for i in (kernel-instructions kernel)
-        when (not (typep i 'call-instruction))
-        collect (transformation-offsets (instruction-transformation i))))
+  (apply #'concatenate `(list ,@(loop for i in (kernel-instructions kernel)
+                                     when (not (typep i 'call-instruction))
+                                     collect (transformation-offsets (instruction-transformation i))))))
+
+(defun filtered-offset-vector (kernel)
+  (remove-if-not (lambda (a) (> (abs a) 2)) (remove-duplicates (get-offset-vector kernel))))
 
 (defun kernel-inputs (kernel)
   (let ((buffers '()))
@@ -85,7 +89,7 @@
                            (preferred-block-size backend)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
-(defun generate-kernel-parameters (buffers iteration-scheme)
+(defun generate-kernel-parameters (buffers iteration-scheme filtered-offset-vector)
   (concatenate 'list (mapcar (lambda (buffer idx)
                                (list (format-symbol t "buffer-~A" idx)
                                      (let ((dtype (cl-cuda-type-from-buffer buffer)))
@@ -103,7 +107,11 @@
                  (apply #'concatenate `(list ,@(loop for b in buffers
                                                      for i from 0
                                                      collect (loop for j below (shape-rank (buffer-shape b))
-                                                                   collect `(,(format-symbol t "buffer-~A-stride-~A" i j) int))))))))
+                                                                   collect `(,(format-symbol t "buffer-~A-stride-~A" i j) int))))))
+               (when (generic-offsets-p iteration-scheme)
+                 (loop for s in filtered-offset-vector
+                       for i from 0
+                       collect `(,(format-symbol t "offset-~A" i) int)))))
 
 (defun upload-buffers-to-gpu (buffers backend)
   (mapcar (lambda (b) (upload-buffer-to-gpu b backend)) buffers))
@@ -130,54 +138,56 @@
             collect (list (format-symbol t "~A_~A" lhs i) r))))
 
 ;; Remove stuff that cl-cuda does not like
-(defun remove-lispy-stuff (tree)
+(defun remove-lispy-stuff (tree offset-vector)
   (match tree
-    ((cons (cons 'declare _) b) (remove-lispy-stuff b))
+    ((cons (cons 'declare _) b) (remove-lispy-stuff b offset-vector))
     ; unary +
-    ((list '+ b) `(+ 0 ,(remove-lispy-stuff b)))
+    ((list '+ b) `(+ 0 ,(remove-lispy-stuff b offset-vector)))
     ; binary floor/ceiling
-    ((list 'floor a b) `(floor (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
-    ((list 'ceiling a b) `(ceiling (/ ,(remove-lispy-stuff a) ,(remove-lispy-stuff b))))
+    ((list 'floor a b) `(floor (/ ,(remove-lispy-stuff a offset-vector) ,(remove-lispy-stuff b offset-vector))))
+    ((list 'ceiling a b) `(ceiling (/ ,(remove-lispy-stuff a offset-vector) ,(remove-lispy-stuff b offset-vector))))
     ; 1+/1-
-    ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b)))
-    ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b)))
+    ((cons '1+ b) `(+ 1 ,@(remove-lispy-stuff b offset-vector)))
+    ((cons '1- b) `(+ (- 1) ,@(remove-lispy-stuff b offset-vector)))
     ; ratios
     ((list '* (guard r (and (rationalp r) (not (integerp r)))) s) `(/ (* ,(numerator r)
-                                                                         ,(remove-lispy-stuff s))
+                                                                         ,(remove-lispy-stuff s offset-vector))
                                                                       ,(denominator r)))
     ; multiple values set
-    ((cons 'let (cons (list (list lhs (list 'floor a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(floor ,a ,b)) (list (remove-lispy-stuff `(rem ,a ,b)))) ,@(remove-lispy-stuff body)))
-    ((cons 'let (cons (list (list lhs (list 'ceiling a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(ceiling ,a ,b)) (list (remove-lispy-stuff `(rem ,a ,b)))) ,@(remove-lispy-stuff body)))
-    ((guard (cons 'let (cons (list (cons lhs (cons rhs more-rhs))) body)) more-rhs) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff rhs) (remove-lispy-stuff more-rhs)) ,@(remove-lispy-stuff body)))
+    ((cons 'let (cons (list (list lhs (list 'floor a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(floor ,a ,b) offset-vector) (list (remove-lispy-stuff `(rem ,a ,b) offset-vector) offset-vector)) ,@(remove-lispy-stuff body offset-vector)))
+    ((cons 'let (cons (list (list lhs (list 'ceiling a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(ceiling ,a ,b) offset-vector) (list (remove-lispy-stuff `(rem ,a ,b) offset-vector))) ,@(remove-lispy-stuff body offset-vector)))
+    ((guard (cons 'let (cons (list (cons lhs (cons rhs more-rhs))) body)) more-rhs) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff rhs offset-vector) (remove-lispy-stuff more-rhs offset-vector)) ,@(remove-lispy-stuff body offset-vector)))
     ; rest
-    ;((guard a (numberp a)) (or (loop for s in (mapcar #'range-start (shape-ranges iteration-space))
-                                     ;for i from 0
-                                     ;when (and (/= s 0) (/= s 1) (= s i))
-                                     ;return (format t "iteration-start-~A" s))  a))
+    ((guard a (numberp a)) (or (loop for o in offset-vector
+                                     for i from 0
+                                     when (= o a)
+                                     return (format-symbol t "offset-~A" i))  a))
     ((guard a (atom a)) a)
-    ((cons a b) (cons (remove-lispy-stuff a) (remove-lispy-stuff b)))))
+    ((cons a b) (cons (remove-lispy-stuff a offset-vector) (remove-lispy-stuff b offset-vector)))))
 
 (defun compile-kernel (kernel backend)
-  (let* ((blueprint (kernel-blueprint kernel))
-         ;; TODO: compile we do not compile iteration-space independent
-         ; TODO: hash strides of kernel buffers
-         (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-buffers kernel)) (get-offset-vector kernel)))
-         )
-    (when cl-cuda:*show-messages*
-      (format t "~A~%" blueprint))
-    (petalisp.utilities:with-hash-table-memoization 
-      (hash)
-      (compile-cache backend)
-      (let* ((buffers (kernel-buffers kernel))
-             (iteration-scheme (generate-iteration-scheme kernel backend))
-             (kernel-parameters (generate-kernel-parameters buffers iteration-scheme)))
-        (let* ((kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
+    (let* ((blueprint (kernel-blueprint kernel))
+           ;; TODO: compile we do not compile iteration-space independent
+           ; TODO: hash strides of kernel buffers
+           (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-buffers kernel)) (get-offset-vector kernel)))
+           )
+      (when cl-cuda:*show-messages*
+        (format t "~A~%" blueprint))
+      (petalisp.utilities:with-hash-table-memoization 
+        (hash)
+        (compile-cache backend)
+        (let* ((iteration-scheme (generate-iteration-scheme kernel backend))
+               (buffers (kernel-buffers kernel))
+               (filtered-offset-vector (when (generic-offsets-p iteration-scheme) (filtered-offset-vector kernel)))
+               (kernel-parameters (generate-kernel-parameters buffers iteration-scheme filtered-offset-vector))
+               (kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
                (kernel-manager (make-kernel-manager))
                (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
                                                                          kernel-parameters
                                                                          buffers
-                                                                         iteration-scheme)))))  
-          (when cl-cuda:*show-messages*
+                                                                         iteration-scheme)
+                                                        filtered-offset-vector))))  
+        (when cl-cuda:*show-messages*
             (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
           (kernel-manager-define-function kernel-manager
                                           kernel-symbol
@@ -186,19 +196,18 @@
                                           generated-kernel)
           ;; Load function here that only loadable function get into the compile cache
           (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
-                (make-jit-function :kernel-symbol kernel-symbol
-                                   :iteration-scheme iteration-scheme
-                                   :dynamic-shared-mem-bytes 0
-                                   :kernel-manager kernel-manager
-                                   :kernel-parameters kernel-parameters
-                                   :kernel-body generated-kernel
-                                   :hfunc hfunc))))))
-  )
+            (make-jit-function :kernel-symbol kernel-symbol
+                               :iteration-scheme iteration-scheme
+                               :dynamic-shared-mem-bytes 0
+                               :kernel-manager kernel-manager
+                               :kernel-parameters kernel-parameters
+                               :kernel-body generated-kernel
+                               :hfunc hfunc))))))
 
 (defun kernel-parameter-type (kernel-parameter)
   (cadr kernel-parameter))
 
-(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme)
+(defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme filtered-offsets)
   (loop for i from 0 below (length kernel-arguments) do
         (let ((argument (nth i kernel-arguments)))
           (if (arrayp argument)
@@ -212,35 +221,44 @@
               (setf (cffi:mem-aref device-ptrs 'cu-device-ptr i) (device-ptr argument))))
         (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) i) (cffi:mem-aptr device-ptrs 'cu-device-ptr i)))
   (when (shape-independent-p iteration-scheme)
-    (loop for i from 0
-          for r in (shape-ranges (iteration-space iteration-scheme)) do
-          (let ((offset (+ (* 2 i) (length kernel-arguments))))
-          (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
-                (cffi:convert-to-foreign (range-start r) :int))
-          (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
-          (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr (1+ offset)) :int)
-                (cffi:convert-to-foreign (range-end r) :int))
-          (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) (1+ offset)) (cffi:mem-aptr device-ptrs 'cu-device-ptr (1+ offset)))))
-    (let ((offset (+ (length kernel-arguments) (* 2 (shape-rank (iteration-space iteration-scheme))))))
+    (let ((offset (length kernel-arguments)))
+      (loop for r in (shape-ranges (iteration-space iteration-scheme)) do
+            (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
+                  (cffi:convert-to-foreign (range-start r) :int))
+            (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
+            (incf offset)
+            (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
+                  (cffi:convert-to-foreign (range-end r) :int))
+            (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
+            (incf offset))
       (loop for p in kernel-arguments do
             (when (cuda-array-p p)
               (loop for s in (cuda-array-strides p) do
                     (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
                           (cffi:convert-to-foreign s :int))
                     (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
-                    (incf offset)))))))
+                    (incf offset))))
+    (when (generic-offsets-p iteration-scheme)
+      (loop for o in filtered-offsets do
+            (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr offset) :int)
+                  (cffi:convert-to-foreign o :int))
+            (setf (cffi:mem-aref ptrs-to-device-ptrs '(:pointer :pointer) offset) (cffi:mem-aptr device-ptrs 'cu-device-ptr offset))
+            (incf offset))))))
 
-(defun run-compiled-function (compiled-function kernel-arguments iteration-space)
+(defun run-compiled-function (compiled-function kernel-arguments iteration-space kernel)
   (let+ (((&slots kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-parameters hfunc) compiled-function))
-    (let ((parameters (call-parameters iteration-scheme iteration-space)))
+    (let ((parameters (call-parameters iteration-scheme iteration-space))
+          (filtered-offsets (when (generic-offsets-p iteration-scheme)
+                              (filtered-offset-vector kernel))))
       (let ((nargs (+ (length kernel-arguments)
                       (if (shape-independent-p iteration-scheme)
                               (+ (* 2 (shape-rank iteration-space)) (reduce #'+ (mapcar (lambda (b) (if (cuda-array-p b) (rank b) 0)) kernel-arguments)))
-                              0)))
+                              0)
+                      (length filtered-offsets)))
             (extra-arguments (cffi:null-pointer))) ; has to be NULL since we use the kernel-args parameter
         (assert (= nargs (length kernel-parameters)))
         (cffi:with-foreign-objects ((ptrs-to-device-ptrs '(:pointer :pointer) nargs) (device-ptrs 'cu-device-ptr nargs))
-          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme)
+          (fill-with-device-ptrs ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme filtered-offsets)
           (destructuring-bind (grid-dim-x grid-dim-y grid-dim-z) (getf parameters :grid-dim)
             (destructuring-bind (block-dim-x block-dim-y block-dim-z) (getf parameters :block-dim)
               (when cl-cuda:*show-messages*
@@ -262,7 +280,7 @@
     (upload-buffers-to-gpu buffers backend)
     (map-kernel-inputs (lambda (buffer) (wait-for-buffer buffer backend)) kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
-      (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel)))
+      (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel) kernel))
     (record-corresponding-event kernel (cuda-backend-event-map backend))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)

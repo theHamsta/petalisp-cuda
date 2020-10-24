@@ -61,4 +61,6 @@
 
 (defmethod shape-independent-p ((iteration-scheme iteration-scheme))
   )
+(defmethod generic-offsets-p ((iteration-scheme iteration-scheme))
+  )
 

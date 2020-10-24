@@ -73,8 +73,9 @@
 
 (deftest rbgs-test
   (with-testing-backend
-    (ok (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1)))
-    (ok (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(25)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(26)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'single-float '(27)) 0.0 1.0 2)))
     (ok (compute (rbgs (ndarray 1) 0.0 1.0 2)))
     (ok (compute (rbgs (ndarray 2) 0.0 1.0 2)))
     (ok (compute (rbgs (ndarray 3) 0.0 1.0 2)))

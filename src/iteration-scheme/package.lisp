@@ -15,6 +15,7 @@
            :get-counter-symbol
            :linearize-instruction-transformation
            :shape-independent-p
+           :generic-offsets-p
            :iteration-space))
 
 (in-package petalisp-cuda.iteration-scheme)
@@ -31,3 +32,4 @@
 (defgeneric iteration-code (iteration-scheme kernel-body))
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
 (defgeneric shape-independent-p (iteration-scheme))
+(defgeneric generic-offsets-p (iteration-scheme))

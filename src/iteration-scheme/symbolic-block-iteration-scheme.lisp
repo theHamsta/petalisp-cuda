@@ -2,7 +2,8 @@
 
 ;; block-iteration-scheme (one thread per datum)
 (defclass symbolic-block-iteration-scheme (block-iteration-scheme)
-  ())
+  ((%generic-offsets :initform *generic-offsets*
+                     :accessor %generic-offsets-p)))
 
 (defmethod iteration-code ((iteration-scheme symbolic-block-iteration-scheme) kernel-body)
   (let* ((ranges-from-ir (shape-ranges (iteration-space iteration-scheme)))
@@ -29,3 +30,5 @@
 
 (defmethod shape-independent-p ((iteration-scheme symbolic-block-iteration-scheme))
   t)
+(defmethod generic-offsets-p ((iteration-scheme symbolic-block-iteration-scheme))
+  (%generic-offsets-p iteration-scheme))
