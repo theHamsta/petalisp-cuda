@@ -40,3 +40,13 @@
 
 (defun call-with-testing-backend (thunk)
   (funcall thunk))
+
+(defmethod approximately-equal ((a t) (b single-float))
+  (< (abs (- a b)) (* 64 single-float-epsilon)))
+(defmethod approximately-equal ((a single-float) (b t))
+  (< (abs (- a b)) (* 64 single-float-epsilon)))
+(defmethod approximately-equal ((a t) (b double-float))
+  (< (abs (- a b)) (* 64 double-float-epsilon)))
+(defmethod approximately-equal ((a double-float) (b t))
+  (< (abs (- a b)) (* 64 double-float-epsilon)))
+

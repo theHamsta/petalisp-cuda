@@ -16,7 +16,8 @@
                 :matmul
                 :transpose
                 :LU
-                :eye)
+                :eye
+                :pivot-and-value)
   (:import-from :petalisp.test-suite
                 :ndarray
                 :approximately-equal
