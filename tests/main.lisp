@@ -206,8 +206,8 @@
 
 (deftest type-conversion
   (with-testing-backend
-    (compute (α #'coerce (reshape 1 (~ 5 ~ 5)) 'double-float))
-    (compute (α #'coerce (reshape 1 (~ 5 ~ 5)) 'single-float))
+    (compute (α #'coerce #(1 2 3) 'double-float))
+    (compute (α #'coerce #(1 2 3) 'single-float))
     (compute (α #'coerce (aops:rand* 'double-float '(20 20)) 'single-float))
     (compute (α #'coerce (aops:rand* 'single-float '(20 20)) 'double-float))
     ;(compute (α (lambda (a)  (coerce a 'double-float)) (aops:rand* 'double-float '(20 20))))
