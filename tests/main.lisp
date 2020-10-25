@@ -204,14 +204,23 @@
         (petalisp-cuda.jitexecution::analyze-multiple-value-lambda '(defun (a)
                                                                         (foo (values 2 3)))))))
 
+(deftest type-conversion
+  (with-testing-backend
+    (compute (α #'coerce (reshape 1 (~ 5 ~ 5)) 'double-float))
+    (compute (α #'coerce (reshape 1 (~ 5 ~ 5)) 'single-float))
+    (compute (α #'coerce (aops:rand* 'double-float '(20 20)) 'single-float))
+    (compute (α #'coerce (aops:rand* 'single-float '(20 20)) 'double-float))
+    ;(compute (α (lambda (a)  (coerce a 'double-float)) (aops:rand* 'double-float '(20 20))))
+             ))
+
+
 (deftest v-cycle-test
-  (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
-  (compute (v-cycle (reshape 1.0 (~ 9 ~ 9)) 0.0 1.0 2 1))
-  (compute (v-cycle (reshape 1.0 (~ 17 ~ 17)) 0.0 1.0 2 1))
-  #+(or)
-  (compute (v-cycle (reshape 1.0 (~ 33 ~ 33)) 0.0 1.0 2 1))
-  #+(or)
-  (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3)))
+  (with-testing-backend
+    (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
+    (compute (v-cycle (reshape 1.0 (~ 9 ~ 9)) 0.0 1.0 2 1))
+    (compute (v-cycle (reshape 1.0 (~ 17 ~ 17)) 0.0 1.0 2 1))
+    (compute (v-cycle (reshape 1.0 (~ 33 ~ 33)) 0.0 1.0 2 1))
+    (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3))))
 
 (deftest reduction-test
   (with-testing-backend
