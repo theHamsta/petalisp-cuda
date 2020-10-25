@@ -33,7 +33,7 @@
 
 (defmacro with-testing-backend (&body body)
   `(let ((petalisp-cuda.backend:*transfer-back-to-lisp* t)
-         (cl-cuda:*show-messages* nil)
+         (cl-cuda:*show-messages* (if petalisp-cuda.options:*silence-cl-cuda* nil cl-cuda:*show-messages*))
          (petalisp:*backend* *test-backend*)
          (PETALISP.TEST-SUITE::*PASS-COUNT* 0))
      (call-with-testing-backend (lambda () ,@body))))
