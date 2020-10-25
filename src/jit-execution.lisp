@@ -166,43 +166,45 @@
     ((cons a b) (cons (remove-lispy-stuff a offset-vector) (remove-lispy-stuff b offset-vector)))))
 
 (defun compile-kernel (kernel backend)
-    (let* ((blueprint (kernel-blueprint kernel))
-           ;; TODO: compile we do not compile iteration-space independent
-           ; TODO: hash strides of kernel buffers
-           (hash (list blueprint (kernel-iteration-space kernel) (mapcar #'buffer-shape (kernel-buffers kernel)) (get-offset-vector kernel)))
-           )
-      (when cl-cuda:*show-messages*
-        (format t "~A~%" blueprint))
-      (petalisp.utilities:with-hash-table-memoization 
-        (hash)
-        (compile-cache backend)
-        (let* ((iteration-scheme (generate-iteration-scheme kernel backend))
-               (buffers (kernel-buffers kernel))
-               (filtered-offset-vector (when (generic-offsets-p iteration-scheme) (filtered-offset-vector kernel)))
-               (kernel-parameters (generate-kernel-parameters buffers iteration-scheme filtered-offset-vector))
-               (kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
-               (kernel-manager (make-kernel-manager))
-               (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
-                                                                         kernel-parameters
-                                                                         buffers
-                                                                         iteration-scheme)
-                                                        filtered-offset-vector))))  
+  (let* ((blueprint (kernel-blueprint kernel))
+         (hash (list blueprint
+                     (kernel-iteration-space kernel)
+                     (mapcar #'buffer-shape (kernel-buffers kernel))
+                     (get-offset-vector kernel)
+                     ;; call-instruction-operator is nil in blueprints when functionp
+                     (mapcar (lambda (i) (when (call-instruction-p i) (call-instruction-operator i))) (kernel-instructions kernel)))))
+    (when cl-cuda:*show-messages*
+      (format t "~A~%" blueprint))
+    (petalisp.utilities:with-hash-table-memoization 
+      (hash)
+      (if petalisp-cuda.options:*with-hash-table-memoization* (compile-cache backend) (make-hash-table))
+      (let* ((iteration-scheme (generate-iteration-scheme kernel backend))
+             (buffers (kernel-buffers kernel))
+             (filtered-offset-vector (when (generic-offsets-p iteration-scheme) (filtered-offset-vector kernel)))
+             (kernel-parameters (generate-kernel-parameters buffers iteration-scheme filtered-offset-vector))
+             (kernel-symbol (format-symbol t "kernel-function")) ;cl-cuda wants symbol with a package for the function name
+             (kernel-manager (make-kernel-manager))
+             (generated-kernel `(,(remove-lispy-stuff (generate-kernel kernel
+                                                                       kernel-parameters
+                                                                       buffers
+                                                                       iteration-scheme)
+                                                      filtered-offset-vector))))  
         (when cl-cuda:*show-messages*
-            (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
-          (kernel-manager-define-function kernel-manager
-                                          kernel-symbol
-                                          'void
-                                          kernel-parameters
-                                          generated-kernel)
-          ;; Load function here that only loadable function get into the compile cache
-          (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
-            (make-jit-function :kernel-symbol kernel-symbol
-                               :iteration-scheme iteration-scheme
-                               :dynamic-shared-mem-bytes 0
-                               :kernel-manager kernel-manager
-                               :kernel-parameters kernel-parameters
-                               :kernel-body generated-kernel
-                               :hfunc hfunc))))))
+          (format t "Generated kernel:~%Arguments: ~A~%~A~%" kernel-parameters generated-kernel))
+        (kernel-manager-define-function kernel-manager
+                                        kernel-symbol
+                                        'void
+                                        kernel-parameters
+                                        generated-kernel)
+        ;; Load function here that only loadable function get into the compile cache
+        (let ((hfunc (ensure-kernel-function-loaded kernel-manager kernel-symbol)))
+          (make-jit-function :kernel-symbol kernel-symbol
+                             :iteration-scheme iteration-scheme
+                             :dynamic-shared-mem-bytes 0
+                             :kernel-manager kernel-manager
+                             :kernel-parameters kernel-parameters
+                             :kernel-body generated-kernel
+                             :hfunc hfunc))))))
 
 (defun kernel-parameter-type (kernel-parameter)
   (cadr kernel-parameter))

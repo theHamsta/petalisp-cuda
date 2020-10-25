@@ -6,7 +6,8 @@
            :*single-stream*
            :*nvcc-extra-options*
            :*shape-independent-code*
-           :*generic-offsets*))
+           :*generic-offsets*
+           :*with-hash-table-memoization*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -16,6 +17,7 @@
 (defparameter *nvcc-extra-options* '("-use_fast_math" "-Xptxas" "-O3" "--expt-relaxed-constexpr" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
 (defparameter *shape-independent-code* t)
 (defparameter *generic-offsets* t)
+(defparameter *with-hash-table-memoization* t)
 
 ;; Number of numbers to display at end and start when printing cuda array
 (defparameter *max-array-printing-length* 5)
