@@ -35,20 +35,28 @@ repository to your local projects folder:
 git clone git@github.com:theHamsta/petalisp-cuda.git
 #+END_SRC
 
+It is recommended to use my fork of cl-cuda that performs disk caching to
+ensure that the same kernel is not compiled multiple times.
+
+#+BEGIN_SRC bash
+git clone git@github.com:theHamsta/cl-cuda.git
+#+END_SRC
+
 ** TODOs
 
 - [x] sort indices for fasted dimensions
 - [ ] hash CUDA array strides to recompile correctly with arrays not allocated in C-layout with alternative memory layouts
 - [ ] fix super-slow lisp->native, native->lisp calls
-- [ ] compile kernels not only for fixed iteration spaces
+- [x] compile kernels not only for fixed iteration spaces
 - [ ] implement reductions with CUDNN
 - [ ] implement convolutions with CUDNN
 - [ ] __restrict__ kernel parameters
 - [ ] infer function parameters for generated __device__ functions
-- [ ] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
+- [x] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
 - [ ] fast interpolation using textures (?)
 - [ ] half float, bfloat support
-- [ ] native sub-int8 support, e.g. (signed bit 1), without upgrading to i8
+- [ ] optimized transposed memory accesses via cub.h
+- [ ] optimized memory accesses via stride tricks
 
 ** Debugging
 
