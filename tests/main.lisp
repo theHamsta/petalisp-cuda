@@ -66,7 +66,7 @@
   (with-testing-backend
     (ok (compute (rbgs (aops:rand* 'single-float '(4)) 0.0 1.0 1)))
     (ok (compute (rbgs (aops:rand* 'single-float '(5)) 0.0 1.0 1)))
-    (ok (compute (rbgs (aops:rand* 'single-float '(6)) 0.0 1.0 1)))
+    (ok (compute (rbgs (aops:rand* 'double-float '(6)) 0.0 1.0 1)))
     (ok (compute (rbgs (aops:rand* 'single-float '(7)) 0.0 1.0 1)))
     (ok (compute (rbgs (aops:rand* 'single-float '(25)) 0.0 1.0 1)))
     (ok (compute (rbgs (aops:rand* 'single-float '(24)) 0.0 1.0 2)))))

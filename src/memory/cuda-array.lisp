@@ -3,8 +3,14 @@
         :iterate
         :cl-itertools)
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
+  (:import-from :cl-cuda
+                :memory-block-device-ptr
+                :memory-block-host-ptr
+                :memory-block-type
+                :memory-block-size)
   (:import-from :petalisp.core
                 :rank)
+  (:import-from :alexandria :if-let)
   (:import-from :petalisp-cuda.utils.cl-cuda
                 :sync-memory-block-async)
   (:import-from :petalisp-cuda.options
@@ -139,18 +145,49 @@
         (double-float t)
         ((signed-byte 32) (= 4 (element-size cuda-array)))))))
 
+;(defun copy-cuda-array-to-lisp (array)
+  ;(declare (optimize (debug 0)(speed 3)(safety 3)))
+  ;(let ((memory-block (slot-value array 'memory-block))
+        ;(shape (slot-value array 'shape))
+        ;(cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
+    ;(cl-cuda:sync-memory-block memory-block :device-to-host)
+    ;(if shape
+        ;(if (c-layout-p array) 
+            ;(cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block array)) `(:array ,(cuda-array-type array) ,@(cuda-array-shape array)))
+            ;(aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))
+            ;(cuda-array-aref array '(0)))))
 
 (defun copy-cuda-array-to-lisp (cuda-array)
   (declare (optimize (debug 0)(speed 3)(safety 3)))
-  (let ((memory-block (slot-value array 'memory-block))
-        (shape (slot-value array 'shape))
+  (let ((memory-block (cuda-array-memory-block cuda-array))
+        (shape (cuda-array-shape cuda-array))
         (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
-    (cl-cuda:sync-memory-block memory-block :device-to-host)
     (if shape
-        (if (c-layout-p array) 
-            (cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block array)) `(:array ,(cuda-array-type array) ,@(cuda-array-shape array)))
-            (aops:generate* (lisp-type-cuda-array array) (lambda (indices) (cuda-array-aref array indices)) shape :subscripts))
-        (cuda-array-aref array '(0)))))
+        (if (c-layout-p cuda-array) 
+            (if (can-do-dark-pointer-magic-p cuda-array)
+                ;; c-layout and sbcl: pin array and cudaMemcpy from Lisp
+              (let ((lisp-array (make-array (cuda-array-shape cuda-array) :element-type (lisp-type-cuda-array cuda-array))))
+                #+sbcl
+                (sb-sys:with-pinned-objects ((sb-ext:array-storage-vector lisp-array))
+                  (let ((alien (sb-sys:vector-sap (sb-ext:array-storage-vector lisp-array))))
+                    (let* ((new-memory-block (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr memory-block)
+                                                                                     :host-ptr alien
+                                                                                     :type (memory-block-type memory-block)
+                                                                                     :size (memory-block-size memory-block))))
+                      ;; not aync since we pinning the lisp array
+                      (cl-cuda:sync-memory-block new-memory-block :device-to-host))))
+                lisp-array)
+              ;; c-layout: cffi-package
+              (progn
+                (cl-cuda:sync-memory-block memory-block :device-to-host)
+                (cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
+          ;; No c-layout: slow generate
+          (progn
+            (cl-cuda:sync-memory-block memory-block :device-to-host)
+            (aops:generate* (lisp-type-cuda-array cuda-array) (lambda (indices) (cuda-array-aref cuda-array indices)) shape :subscripts)))
+        (progn 
+          (cl-cuda:sync-memory-block memory-block :device-to-host)
+          (cuda-array-aref cuda-array '(0))))))
 
 (defun copy-lisp-to-cuda-array-slow-fallback (lisp-array cuda-array)
   (declare (optimize (debug 0)(speed 3)(safety 0)))
@@ -158,6 +195,7 @@
     (set-cuda-array-aref cuda-array idx (if (equal t (array-element-type lisp-array))
                                             (coerce (apply #'aref `(,lisp-array ,@idx)) 'single-float)
                                             (apply #'aref `(,lisp-array ,@idx))))))
+
 
 (defun copy-lisp-to-cuda-array (lisp-array cuda-array)
   (let ((memory-block (slot-value cuda-array 'memory-block))
@@ -171,25 +209,26 @@
           #+sbcl
           (sb-sys:with-pinned-objects ((sb-ext:array-storage-vector lisp-array))
             (if-let ((alien (when (can-do-dark-pointer-magic-p cuda-array)
-                            (sb-sys:vector-sap (sb-ext:array-storage-vector lisp-array)))))
-                  (let* ((mem-block (cuda-array-memory-block cuda-array))
-                         (new-memory-block (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr mem-block)
-                                                                                   :host-ptr alien
-                                                                                   :type (memory-block-type mem-block)
-                                                                                   :size (memory-block-size mem-block))))
-                    ;; not aync since we pinning the lisp array
-                    (cl-cuda:sync-memory-block new-memory-block :host-to-device)
-                    (setf did-copy t))
-                  (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
+                              (sb-sys:vector-sap (sb-ext:array-storage-vector lisp-array)))))
+              (let* ((mem-block (cuda-array-memory-block cuda-array))
+                     (new-memory-block (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr mem-block)
+                                                                               :host-ptr alien
+                                                                               :type (memory-block-type mem-block)
+                                                                               :size (memory-block-size mem-block))))
+                ;; not aync since we pinning the lisp array
+                (cl-cuda:sync-memory-block new-memory-block :host-to-device)
+                (setf did-copy t))
+              (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
           ;; copy to foreign
           #-sbcl
           (cffi:lisp-array-to-foreign lisp-array (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))
           (type-error (e)
             (declare (ignore e))
             (copy-lisp-to-cuda-array-slow-fallback lisp-array cuda-array)))
-          (copy-lisp-to-cuda-array-slow-fallback lisp-array cuda-array))
-        (sync-memory-block-async memory-block :host-to-device))
-    cuda-array)
+        (copy-lisp-to-cuda-array-slow-fallback lisp-array cuda-array))
+    (unless did-copy
+      (sync-memory-block-async memory-block :host-to-device))
+    cuda-array))
 
 (defun mem-layout-from-shape (shape &optional strides)
   (c-mem-layout-from-shape shape strides))
@@ -210,8 +249,7 @@
     (equalp strides (cuda-array-strides cuda-array))))
 
 (defmethod petalisp.core:shape ((array cuda-array))
-  (let* ((shape (cuda-array-shape array))
-         (rank (length shape)))
+  (let* ((shape (cuda-array-shape array)))
     (petalisp.core::make-shape
       (mapcar (lambda (s) (petalisp.core:range s)) shape))))
 
