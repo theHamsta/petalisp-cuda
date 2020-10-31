@@ -46,7 +46,7 @@ git clone git@github.com:theHamsta/cl-cuda.git
 
 - [x] sort indices for fasted dimensions
 - [ ] hash CUDA array strides to recompile correctly with arrays not allocated in C-layout with alternative memory layouts
-- [ ] fix super-slow lisp->native, native->lisp calls
+- [x] fix super-slow lisp->native, native->lisp calls (for Lisp arrays of element-type single-float/double-float)
 - [x] compile kernels not only for fixed iteration spaces
 - [ ] implement reductions with CUDNN
 - [ ] implement convolutions with CUDNN
