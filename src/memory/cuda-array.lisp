@@ -15,7 +15,8 @@
                 :sync-memory-block-async)
   (:import-from :petalisp-cuda.options
                 :*max-array-printing-length*
-                :*silence-cl-cuda*)
+                :*silence-cl-cuda*
+                :*page-locked-host-memory*)
   (:export :make-cuda-array
            :cuda-array
            :cuda-array-shape
@@ -145,13 +146,21 @@
         (double-float t)
         ((signed-byte 32) (= 4 (element-size cuda-array)))))))
 
+;; TODO: add with-host-memory ensured to only temporarily add host memory and re-use a common host-mem staging area?
+(defun host-alloc (element-type size)
+  (if *page-locked-host-memory*
+      (cffi:with-foreign-object (ptr '(:pointer (:pointer :void)))
+        (assert (= 0 (petalisp-cuda.cudalibs::cuMemAllocHost_v2 ptr (cffi:make-pointer (* size (cffi-type-size element-type))))))
+        ptr)
+      (cl-cuda:alloc-host-memory element-type size)))
+
 (defun ensure-host-memory (cuda-array)
   (let ((memory-block (cuda-array-memory-block cuda-array)))
     (when (cffi:null-pointer-p (memory-block-host-ptr memory-block))
       (setf (cuda-array-memory-block cuda-array)
             (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr memory-block)
-                                                    :host-ptr (cl-cuda:alloc-host-memory (memory-block-type memory-block)
-                                                                                         (memory-block-size memory-block))
+                                                    :host-ptr (host-alloc (memory-block-type memory-block)
+                                                                          (memory-block-size memory-block))
                                                     :type (memory-block-type memory-block)
                                                     :size (memory-block-size memory-block))))))
 

@@ -7,7 +7,8 @@
            :*nvcc-extra-options*
            :*shape-independent-code*
            :*generic-offsets*
-           :*with-hash-table-memoization*))
+           :*with-hash-table-memoization*
+           :*page-locked-host-memory*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -18,6 +19,7 @@
 (defparameter *shape-independent-code* t)
 (defparameter *generic-offsets* t)
 (defparameter *with-hash-table-memoization* t)
+(defparameter *page-locked-host-memory* t)
 
 ;; Number of numbers to display at end and start when printing cuda array
 (defparameter *max-array-printing-length* 5)

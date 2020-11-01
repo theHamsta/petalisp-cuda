@@ -3052,7 +3052,7 @@
   (psize (:pointer size-t))
   (dptr CUdeviceptr))
 
-(cffi:defcfun ("cumemallochost_v2" cumemallochost-v2) CUresult
+(cffi:defcfun ("cuMemAllocHost_v2" cuMemAllocHost_v2) CUresult
   (pp (:pointer (:pointer :void)))
   (bytesize size-t))
 

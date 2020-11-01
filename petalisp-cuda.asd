@@ -20,6 +20,11 @@
   :components ((:module "src/options"
                 :components
                 ((:file "package")))
+               (:module "src/cudalibs"
+                :components
+                ((:file "cuda")
+                 (:file "cudnn")
+                 (:file "cudnn-handler")))
                (:module "src/utils"
                 :components
                 ((:file "cl-cuda")
@@ -28,11 +33,6 @@
                 :components
                 ((:file "cuda-array")
                  (:file "memory-pool")))
-               (:module "src/cudalibs"
-                :components
-                ((:file "cuda")
-                 (:file "cudnn")
-                 (:file "cudnn-handler")))
                (:module "src/iteration-scheme"
                 :components
                 ((:file "package")
