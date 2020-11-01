@@ -26,12 +26,16 @@
 
 (defmethod memory-pool-allocate ((memory-pool cuda-memory-pool)
                                  (array-element-type t)
-                                 (array-dimensions number))
+                                 (array-size number))
   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
-    (let ((array (or (pop (gethash (cons array-element-type array-dimensions)
-                                   (array-table memory-pool)))(pop (gethash (cons array-element-type array-dimensions)
+    (let ((array (or (pop (gethash (cons array-element-type array-size)
+                                   (array-table memory-pool)))(pop (gethash (cons array-element-type array-size)
                                    (array-table memory-pool)))
-                     (cl-cuda:alloc-memory-block array-element-type array-dimensions))))
+                     (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
+                                                                                                      array-size)
+                                                             :host-ptr (cffi:null-pointer)
+                                                             :type array-element-type
+                                                             :size array-size))))
       (push array (allocated-cuda-arrays memory-pool))
       array)))
 
