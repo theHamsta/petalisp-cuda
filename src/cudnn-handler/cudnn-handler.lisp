@@ -12,58 +12,58 @@
   ((cudnn-handle :accessor cudnn-handle
                  :initform (cudnn-init))
    (tensor-descriptors :accessor tensor-descriptors
-                       :initform (cl:make-hash-table :test #'equalp))
+                       :initform (make-hash-table :test #'equalp))
    (reduce-descriptors :accessor reduce-descriptors
-                       :initform (cl:make-hash-table :test #'equalp))
+                       :initform (make-hash-table :test #'equalp))
    (workspace :accessor workspace
               :initform nil)
    (workspace-size :accessor workspace-size
                    :initform 0)))
 
 (defun make-cudnn-handler ()
-  (cl:make-instance 'cudnn-handler))
+  (make-instance 'cudnn-handler))
 
 ; TODO: garbage finalization probably not good for handling GPU resources
 ;(defun make-cudnn-handler ()
-  ;(let ((object (cl:make-instance 'cudnn-handler) ))
+  ;(let ((object (make-instance 'cudnn-handler) ))
     ;(trivial-garbage:finalize object #'finalize-cudnn-handler)))
 
 ;; Helper
-(cl:defun fill-foreign-array (list foreign-array foreign-array-length fill-element)
-  (cl:progn
-    (cl:dotimes (i foreign-array-length)
-      (cl:setf (cffi:mem-aref foreign-array :int i) (cffi:convert-to-foreign fill-element :int)))
-    (cl:dotimes (i (cl:length list))
-                (cl:setf (cffi:mem-aref foreign-array :int
-                                        (cl:+ i (cl:max 0 (cl:- foreign-array-length (cl:length list)))))
-                         (cffi:convert-to-foreign (cl:nth i list) :int)))))
+(defun fill-foreign-array (list foreign-array foreign-array-length fill-element)
+  (progn
+    (dotimes (i foreign-array-length)
+      (setf (cffi:mem-aref foreign-array :int i) (cffi:convert-to-foreign fill-element :int)))
+    (dotimes (i (length list))
+                (setf (cffi:mem-aref foreign-array :int
+                                        (+ i (max 0 (- foreign-array-length (length list)))))
+                         (cffi:convert-to-foreign (nth i list) :int)))))
 
-(cl:defun clear-foreign-hashtable (hash-table destroy-function)
-  (cl:progn
-    (cl:mapcar (cl:lambda (x) (progn
-                                (cl:funcall destroy-function x)
+(defun clear-foreign-hashtable (hash-table destroy-function)
+  (progn
+    (mapcar (lambda (x) (progn
+                                (funcall destroy-function x)
                                 (cffi:foreign-free x)))
                (alexandria:hash-table-values hash-table))
-    (cl:clrhash hash-table)))
+    (clrhash hash-table)))
 
 ;; CUDNN abstractions
-(cl:defun cudnn-init ()
+(defun cudnn-init ()
   (cffi:with-foreign-object (cudnn-handle-ptr '(:pointer :pointer))
-    (cl:progn
-      (cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS (cudnncreate cudnn-handle-ptr)))
+    (progn
+      (assert (equalp :CUDNN-STATUS-SUCCESS (cudnncreate cudnn-handle-ptr)))
       (cffi:mem-ref cudnn-handle-ptr :pointer))))
 
-(cl:defun finalize-cudnn-handler (cudnn-handler)
+(defun finalize-cudnn-handler (cudnn-handler)
   (when cudnn-handler
     (clear-foreign-hashtable (tensor-descriptors cudnn-handler) #'cudnnDestroyTensorDescriptor)
     (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
     (alexandria:when-let ((workspace-mem (workspace cudnn-handler)))
       (cl-cuda:free-device-memory workspace-mem))
-    (cl:setf (workspace cudnn-handler) nil)
-    (cl:setf (workspace-size cudnn-handler) 0)
-    (cl:assert (cl:equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler))))))
+    (setf (workspace cudnn-handler) nil)
+    (setf (workspace-size cudnn-handler) 0)
+    (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler))))))
 
-(cl:defun cudnn-type (type)
+(defun cudnn-type (type)
   (trivia:match type
     (:int         :cudnn-data-int32)
     (:short-float :cudnn-data-half)
@@ -76,27 +76,27 @@
     (:float4      :cudnn-data-floatx4)
     (:double3     :cudnn-data-doublex3)
     (:double4     :cudnn-data-doublex4)
-    (cl:t (cl:error "The value ~S is invalid here." type))))
+    (t (error "The value ~S is invalid here." type))))
 
 (defun cudnn-reduce-op (reduce-op)
-  (cl:cond ((equalp reduce-op #'cl:+)   :cudnn-reduce-tensor-add)
-           ((equalp reduce-op #'cl:*)   :cudnn-reduce-tensor-mul)
-           ((equalp reduce-op #'cl:max) :cudnn-reduce-tensor-max)
-           ((equalp reduce-op #'cl:min) :cudnn-reduce-tensor-min)
-           (cl:t (cl:error "The value ~S is invalid here." reduce-op))))
+  (cond ((equalp reduce-op #'+)   :cudnn-reduce-tensor-add)
+           ((equalp reduce-op #'*)   :cudnn-reduce-tensor-mul)
+           ((equalp reduce-op #'max) :cudnn-reduce-tensor-max)
+           ((equalp reduce-op #'min) :cudnn-reduce-tensor-min)
+           (t (error "The value ~S is invalid here." reduce-op))))
 
-(cl:defun cudnn-create-tensor-descriptor (array cudnn-handler)
-  (cl:let* ((shape (cl:slot-value array 'petalisp-cuda.memory.cuda-array::shape))
-            (strides (cl:slot-value array 'petalisp-cuda.memory.cuda-array::strides))
+(defun cudnn-create-tensor-descriptor (array cudnn-handler)
+  (let* ((shape (slot-value array 'petalisp-cuda.memory.cuda-array::shape))
+            (strides (slot-value array 'petalisp-cuda.memory.cuda-array::strides))
             (element-type (petalisp-cuda.memory.cuda-array::element-type array))
             (hash-key (values shape strides element-type))
-            (min-shape (cl:max (cl:length shape) 4))) ; cudnn wants tensors of dim 4 to 8
-           (or (cl:gethash hash-key (tensor-descriptors cudnn-handler))
+            (min-shape (max (length shape) 4))) ; cudnn wants tensors of dim 4 to 8
+           (or (gethash hash-key (tensor-descriptors cudnn-handler))
                (cffi:with-foreign-object (new-descriptor '(:pointer :pointer))
                  (cffi:with-foreign-object (stride-array :int min-shape)
                    (cffi:with-foreign-object (shape-array :int min-shape)
-                     (cl:progn
-                       (cl:assert (cl:<= (cl:length shape) 8)) ; cudnn requirement
+                     (progn
+                       (assert (<= (length shape) 8)) ; cudnn requirement
                        (fill-foreign-array shape shape-array min-shape 1)
                        (fill-foreign-array strides stride-array min-shape 1)
                        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateTensorDescriptor new-descriptor))) 
@@ -129,14 +129,14 @@
 
 (defun allocate-workspace (min-size cudnn-handler)
   (progn
-    (when (cl:<= (workspace-size cudnn-handler) min-size)
-      (cl:progn
+    (when (<= (workspace-size cudnn-handler) min-size)
+      (progn
         (when (workspace cudnn-handler)
           (cl-cuda:free-device-memory (workspace cudnn-handler)))
         (setf (workspace-size cudnn-handler) min-size)
         (setf (workspace cudnn-handler)
               (cl-cuda:alloc-device-memory 'cl-cuda:float
-                                           (cl:/ (workspace-size cudnn-handler) 4)))))  ; allocate more than necessary ?
+                                           (/ (workspace-size cudnn-handler) 4)))))  ; allocate more than necessary ?
     (values (workspace cudnn-handler)
             (workspace-size cudnn-handler))))
 
@@ -145,7 +145,7 @@
   (let ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
           (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
           (reduction-descriptor (cudnn-create-reduction-descriptor reduce-op (element-type input-array) cudnn-handler))
-          (double-or-float (cl:if (equalp (element-type input-array) :double) :double :float)))
+          (double-or-float (if (equalp (element-type input-array) :double) :double :float)))
       (cffi:with-foreign-object (workspace-min-size '(:pointer :int))
         (cffi:with-foreign-object (indices-min-size '(:pointer :int))
           (cffi:with-foreign-object (indices '(:pointer :int))
@@ -168,7 +168,7 @@
                                                                 output-descriptor
                                                                 indices-min-size)))
                   (assert (equalp 0 (cffi:mem-ref indices-min-size :int))) ; not 0 if argmin indices requested
-                  (cl:multiple-value-bind (workspace workspace-size) (allocate-workspace (cffi:mem-ref workspace-min-size :int) cudnn-handler)
+                  (multiple-value-bind (workspace workspace-size) (allocate-workspace (cffi:mem-ref workspace-min-size :int) cudnn-handler)
                     (progn
                       (assert (equalp :CUDNN-STATUS-SUCCESS
                                       (cudnnReduceTensor (cudnn-handle cudnn-handler)
