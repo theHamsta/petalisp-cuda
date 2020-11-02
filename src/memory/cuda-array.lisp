@@ -151,7 +151,7 @@
   (if *page-locked-host-memory*
       (cffi:with-foreign-object (ptr '(:pointer (:pointer :void)))
         (assert (= 0 (petalisp-cuda.cudalibs::cuMemAllocHost_v2 ptr (cffi:make-pointer (* size (cffi-type-size element-type))))))
-        ptr)
+        (cffi:mem-ref ptr :pointer))
       (cl-cuda:alloc-host-memory element-type size)))
 
 (defun ensure-host-memory (cuda-array)

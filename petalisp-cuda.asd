@@ -23,8 +23,7 @@
                (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
-                 (:file "cudnn")
-                 (:file "cudnn-handler")))
+                 (:file "cudnn")))
                (:module "src/utils"
                 :components
                 ((:file "cl-cuda")
@@ -33,11 +32,13 @@
                 :components
                 ((:file "cuda-array")
                  (:file "memory-pool")))
+               (:module "src/cudnn-handler"
+                :components
+                ((:file "cudnn-handler")))
                (:module "src/iteration-scheme"
                 :components
                 ((:file "package")
                  (:file "helpers")
-                 ;(:file "symbolic-shape")
                  (:file "block-iteration-scheme")
                  (:file "symbolic-block-iteration-scheme")
                  (:file "slow-coordinate-transposed-scheme")
@@ -70,5 +71,4 @@
                  (:file "testing-backend")
                  (:file "main"))))
   :description "Test system for petalisp-cuda"
-
   :perform (test-op (op c) (symbol-call :rove :run c)))

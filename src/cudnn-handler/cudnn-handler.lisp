@@ -1,6 +1,14 @@
-(in-package petalisp-cuda.cudalibs)
+(defpackage petalisp-cuda.cudnn-handler
+  (:use :petalisp-cuda.cudalibs
+        :cl)
+  (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
+  (:import-from :petalisp-cuda.memory.cuda-array :element-type :device-ptr)
+  (:export :make-cudnn-handler
+           :finalize-cudnn-handler
+           :cudnn-reduce-array))
+(in-package petalisp-cuda.cudnn-handler)
 
-(cl:defclass cudnn-handler ()
+(defclass cudnn-handler ()
   ((cudnn-handle :accessor cudnn-handle
                  :initform (cudnn-init))
    (tensor-descriptors :accessor tensor-descriptors

@@ -1,12 +1,26 @@
 (defpackage petalisp-cuda.cudalibs
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
-  (:import-from :petalisp-cuda.memory.cuda-array :element-type :device-ptr)
   (:import-from :cl :defun :let :or :gethash :setf :setq :let* :progn :defmacro :when :nil :values :equalp :assert :t)
-  (:export :make-cudnn-handler
-           :finalize-cudnn-handler
-           :cudnn-reduce-array
-           :*cudnn-fount*))
-
+  (:export *cudnn-found*
+	   :cudnn-init
+	   :cudnncreate
+	   :cudnnGetReductionWorkspaceSize
+	   :cudnn-create-tensor-descriptor
+	   :cudnn-create-reduction-descriptor
+	   :cudnnGetReductionIndicesSize
+	   :CUDNN-STATUS-SUCCESS
+	   :cudnnReduceTensor
+	   :cudnn-data-int32
+	   :cudnn-data-half
+	   :cudnn-data-float
+	   :cudnn-data-double
+	   :cudnn-data-int8
+	   :cudnn-data-int8
+	   :cudnn-data-uint8
+	   :cudnn-data-floatx3
+	   :cudnn-data-floatx4
+	   :cudnn-data-doublex3
+	   :cudnn-data-doublex4))
 
 (in-package petalisp-cuda.cudalibs)
 (cl:defparameter *cudnn-found* t)

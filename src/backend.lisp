@@ -167,7 +167,7 @@
 (defclass cuda-backend (petalisp.core:backend)
   ((backend-context :initform nil
                     :accessor backend-context)
-   (cudnn-handler :initform (petalisp-cuda.cudalibs:make-cudnn-handler)
+   (cudnn-handler :initform (petalisp-cuda.cudnn-handler:make-cudnn-handler)
                   :accessor cudnn-handler)
    (memory-pool :initform (make-cuda-memory-pool)
                 :accessor cuda-memory-pool)
@@ -301,7 +301,7 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
-  (petalisp-cuda.cudalibs:finalize-cudnn-handler (cudnn-handler backend)))
+  (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend)))
   ;(let ((context? nil (backend-context backend)))
     ;(when context?
       ;(cl-cuda:destroy-cuda-context context?))))
