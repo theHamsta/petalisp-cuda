@@ -25,7 +25,7 @@
 (defun get-counter-vector (dim)
   (mapcar (lambda (dim) (format-symbol t "idx~A" dim)) (iota dim)))
 
-(defun make-range-loop (iteration-ranges dim-idx xyz kernel-body)
+(defun make-range-loop (iteration-ranges dim-idx xyz &rest kernel-body)
   (let ((body (if (rest iteration-ranges) 
                   (make-range-loop (rest iteration-ranges) (1+ dim-idx) xyz kernel-body)
                   kernel-body))
@@ -33,10 +33,10 @@
         (dim-symbol (get-counter-symbol dim-idx)))
     (if (or (or (null dim-range) (range-empty-p dim-range))
             (member dim-idx xyz))
-        body
+        ,@body
         `(do ((,dim-symbol ,(range-start dim-range) (+ ,dim-symbol ,(range-step dim-range))))
           ((>= ,dim-symbol ,(range-end dim-range)))
-          ,body))))
+          ,@body))))
 
 (defun linearize-instruction-transformation (instruction &optional buffer kernel-parameter shape-independent-p)
   (let* ((transformation (instruction-transformation instruction))
@@ -63,4 +63,3 @@
   )
 (defmethod generic-offsets-p ((iteration-scheme iteration-scheme))
   )
-

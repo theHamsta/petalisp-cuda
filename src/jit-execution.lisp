@@ -85,7 +85,8 @@
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body hfunc)
 
 (defun generate-iteration-scheme (kernel backend)
-  (select-iteration-scheme (kernel-iteration-space kernel)
+  (select-iteration-scheme kernel 
+                           (kernel-iteration-space kernel)
                            (preferred-block-size backend)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 

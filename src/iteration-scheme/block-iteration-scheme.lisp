@@ -14,7 +14,7 @@
                           filtered-block-shape)
       :block-dim ,filtered-block-shape)))
 
-(defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
+(defmethod iteration-code ((iteration-scheme block-iteration-scheme) &rest kernel-body)
   (let ((iteration-ranges (or (shape-ranges (iteration-space iteration-scheme)) (list (range 1))))
         (xyz (or (xyz-dimensions iteration-scheme) '(0))))
     ;; define x,y,z dimensions
@@ -34,4 +34,4 @@
                             (return)))
        ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
        ;; and append kernel-body
-       ,(make-range-loop iteration-ranges 0 xyz kernel-body))))
+       ,(make-range-loop iteration-ranges 0 xyz ,@kernel-body))))

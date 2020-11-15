@@ -29,7 +29,7 @@
                     :type list)))
 
 (defgeneric call-parameters (iteration-scheme iteration-shape))
-(defgeneric iteration-code (iteration-scheme kernel-body))
+(defgeneric iteration-code (iteration-scheme &rest kernel-body))
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
 (defgeneric shape-independent-p (iteration-scheme))
 (defgeneric generic-offsets-p (iteration-scheme))

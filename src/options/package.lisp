@@ -20,6 +20,7 @@
 (defparameter *generic-offsets* t)
 (defparameter *with-hash-table-memoization* t)
 (defparameter *page-locked-host-memory* t)
+(defparameter *slow-coordinate-load-strategy* "cub::BLOCK_LOAD_WARP_TRANSPOSE_TIMESLICED")
 
 ;; Number of numbers to display at end and start when printing cuda array
 (defparameter *max-array-printing-length* 5)
