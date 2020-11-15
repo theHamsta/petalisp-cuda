@@ -14,7 +14,5 @@
            :with-cuda-backend-raii))
 (in-package :petalisp-cuda)
 
-(defun reclaim-cuda-memory ()
-  (if (cuda-backend-p petalisp:*backend*)
-      (petalisp-cuda.memory.memory-pool:reclaim-cuda-memory (cuda-memory-pool petalisp:*backend*))
-      (error "petalisp:*backend* is not a CUDA backend: ~A" petalisp:*backend*)))
+(defun reclaim-cuda-memory (&optional (backend petalisp:*backend*))
+  (petalisp-cuda.memory.memory-pool:reclaim-cuda-memory (cuda-memory-pool petalisp:*backend*)))
