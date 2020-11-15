@@ -4468,7 +4468,7 @@
   ::cudaFreeMipmappedArray"
   (hmipmappedarray CUmipmappedArray))
 
-(cffi:defcfun "cupointergetattribute" CUresult
+(cffi:defcfun "cuPointerGetAttribute" CUresult
   "\brief Returns information about a pointer
  
   The supported attributes are:
@@ -4957,7 +4957,7 @@
   (attribute CUpointer-attribute)
   (ptr CUdeviceptr))
 
-(cffi:defcfun "cupointergetattributes" CUresult
+(cffi:defcfun "cuPointerGetAttributes" CUresult
   "\brief Returns information about a pointer.
  
   The supported attributes are (refer to ::cuPointerGetAttribute for attribute descriptions and restrictions):

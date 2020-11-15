@@ -279,6 +279,13 @@
             ;(b (make-cuda-array '(10 1) 'float)))
         ;(petalisp-cuda.cudalibs::cudnn-reduce-array a b #'+)))))
 
+(deftest test-cuda-array-device
+  (let ((cl-cuda:*show-messages* nil))
+    (cl-cuda:with-cuda (0)
+      (progn
+        (let* ((a (make-cuda-array '(20 9) 'float)))
+          (ok (= 0 (cuda-array-device a))))))))
+
 (deftest test-mem-roundtrip
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)

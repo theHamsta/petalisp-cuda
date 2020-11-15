@@ -197,6 +197,17 @@
           (cl-cuda:sync-memory-block memory-block :device-to-host)
           (cuda-array-aref cuda-array '(0))))))
 
+(defun cuda-array-device (cuda-array)
+  "Returns the device index on which the array was allocated"
+  (let ((ptr (memory-block-device-ptr (cuda-array-memory-block cuda-array))))
+   (cffi:with-foreign-object (data '(:pointer :int))
+    (assert (= 0
+               (petalisp-cuda.cudalibs::cuPointerGetAttribute data
+                                                              (cffi:foreign-enum-value 'petalisp-cuda.cudalibs::cupointer-attribute-enum
+                                                                                       :cu-pointer-attribute-device-ordinal)
+                                                              ptr)))
+     (cffi:mem-ref data :int))))
+
 (defun copy-lisp-to-cuda-array-slow-fallback (lisp-array cuda-array)
   (declare (optimize (debug 0)(speed 3)(safety 0)))
   (ensure-host-memory cuda-array)

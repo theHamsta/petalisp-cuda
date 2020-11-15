@@ -10,7 +10,8 @@
                 :rbgs
                 :v-cycle)
   (:import-from :petalisp-cuda.memory.cuda-array
-                :make-cuda-array)
+                :make-cuda-array
+                :cuda-array-device)
   (:import-from :petalisp.examples.linear-algebra
                 :norm
                 :matmul
