@@ -34,6 +34,7 @@
                 :iteration-space)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
+                :cuda-array-device
                 :device-ptr
                 :make-cuda-array
                 :cuda-array-p)
@@ -119,8 +120,9 @@
 ;; TODO: make thread-safe it's possible that multiple threads try to upload the same buffer
 (defun upload-buffer-to-gpu (buffer backend)
   (let ((storage (buffer-storage buffer)))
-    ; Do not upload cuda arrays or scalars 
-    (unless (or (cuda-array-p storage)
+    ; Do not upload cuda arrays on same device or scalars 
+    (unless (or (and (cuda-array-p storage)
+                     (= cl-cuda:*cuda-device* (cuda-array-device storage)))
                 (pass-as-scalar-argument-p buffer))
       (setf (buffer-storage buffer) (make-cuda-array storage
                                                      (cl-cuda-type-from-buffer buffer)

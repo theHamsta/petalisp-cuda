@@ -297,6 +297,15 @@
                 do (progn
                      (assert (equal (row-major-aref foo i) (row-major-aref b i))))))))))
 
+(deftest test-cuda-array-from-cuda-array
+  (let ((cl-cuda:*show-messages* nil))
+    (cl-cuda:with-cuda (0)
+      (progn
+        (let* ((foo (aops:rand* 'single-float '(20 9)))
+               (aa (make-cuda-array foo 'float))
+               (bb (make-cuda-array aa 'float)))
+          (format t "~A ~A~%" aa bb))))))
+
 
 (deftest test-petalisp.test-suite
   (with-testing-backend

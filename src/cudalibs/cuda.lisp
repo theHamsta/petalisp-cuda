@@ -3715,7 +3715,7 @@
   (srcdevice CUdeviceptr)
   (bytecount size-t))
 
-(cffi:defcfun ("cumemcpydtod_v2" cumemcpydtod-v2) CUresult
+(cffi:defcfun ("cuMemcpyDtoD_v2" cumemcpydtod-v2) CUresult
   (dstdevice CUdeviceptr)
   (srcdevice CUdeviceptr)
   (bytecount size-t))
@@ -3878,7 +3878,7 @@
   (bytecount size-t)
   (hstream CUstream))
 
-(cffi:defcfun ("cumemcpydtodasync_v2" cumemcpydtodasync-v2) CUresult
+(cffi:defcfun ("cuMemcpyDtoDAsync_v2" cuMemcpyDtoDAsync_v2) CUresult
   (dstdevice CUdeviceptr)
   (srcdevice CUdeviceptr)
   (bytecount size-t)

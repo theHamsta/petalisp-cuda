@@ -21,6 +21,7 @@
            :cuda-array
            :cuda-array-shape
            :cuda-array-type
+           :cuda-array-device
            :cuda-array-from-lisp
            :cuda-array-memory-block
            :free-cuda-array
@@ -77,6 +78,8 @@
 
 ;TODO: redo this with allocator type
 (defgeneric make-cuda-array (shape dtype &optional strides alloc-function)
+  (:method ((array cuda-array) dtype &optional strides alloc-function)
+    (cuda-array-from-cuda-array array dtype strides alloc-function))
   (:method ((array array) dtype &optional strides alloc-function)
     (cuda-array-from-lisp array dtype strides alloc-function))
   ;; from raw shape
@@ -96,6 +99,25 @@
   (let* ((shape (array-dimensions lisp-array))
          (cuda-array (make-cuda-array shape dtype strides alloc-function)))
     (copy-lisp-to-cuda-array lisp-array cuda-array)))
+
+(defun cuda-array-from-cuda-array (cuda-array dtype &optional strides alloc-function)
+  (let* ((shape (cuda-array-shape cuda-array))
+         (strides (cuda-array-strides cuda-array))
+         (size (cuda-array-size cuda-array))
+         (new-cuda-array (make-cuda-array shape dtype strides alloc-function))
+         (from-ptr (memory-block-device-ptr (cuda-array-memory-block cuda-array)))
+         (to-ptr (memory-block-device-ptr (cuda-array-memory-block new-cuda-array))))
+    ;; TODO: memcpy3d in order to change layout?
+    (assert (= 0 (petalisp-cuda.cudalibs::cuMemcpyDtoDAsync_v2 to-ptr
+                                                               from-ptr
+                                                               (cffi:make-pointer (* (cuda-array-size cuda-array)
+                                                                                     (cffi-type-size dtype))
+                                                                                  )
+                                                               cl-cuda:*cuda-stream*)))
+    new-cuda-array))
+
+(defun cuda-array-size (cuda-array)
+    (memory-block-size (cuda-array-memory-block cuda-array)))
 
 (defun free-cuda-array (array &optional free-function)
   ;TODO: redo this with allocator type
