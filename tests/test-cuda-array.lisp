@@ -38,7 +38,7 @@
       (progn
         (let* ((a (make-cuda-array '(20 9) 'float)))
           (ok (= 0 (cuda-array-device a)))
-		  (free-cuda-array a))))))
+                  (free-cuda-array a))))))
 
 (deftest test-mem-roundtrip
   (let ((cl-cuda:*show-messages* nil))
@@ -50,7 +50,7 @@
           (loop for i below (reduce #'* (array-dimensions foo))
                 do (progn
                      (assert (equal (row-major-aref foo i) (row-major-aref b i)))))
-		  (mapcar #'free-cuda-array (list a)))))))
+                  (mapcar #'free-cuda-array (list a)))))))
 
 (deftest test-cuda-array-from-cuda-array
   (let ((cl-cuda:*show-messages* nil))
