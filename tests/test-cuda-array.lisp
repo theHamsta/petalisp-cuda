@@ -1,5 +1,10 @@
 (in-package :petalisp-cuda/tests)
 
+(deftest test-make-cuda-array
+  (let ((cl-cuda:*show-messages* nil))
+   (with-cuda (0)
+    (make-cuda-array '(10 20) 'float))))
+
 (deftest test-aligned-allocation
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
@@ -18,8 +23,7 @@
           (free-cuda-array c))))))
 
 (deftest half-array
-  (unless (boundp 'cl-cuda::+has-half-dtype+)
-    (skip "No half support in cl-cuda (use theHamsta's fork)"))
+  (if (boundp 'cl-cuda::+has-half-dtype+)
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
       (progn
@@ -31,6 +35,7 @@
           (ok (equalp (cuda-array-size b) 10))
           (free-cuda-array a)
           (free-cuda-array b))))))
+    (skip "No half support in cl-cuda (use theHamsta's fork)"))
 
 (deftest test-cuda-array-device
   (let ((cl-cuda:*show-messages* nil))

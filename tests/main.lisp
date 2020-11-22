@@ -16,11 +16,6 @@
     (with-cuda (0)
       (make-instance 'petalisp-cuda.backend:cuda-backend))))
 
-(deftest test-make-cuda-array
-  (let ((cl-cuda:*show-messages* nil))
-   (with-cuda (0)
-    (make-cuda-array '(10 20) 'float))))
-
 (deftest jacobi-test
   (with-testing-backend
     (ok (compute (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
