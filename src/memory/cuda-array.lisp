@@ -276,13 +276,14 @@
       cuda-array)))
 
 (defun round-up (number multiple)
-  (+ number (rem number multiple)) )
+  (* multiple (ceiling number multiple)))
 
 (defun mem-layout-from-shape (shape &optional strides alignment)
   (c-mem-layout-from-shape shape strides alignment))
 
-(defun c-mem-layout-from-shape (shape &optional strides (alignment 1))
-  (let* ((strides (or strides
+(defun c-mem-layout-from-shape (shape &optional strides alignment)
+  (let* ((alignment (or alignment 1))
+         (strides (or strides
                       (reverse (iter (for element in (reverse shape))
                                  (accumulate element by #'* :initial-value 1 into acc)
                                  (collect (if (= acc element)
