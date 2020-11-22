@@ -6,18 +6,21 @@
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
       (progn
-        (let* ((a (make-cuda-array '(20 9) :half)))
-          (ok (format t "~A~%" a))
+        (let* ((a (make-cuda-array '(20 9) :half))
+               (b (make-cuda-array '(9) :bfloat16)))
           (ok (equalp (cuda-array-strides a) '(10 1)))
           (ok (equalp (cuda-array-size a) 200))
-          (free-cuda-array a))))))
+          (ok (equalp (cuda-array-strides b) '(1)))
+          (ok (equalp (cuda-array-size b) 10))
+          (free-cuda-array a)
+          (free-cuda-array b))))))
 
 (deftest test-cuda-array-device
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
       (progn
         (let* ((a (make-cuda-array '(20 9) 'float)))
-          (ok (= 0  (cuda-array-device a)))
+          (ok (= 0 (cuda-array-device a)))
 		  (free-cuda-array a))))))
 
 (deftest test-mem-roundtrip

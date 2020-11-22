@@ -77,29 +77,30 @@
                    (loop-finish)))))))
 
 ;TODO: redo this with allocator type
-(defgeneric make-cuda-array (shape dtype &optional strides alloc-function)
-  (:method ((array cuda-array) dtype &optional strides alloc-function)
+(defgeneric make-cuda-array (shape dtype &optional strides alloc-function alignment)
+  (:method ((array cuda-array) dtype &optional strides alloc-function alignment)
     (cuda-array-from-cuda-array array dtype strides alloc-function))
-  (:method ((array array) dtype &optional strides alloc-function)
-    (cuda-array-from-lisp array dtype strides alloc-function))
+  (:method ((array array) dtype &optional strides alloc-function alignment)
+    (cuda-array-from-lisp array dtype strides alloc-function alignment))
   ;; from raw shape
-  (:method ((shape list) dtype &optional strides alloc-function)
+  (:method ((shape list) dtype &optional strides alloc-function alignment)
     (let ((alloc-function (or alloc-function
                               #'cl-cuda:alloc-memory-block))
-          (alignment (alexandria:switch (dtype :test #'equal)
-                       (:half 2))))
+          (alignment (or alignment (alexandria:switch (dtype :test #'equal)
+                                     (:half 2)
+                                     (:bfloat16 2)))))
       (multiple-value-bind (size strides) (mem-layout-from-shape shape strides alignment)
         (%make-cuda-array :memory-block (funcall alloc-function dtype (max size 1))
                           :shape shape
                           :strides strides))))
   ;; from raw petalisp:shape
-  (:method ((shape petalisp:shape) dtype &optional strides alloc-function)
+  (:method ((shape petalisp:shape) dtype &optional strides alloc-function alignment)
     (let ((dimensions (mapcar #'petalisp:range-size (petalisp:shape-ranges shape))))
-      (make-cuda-array dimensions dtype strides alloc-function))))
+      (make-cuda-array dimensions dtype strides alloc-function alignment))))
 
-(defun cuda-array-from-lisp (lisp-array dtype &optional strides alloc-function)
+(defun cuda-array-from-lisp (lisp-array dtype &optional strides alloc-function alignment)
   (let* ((shape (array-dimensions lisp-array))
-         (cuda-array (make-cuda-array shape dtype strides alloc-function)))
+         (cuda-array (make-cuda-array shape dtype strides alloc-function alignment)))
     (copy-lisp-to-cuda-array lisp-array cuda-array)))
 
 (defun cuda-array-from-cuda-array (cuda-array dtype &optional strides alloc-function)
