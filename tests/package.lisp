@@ -11,7 +11,11 @@
                 :v-cycle)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :make-cuda-array
-                :cuda-array-device)
+                :free-cuda-array
+                :cuda-array-device
+                :cuda-array-strides
+                :cuda-array-size
+                :cuda-array-shape)
   (:import-from :petalisp.examples.linear-algebra
                 :norm
                 :matmul

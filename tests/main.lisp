@@ -279,34 +279,6 @@
             ;(b (make-cuda-array '(10 1) 'float)))
         ;(petalisp-cuda.cudalibs::cudnn-reduce-array a b #'+)))))
 
-(deftest test-cuda-array-device
-  (let ((cl-cuda:*show-messages* nil))
-    (cl-cuda:with-cuda (0)
-      (progn
-        (let* ((a (make-cuda-array '(20 9) 'float)))
-          (ok (= 0 (cuda-array-device a))))))))
-
-(deftest test-mem-roundtrip
-  (let ((cl-cuda:*show-messages* nil))
-    (cl-cuda:with-cuda (0)
-      (progn
-        (let* ((foo (aops:rand* 'single-float '(20 9)))
-               (a (make-cuda-array foo 'float))
-               (b (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp a)))
-          (loop for i below (reduce #'* (array-dimensions foo))
-                do (progn
-                     (assert (equal (row-major-aref foo i) (row-major-aref b i))))))))))
-
-(deftest test-cuda-array-from-cuda-array
-  (let ((cl-cuda:*show-messages* nil))
-    (cl-cuda:with-cuda (0)
-      (progn
-        (let* ((foo (aops:rand* 'single-float '(20 9)))
-               (aa (make-cuda-array foo 'float))
-               (bb (make-cuda-array aa 'float)))
-          (format t "~A ~A~%" aa bb))))))
-
-
 (deftest test-petalisp.test-suite
   (with-testing-backend
     (mapcar (lambda (test) (let ((test-name (format nil "~A" test)))

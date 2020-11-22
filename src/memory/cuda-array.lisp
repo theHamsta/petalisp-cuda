@@ -85,8 +85,10 @@
   ;; from raw shape
   (:method ((shape list) dtype &optional strides alloc-function)
     (let ((alloc-function (or alloc-function
-                              #'cl-cuda:alloc-memory-block)))
-      (multiple-value-bind (size strides) (mem-layout-from-shape shape strides)
+                              #'cl-cuda:alloc-memory-block))
+          (alignment (alexandria:switch (dtype :test #'equal)
+                       (:half 2))))
+      (multiple-value-bind (size strides) (mem-layout-from-shape shape strides alignment)
         (%make-cuda-array :memory-block (funcall alloc-function dtype (max size 1))
                           :shape shape
                           :strides strides))))
@@ -111,8 +113,7 @@
     (assert (= 0 (petalisp-cuda.cudalibs::cuMemcpyDtoDAsync_v2 to-ptr
                                                                from-ptr
                                                                (cffi:make-pointer (* (cuda-array-size cuda-array)
-                                                                                     (cffi-type-size dtype))
-                                                                                  )
+                                                                                     (cffi-type-size dtype)))
                                                                cl-cuda:*cuda-stream*)))
     new-cuda-array))
 
@@ -273,18 +274,23 @@
         (sync-memory-block-async memory-block :host-to-device))
       cuda-array)))
 
-(defun mem-layout-from-shape (shape &optional strides)
-  (c-mem-layout-from-shape shape strides))
+(defun round-up (number multiple)
+  (+ number (rem number multiple)) )
 
-(defun c-mem-layout-from-shape (shape &optional strides)
+(defun mem-layout-from-shape (shape &optional strides alignment)
+  (c-mem-layout-from-shape shape strides alignment))
+
+(defun c-mem-layout-from-shape (shape &optional strides (alignment 1))
   (let* ((strides (or strides
                       (reverse (iter (for element in (reverse shape))
                                  (accumulate element by #'* :initial-value 1 into acc)
-                                 (collect (/ acc element))))))
+                                 (collect (if (= acc element)
+                                              1
+                                              (round-up (/ acc element) alignment)))))))
          (size (reduce #'max (mapcar #'* strides shape)
-                       ; even with all-zeros strides we need at least one element
-                       :initial-value 1)))
-    (values size strides)))
+                            ; even with all-zeros strides we need at least one element
+                            :initial-value 1)))
+    (values (round-up size alignment) strides)))
 
 (defun c-layout-p (cuda-array)
   (multiple-value-bind (size strides) (c-mem-layout-from-shape (cuda-array-shape cuda-array))

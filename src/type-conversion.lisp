@@ -23,6 +23,7 @@
     ((signed-byte 16)   'int16)
     ((signed-byte 32)   'cl-cuda:int)
     ((signed-byte 64)   'int64)
+    (short-float        (if (boundp 'cl-cuda::+has-half-dtype+) :half 'cl-cuda.float))
     (single-float       'cl-cuda:float)
     (double-float       'cl-cuda:double)
     (number             'cl-cuda:float)
