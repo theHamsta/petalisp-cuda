@@ -8,4 +8,4 @@
 
 
 sbcl --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore c h)) (uiop:quit -1)))' \
-     --eval "(progn (ql:quickload :petalisp-cuda)(ql:quickload :petalisp-cuda/tests)(asdf:test-system :petalisp-cuda/tests))"
+     --eval "(progn (ql:quickload :petalisp-cuda)(ql:quickload :petalisp-cuda/tests)(asdf:test-system :petalisp-cuda/tests) (exit))"
