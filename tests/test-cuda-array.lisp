@@ -59,11 +59,12 @@
 
 (deftest test-dont-allow-casts-in-strict-mode
   ;; should not work
-  (let ((petalisp-cuda.options:*strict-cast-mode* t))
-    (signals
+  (signals
+      (let ((petalisp-cuda.options:*strict-cast-mode* t))
         (with-cuda-backend
           (compute (α #'+ 1 #(1 3 4))))))
   ;; should work
-  (let ((petalisp-cuda.options:*strict-cast-mode* nil))
-    (with-cuda-backend
-      (compute (α #'+ 1 #(1 3 4))))))
+  (ok
+    (let ((petalisp-cuda.options:*strict-cast-mode* nil))
+      (with-cuda-backend
+        (compute (α #'+ 1 #(1 3 4)))))))
