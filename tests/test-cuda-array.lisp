@@ -65,6 +65,11 @@
           (compute (α #'+ 1 #(1 3 4))))))
   ;; should work
   (ok
+      (let ((petalisp-cuda.options:*strict-cast-mode* t))
+        (with-cuda-backend
+          (compute (α #'+ 1 (coerce #(1.0 3.0 4.0) '(array single-float (*))))))))
+  ;; should work
+  (ok
     (let ((petalisp-cuda.options:*strict-cast-mode* nil))
       (with-cuda-backend
         (compute (α #'+ 1 #(1 3 4)))))))
