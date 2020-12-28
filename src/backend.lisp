@@ -150,19 +150,17 @@
           (petalisp:*backend* (make-instance 'cuda-backend))
           (*transfer-back-to-lisp* T)
           (result (unwind-protect
-                      (progn
-                        ,@body)
+                      ,@body
                     (petalisp.core:delete-backend petalisp:*backend*))))
      result))
 
 (defmacro with-cuda-backend (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
           (backend (or *cuda-backend* (make-instance 'cuda-backend)))
-          (petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend))))
+          (petalisp:*backend* (or *cuda-backend* backend)))
      (unless *cuda-backend*
        (setq *cuda-backend* backend))
-     (progn
-       ,@body)))
+     ,@body))
 
 (defclass cuda-backend (petalisp.core:backend)
   ((backend-context :initform nil
