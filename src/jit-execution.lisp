@@ -218,7 +218,7 @@
               (let ((ffi-type (intern (symbol-name (kernel-parameter-type (nth i kernel-parameters))) "KEYWORD")))
                 (setf (cffi:mem-ref (cffi:mem-aptr device-ptrs 'cu-device-ptr i) ffi-type)
                       (cffi:convert-to-foreign
-                        (cond ((weird-rational-p (aref argument)) (coerce (aref argument) 'single-float))
+                        (cond ((and (weird-rational-p (aref argument)) (not petalisp-cuda.options:*strict-cast-mode*)) (coerce (aref argument) 'single-float))
                               ((symbolp (aref argument)) 0.0)
                               (t (aref argument)))
                         ffi-type)))

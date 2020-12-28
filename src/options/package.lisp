@@ -8,7 +8,8 @@
            :*shape-independent-code*
            :*generic-offsets*
            :*with-hash-table-memoization*
-           :*page-locked-host-memory*))
+           :*page-locked-host-memory*
+           :*strict-cast-mode*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -20,6 +21,9 @@
 (defparameter *generic-offsets* t)
 (defparameter *with-hash-table-memoization* t)
 (defparameter *page-locked-host-memory* t)
+
+;; Forbids casts from T to single-float to perform calculation on GPU
+(defparameter *strict-cast-mode* nil)
 
 ;; Number of numbers to display at end and start when printing cuda array
 (defparameter *max-array-printing-length* 5)

@@ -57,12 +57,11 @@
                      (assert (equal (row-major-aref foo i) (row-major-aref b i)))))
                   (mapcar #'free-cuda-array (list a)))))))
 
-(deftest test-cuda-array-from-cuda-array
-  (let ((cl-cuda:*show-messages* nil))
-    (cl-cuda:with-cuda (0)
-      (progn
-        (let* ((foo (aops:rand* 'single-float '(20 9)))
-               (aa (make-cuda-array foo 'float))
-               (bb (make-cuda-array aa 'float)))
-          (format t "~A ~A~%" aa bb)
-         (mapcar #'free-cuda-array (list aa bb)))))))
+(deftest test-dont-allow-casts-in-strict-mode
+  (let ((petalisp-cuda.options:*strict-cast-mode* t))
+    (signals
+        (with-cuda-backend
+          (compute (α #'+ 1 #(1 3 4))))))
+  (let ((petalisp-cuda.options:*strict-cast-mode* nil))
+    (with-cuda-backend
+      (compute (α #'+ 1 #(1 3 4))))))
