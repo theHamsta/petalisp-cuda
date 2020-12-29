@@ -55,7 +55,9 @@
 
 ; TODO: generalize to (memory-block memory-layout) ?
 (defstruct (cuda-array (:constructor %make-cuda-array))
-  memory-block shape strides)
+  (memory-block nil :type (or cl-cuda.api.memory::memory-block null))
+  (shape nil :type list)
+  (strides nil :type list))
 
 (declaim (inline nd-iter))
 (defiter nd-iter (shape)
@@ -79,7 +81,7 @@
 ;TODO: redo this with allocator type
 (defgeneric make-cuda-array (shape dtype &optional strides alloc-function alignment)
   (:method ((array cuda-array) dtype &optional strides alloc-function alignment)
-    (cuda-array-from-cuda-array array dtype strides alloc-function))
+    (cuda-array-from-cuda-array array dtype strides alloc-function alignment))
   (:method ((array array) dtype &optional strides alloc-function alignment)
     (cuda-array-from-lisp array dtype strides alloc-function alignment))
   ;; from raw shape
@@ -103,11 +105,9 @@
          (cuda-array (make-cuda-array shape dtype strides alloc-function alignment)))
     (copy-lisp-to-cuda-array lisp-array cuda-array)))
 
-(defun cuda-array-from-cuda-array (cuda-array dtype &optional strides alloc-function)
+(defun cuda-array-from-cuda-array (cuda-array dtype &optional strides alloc-function alignment)
   (let* ((shape (cuda-array-shape cuda-array))
-         (strides (cuda-array-strides cuda-array))
-         (size (cuda-array-size cuda-array))
-         (new-cuda-array (make-cuda-array shape dtype strides alloc-function))
+         (new-cuda-array (make-cuda-array shape dtype strides alloc-function alignment))
          (from-ptr (memory-block-device-ptr (cuda-array-memory-block cuda-array)))
          (to-ptr (memory-block-device-ptr (cuda-array-memory-block new-cuda-array))))
     ;; TODO: memcpy3d in order to change layout?
