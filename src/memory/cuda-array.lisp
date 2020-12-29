@@ -56,8 +56,8 @@
 ; TODO: generalize to (memory-block memory-layout) ?
 (defstruct (cuda-array (:constructor %make-cuda-array))
   (memory-block :memory-block :type (or cl-cuda.api.memory::memory-block null))
-  (shape :shape :type list)
-  (strides :strides :type list))
+  (shape :shape :type list :read-only t)
+  (strides :strides :type list :read-only t))
 
 (declaim (inline nd-iter))
 (defiter nd-iter (shape)
