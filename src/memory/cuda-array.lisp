@@ -202,21 +202,27 @@
                 #+sbcl
                 (sb-sys:with-pinned-objects ((sb-ext:array-storage-vector lisp-array))
                   (let ((alien (sb-sys:vector-sap (sb-ext:array-storage-vector lisp-array))))
-                    (let* ((new-memory-block (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr memory-block)
-                                                                                     :host-ptr alien
-                                                                                     :type (memory-block-type memory-block)
-                                                                                     :size (memory-block-size memory-block))))
+                    (let* ((new-memory-block
+                             (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr memory-block)
+                                                                     :host-ptr alien
+                                                                     :type (memory-block-type memory-block)
+                                                                     :size (memory-block-size memory-block))))
                       ;; not aync since we pinning the lisp array
                       (cl-cuda:sync-memory-block new-memory-block :device-to-host))))
                 lisp-array)
               ;; c-layout: cffi-package
               (progn
                 (cl-cuda:sync-memory-block memory-block :device-to-host)
-                (cffi:foreign-array-to-lisp (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array)) `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
+                (cffi:foreign-array-to-lisp
+                  (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array))
+                  `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
           ;; No c-layout: slow generate
           (progn
             (cl-cuda:sync-memory-block memory-block :device-to-host)
-            (aops:generate* (lisp-type-cuda-array cuda-array) (lambda (indices) (cuda-array-aref cuda-array indices)) shape :subscripts)))
+            (aops:generate* (lisp-type-cuda-array cuda-array)
+                            (lambda (indices) (cuda-array-aref cuda-array indices))
+                            shape
+                            :subscripts)))
         (progn 
           (cl-cuda:sync-memory-block memory-block :device-to-host)
           (cuda-array-aref cuda-array '(0))))))
