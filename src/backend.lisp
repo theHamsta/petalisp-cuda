@@ -41,6 +41,7 @@
            preferred-block-size
            execute-kernel
            cuda-backend-event-map
+           cuda-backend-predecessor-map
            *transfer-back-to-lisp*
            with-cuda-backend))
 (in-package :petalisp-cuda.backend)
@@ -167,18 +168,32 @@
                     :accessor backend-context)
    (cudnn-handler :initform (petalisp-cuda.cudnn-handler:make-cudnn-handler)
                   :accessor cudnn-handler)
+   ;; TODO: refactor to use an allocator interface
    (memory-pool :initform (make-cuda-memory-pool)
                 :accessor cuda-memory-pool)
    (device :initform nil
            :accessor backend-device)
    (device-id :initform nil
               :accessor backend-device-id)
+   (%predecessor-map :initform (make-hash-table) :reader cuda-backend-predecessor-map :type hash-table)
    (preferred-block-size :initform '(16 16 1)
                          :accessor preferred-block-size)
    (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
    (event-map :initform (make-hash-table) :accessor cuda-backend-event-map)))
+
+(defun cuda-backend-deallocate (backend buffer)
+  (with-cuda-backend-magic backend
+    (let ((storage (buffer-storage buffer))
+          (predecessor-map (cuda-backend-predecessor-map backend)))
+      (unless (null storage)
+        (setf (buffer-storage buffer) nil)
+        (when (petalisp.ir:interior-buffer-p buffer)
+          (unless (gethash storage predecessor-map)
+            (setf (gethash storage predecessor-map) (make-array 0 :fill-pointer 0)))
+          (push (gethash storage predecessor-map) buffer)
+          (memory-pool-free (cuda-memory-pool backend) storage))))))
 
 (defgeneric cuda-backend-p (thing))
 (defmethod cuda-backend-p ((thing T))
@@ -224,6 +239,8 @@
          (worker-pool (cuda-backend-worker-pool backend))
          (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
          (event-map (cuda-backend-event-map backend))
+         (allocate (lambda (type size) (memory-pool-allocate memory-pool type size)))
+         (deallocate (lambda (buffer) (cuda-backend-deallocate backend buffer)))
          (rtn (petalisp.scheduler:schedule-on-workers
                 lazy-arrays
                 (worker-pool-size worker-pool)
@@ -258,20 +275,14 @@
                           (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
                                                                            (cl-cuda-type-from-buffer buffer)
                                                                            nil
-                                                                           (lambda (type size)
-                                                                             (memory-pool-allocate memory-pool type size))))))
+                                                                           allocate))))
                 ;; Deallocate.
-                (lambda (buffer)
-                  (with-cuda-backend-magic backend
-                    (let ((storage (buffer-storage buffer)))
-                      (unless (null storage)
-                        (setf (buffer-storage buffer) nil)
-                        (when (petalisp.ir:interior-buffer-p buffer)
-                          (memory-pool-free memory-pool storage)))))))))
+                deallocate)))
     (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values event-map))
     (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values event-map))
     (cl-cuda.api.context:synchronize-context)
     (clrhash event-map)
+    (clrhash (cuda-backend-predecessor-map backend))
     rtn))
 
 

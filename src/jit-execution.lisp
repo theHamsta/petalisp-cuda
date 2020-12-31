@@ -279,10 +279,21 @@
   (wait-for-correspoding-event buffer (cuda-backend-event-map backend))
   (map-buffer-inputs (lambda (kernel) (wait-for-correspoding-event kernel (cuda-backend-event-map backend))) buffer))
 
+(defun wait-for-previous-usages-deallocated (buffer backend)
+  (map-buffer-outputs (lambda (kernel) (wait-for-correspoding-event kernel (cuda-backend-event-map backend))) buffer))
+
 (defmethod petalisp-cuda.backend:execute-kernel (kernel (backend cuda-backend))
   (let ((buffers (kernel-buffers kernel)))
     (upload-buffers-to-gpu buffers backend)
-    (map-kernel-inputs (lambda (buffer) (wait-for-buffer buffer backend)) kernel)
+    ;; All inputs must be uploaded to GPU and their inputs calculated
+    (map-kernel-inputs (lambda (buffer) (wait-for-buffer buffer backend))
+                       kernel)
+    ;; All previous usages of the outputs must be freed
+    (map-kernel-outputs (lambda (buffer)
+                          (mapcar (lambda (predecessor)
+                                    (wait-for-previous-usages-deallocated predecessor backend))
+                                  (gethash (buffer-storage buffer) (cuda-backend-predecessor-map backend))))
+                        kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
       (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel) kernel))
     (record-corresponding-event kernel (cuda-backend-event-map backend))))
