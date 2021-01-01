@@ -282,4 +282,11 @@
                                         (petalisp.test-suite:run-tests test)))))
             (petalisp.test-suite::all-tests))))
 
+(deftest reclaim-memory
+  (with-cuda-backend (compute (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
+  (reclaim-cuda-memory)
+  (let* ((mem-pool (petalisp-cuda.backend::cuda-memory-pool petalisp-cuda.backend::*cuda-backend*))
+             (all-blocks (mapcar #'cl-cuda::memory-block-device-ptr (allocated-cuda-arrays mem-pool)))
+             (available-blocks (mapcar #'cl-cuda::memory-block-device-ptr (apply #'concatenate `(list ,@(alexandria:hash-table-values (array-table mem-pool)))))))
+        (ok (= (length available-blocks) (length all-blocks)))))
 

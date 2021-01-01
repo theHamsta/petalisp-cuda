@@ -27,5 +27,8 @@
                 :ndarray
                 :approximately-equal
                 :generate-matrix)
+  (:import-from :petalisp-cuda.memory.memory-pool
+                :array-table
+                :allocated-cuda-arrays)
   (:export :run-tests))
 (in-package :petalisp-cuda/tests)

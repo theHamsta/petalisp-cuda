@@ -6,6 +6,7 @@
                                          :memory-pool
                                          :memory-pool-reset
                                          :array-table)
+  (:import-from :petalisp-cuda.memory.cuda-array :memory-block-device-ptr)
   (:export :make-cuda-memory-pool
            :memory-pool-allocate
            :memory-pool-free
@@ -24,6 +25,9 @@
 (defun make-cuda-memory-pool ()
   (make-instance 'cuda-memory-pool))
 
+(defun pointer-equality (a b)
+  (= (memory-block-device-ptr a) (memory-block-device-ptr b)))
+
 (defmethod memory-pool-allocate ((memory-pool cuda-memory-pool)
                                  (array-element-type t)
                                  (array-size number))
@@ -31,20 +35,22 @@
     (let ((array (or (pop (gethash (cons array-element-type array-size)
                                    (array-table memory-pool)))(pop (gethash (cons array-element-type array-size)
                                    (array-table memory-pool)))
-                     (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
+                     (progn
+                       (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
                                                                                                       array-size)
                                                              :host-ptr (cffi:null-pointer)
                                                              :type array-element-type
-                                                             :size array-size))))
-      (push array (allocated-cuda-arrays memory-pool))
+                                                             :size array-size)))))
+      (pushnew array (allocated-cuda-arrays memory-pool) :test #'pointer-equality)
       array)))
 
 (defmethod memory-pool-free ((memory-pool cuda-memory-pool)
                              (array cl-cuda.api.memory::memory-block))
   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
-    (push array (gethash (cons (cl-cuda:memory-block-type array)
+    (pushnew array (gethash (cons (cl-cuda:memory-block-type array)
                                (cl-cuda:memory-block-size array))
-                         (array-table memory-pool)))
+                         (array-table memory-pool))
+             :test #'pointer-equality)
     (values)))
 
 (defmethod memory-pool-free ((memory-pool cuda-memory-pool)

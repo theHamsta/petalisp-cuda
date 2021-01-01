@@ -14,5 +14,6 @@
            :with-cuda-backend-raii))
 (in-package :petalisp-cuda)
 
-(defun reclaim-cuda-memory (&optional (backend petalisp:*backend*))
-  (petalisp-cuda.memory.memory-pool:reclaim-cuda-memory (cuda-memory-pool petalisp:*backend*)))
+(defun reclaim-cuda-memory (&optional (backend (or petalisp-cuda.backend::*cuda-backend* petalisp:*backend*)))
+  (petalisp-cuda.memory.memory-pool:reclaim-cuda-memory (cuda-memory-pool backend))
+  nil)
