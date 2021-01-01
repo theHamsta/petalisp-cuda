@@ -325,7 +325,7 @@
   (tensordesc cudnnTensorDescriptor-t)
   (size (:pointer :int)))
 
-(cffi:defcfun "cudnndestroytensordescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnDestroyTensorDescriptor" cudnnStatus-t
   (tensordesc cudnnTensorDescriptor-t))
 
 (cffi:defcenum cudnnfoldingdirection-t-enum

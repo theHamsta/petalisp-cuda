@@ -5,6 +5,11 @@
 	   :cudnn-init
 	   :cudnncreate
 	   :cudnnGetReductionWorkspaceSize
+	   :cudnnCreateTensorDescriptor
+	   :cudnnCreateTensorDescriptor
+	   :cudnnDestroy
+	   :cudnnDestroyTensorDescriptor
+	   :cudnnDestroyReduceTensorDescriptor
 	   :cudnn-create-tensor-descriptor
 	   :cudnn-create-reduction-descriptor
 	   :cudnnGetReductionIndicesSize

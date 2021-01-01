@@ -25,6 +25,15 @@
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5)))))
 
+(deftest with-cuda-backend-raii
+  (with-cuda-backend-raii
+    (ok (compute (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(25)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(26)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
+    (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5)))))
+
 (deftest jacobi-test-recompile
   (with-testing-backend
     (ok (compute (jacobi (aops:rand* 'single-float '(12)) 0.0 1.0 1)))
