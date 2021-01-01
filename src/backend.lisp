@@ -187,7 +187,7 @@
   (with-cuda-backend-magic backend
     (let ((storage (buffer-storage buffer))
           (predecessor-map (cuda-backend-predecessor-map backend)))
-      (unless (null storage)
+      (when (cuda-array-p storage)
         (setf (buffer-storage buffer) nil)
         (when (petalisp.ir:interior-buffer-p buffer)
           (unless (gethash storage predecessor-map)
@@ -227,12 +227,13 @@
                lazy-array
                (petalisp.core:lazy-reshape immediate (array-shape lazy-array) collapsing-transformation)))
     (with-cuda-backend-magic backend
-      (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
-                                                         (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
-                                                           (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate))
-                                                           lisp-array))
-                               #'cuda-immediate-storage)
-                           immediates)))))
+        (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
+                                                           (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
+                                                             (when (cuda-array-p (cuda-immediate-storage immediate))
+                                                               (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate)))
+                                                             lisp-array))
+                                 #'cuda-immediate-storage)
+                             immediates)))))
 
 (defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
   (let* ((memory-pool (cuda-memory-pool backend))

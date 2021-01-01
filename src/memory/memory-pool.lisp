@@ -32,17 +32,16 @@
                                  (array-element-type t)
                                  (array-size number))
   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
-    (let ((array (or (pop (gethash (cons array-element-type array-size)
-                                   (array-table memory-pool)))(pop (gethash (cons array-element-type array-size)
-                                   (array-table memory-pool)))
-                     (progn
-                       (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
-                                                                                                      array-size)
-                                                             :host-ptr (cffi:null-pointer)
-                                                             :type array-element-type
-                                                             :size array-size)))))
-      (pushnew array (allocated-cuda-arrays memory-pool) :test #'pointer-equality)
-      array)))
+    (or (pop (gethash (cons array-element-type array-size)
+                      (array-table memory-pool)))
+        (let ((array
+                (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
+                                                                                                 array-size)
+                                                        :host-ptr (cffi:null-pointer)
+                                                        :type array-element-type
+                                                        :size array-size)))
+          (push array (allocated-cuda-arrays memory-pool))
+          array))))
 
 (defmethod memory-pool-free ((memory-pool cuda-memory-pool)
                              (array cl-cuda.api.memory::memory-block))
