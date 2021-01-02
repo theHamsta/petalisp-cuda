@@ -3,8 +3,7 @@
 ;; block-iteration-scheme (one thread per datum)
 (defclass block-iteration-scheme (iteration-scheme)
   ((%block-shape :initarg :block-shape
-                 :accessor block-shape
-                 :type petalisp.core:shape)))
+                 :accessor block-shape)))
 
 (defmethod call-parameters ((iteration-scheme block-iteration-scheme) (iteration-shape shape))
   (let ((filtered-iteration-shape (filtered-iteration-shape iteration-scheme iteration-shape))
