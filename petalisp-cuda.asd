@@ -14,7 +14,8 @@
                "cffi-libffi"
                "trivia"
                "alexandria"
-               "trivial-garbage"
+               ;"trivial-garbage"
+               "hash-set"
                "cl-itertools"
                "let-plus")
   :components ((:module "src/options"

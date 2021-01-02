@@ -311,7 +311,8 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
-  (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend)))
+  (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend))
+  (memory-pool-reset (cuda-memory-pool backend)))
   ;(let ((context? nil (backend-context backend)))
     ;(when context?
       ;(cl-cuda:destroy-cuda-context context?))))
