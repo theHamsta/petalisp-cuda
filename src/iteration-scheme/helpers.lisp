@@ -1,5 +1,7 @@
 (in-package petalisp-cuda.iteration-scheme)
 
+(defgeneric iteration-code (iteration-scheme kernel-body buffer->kernel-parameter))
+
 (defun filter-xyz-dimensions (list xyz-dimensions)
   (trivia:match (mapcar (lambda (idx) (nth idx list)) xyz-dimensions)
     ((list)       (list 1 1 1))
