@@ -17,6 +17,9 @@
   (defun cuda-type-string (instruction)
     (cl-cuda.lang.type:cuda-type (instruction-cuda-type instruction)))
 
+  (defun transposed-instruction (instruction)
+    )
+
   (defmethod iteration-code :around ((iteration-scheme slow-coordinate-transposed-scheme) kernel-body buffer->kernel-parameter)
     (let* ((slow-loads (slow-loads iteration-scheme))
            (block-shape (filtered-block-shape iteration-scheme))
@@ -26,46 +29,38 @@
                         `(let ,(loop for instruction in slow-loads
                                      collect `(,(get-instruction-symbol instruction "_cached")
                                                 (,(alexandria:format-symbol :keyword (string-upcase (format nil "coerce-~A" (cuda-type-string instruction)))) 0)))
-                           ;; Declare cache
-                           (:inline-c ,(format nil
-"
-typedef cub::BlockLoad<~A, ~A, ~A, ~A, ~A, ~A> BlockLoad;
-__shared__ typename BlockLoad::TempStorage temp_storage;
-"
-                                               (string-downcase (instruction-cuda-type (first slow-loads)))
-                                               (first block-shape) ; block-shape-x
-                                               1 ; items-per-thread
-                                               load-strategy ; cub::BlockLoadAlgorithm
-                                               (second block-shape) ; block-shape-y
-                                               (third block-shape))) ; block-shape-z
                            ;; Load slow loads over cache
                            ,@(loop for instruction in slow-loads
-                                   collect (let* ((type (instruction-cuda-type instruction))
-                                                  (type-string (cl-cuda.lang.type:cuda-type type))
-                                                  (array-sym (symbol-name (get-instruction-symbol instruction "_array"))))
-                                             `(:inline-c
-                                               ,type-string " " ,array-sym "[1] = {0};
-"
-                                               "BlockLoad(temp_storage).Load("
-                                               ,(kernel-parameter-name (funcall buffer->kernel-parameter (load-instruction-buffer instruction)))
-                                               " + "
-                                               ,(linearize-instruction-transformation instruction)
-                                               " , "
-                                               ,array-sym
-                                               ");
-__syncthreads();
-"
-                                               ,(get-instruction-symbol instruction "_cached") " = " ,array-sym "[0];
-"
-                                               )))
+                                   collect (let* ((buffer (load-instruction-buffer instruction))
+                                                  (kernel-parameter (buffer->kernel-parameter buffer))
+                                                  (transposed-instruction instruction))
+                                              `(let ((oob-me? (get-oob-check transposed-instruction thread-idx-x thread-idx-y thread-idx-z))
+                                                     (oob-transposed? (get-oob-check transposed-instruction thread-idx-y thread-idx-x thread-idx-z)))
+                                                 (set (aref shared-mem thread-idx-x thread-idx-y)
+                                                      (if ,oob-me?
+                                                          0
+                                                          (aref ,(linearize-instruction-transformation transposed-instruction
+                                                                                                   buffer
+                                                                                                   kernel-parameter
+                                                                                                   (shape-independent-p iteration-scheme))))
+                                                 (:inline-c "__syncthreads();")
+                                                 (set ,(get-instruction-symbol instruction "_cached")
+                                                      (if ,oob-transposed?
+                                                          ,(linearize-instruction-transformation instruction
+                                                                                                 buffer
+                                                                                                 kernel-parameter
+                                                                                                 (shape-independent-p iteration-scheme)))
+                                                          (aref shared-mem thread-idx-y thread-idx-x))))
                            ;; Progamm body using cached variables
-                           (,@kernel-body)))))
+                           ,@kernel-body))))
 
   (defmethod iteration-scheme-buffer-access ((iteration-scheme slow-coordinate-transposed-scheme) instruction buffer kernel-parameter)
     (if (find instruction (slow-loads iteration-scheme))
         (get-instruction-symbol instruction "_cached")
         ;; else unchached
       (call-next-method iteration-scheme instruction buffer kernel-parameter)))
-  )
 
-
+(defmethod iteration-scheme-shared-mem ((iteration-scheme slow-coordinate-transposed-scheme))
+  (values (concatentate 'list (butlast (block-shape iteration-scheme)) (list (1+ (last (block-shape iteration-scheme)))))
+          (instruction-cuda-type (first (slow-loads iteration-scheme)))))
+    )

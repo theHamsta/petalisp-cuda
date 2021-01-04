@@ -40,3 +40,15 @@
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
 (defgeneric shape-independent-p (iteration-scheme))
 (defgeneric generic-offsets-p (iteration-scheme))
+(defgeneric iteration-scheme-shared-mem (iteration-scheme))
+
+(defmethod iteration-scheme-shared-mem ((iteration-scheme iteration-scheme))
+  (values nil nil))
+
+(defmethod iteration-code :before ((iteration-scheme iteration-scheme) kernel-body buffer->kernel-parameter)
+  (multiple-value-bind (type shape) (iteration-scheme-shared-mem iteration-scheme)
+    (if typpe
+        `(with-shared-memory ((shared-mem ,type ,@shape))
+           ,(call-next-method)))
+    (call-next-method)))
+
