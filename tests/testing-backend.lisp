@@ -14,18 +14,12 @@
                    (ir-backend petalisp.test-suite::ir-backend-compiled)
                    (native-backend petalisp.test-suite::native-backend)
                    (cuda-backend cuda-backend)) testing-backend
-    (let ((reference-solutions
-            (compute-immediates data-structures reference-backend))
-          (ir-backend-solutions
-            (compute-immediates data-structures ir-backend))
-          (native-backend-solutions
+    (let ((native-backend-solutions
             (compute-immediates data-structures native-backend))
           (cuda-backend-solutions
             (compute-immediates data-structures cuda-backend)))
-      (petalisp.test-suite::compare-solutions reference-solutions ir-backend-solutions)
-      (petalisp.test-suite::compare-solutions reference-solutions native-backend-solutions)
-      (petalisp.test-suite::compare-solutions reference-solutions cuda-backend-solutions)
-      reference-solutions)))
+      (petalisp.test-suite::compare-solutions native-backend-solutions cuda-backend-solutions)
+      native-backend-solutions)))
 
 (defmethod delete-backend ((testing-backend cuda-testing-backend))
   (delete-backend (cuda-backend testing-backend))
