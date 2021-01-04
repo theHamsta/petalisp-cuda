@@ -36,6 +36,9 @@
                (:module "src/cudnn-handler"
                 :components
                 ((:file "cudnn-handler")))
+               (:module "src/type-conversion"
+                :components
+                 ((:file "type-conversion")))
                (:module "src/iteration-scheme"
                 :components
                 ((:file "package")
@@ -47,7 +50,6 @@
                (:module "src"
                 :components
                 ((:file "device")
-                 (:file "type-conversion")
                  (:file "backend")
                  (:file "jit-execution")
                  (:file "map-call-operator")

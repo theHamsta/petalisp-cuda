@@ -5,7 +5,8 @@
   ((%generic-offsets :initform *generic-offsets*
                      :accessor %generic-offsets-p)))
 
-(defmethod iteration-code ((iteration-scheme symbolic-block-iteration-scheme) kernel-body)
+(defmethod iteration-code ((iteration-scheme symbolic-block-iteration-scheme) kernel-body buffer->kernel-paramater)
+  (declare (ignore buffer->kernel-paramater))
   (let* ((ranges-from-ir (shape-ranges (iteration-space iteration-scheme)))
         (iteration-ranges (or ranges-from-ir (list (range 1))))
         (xyz (or (xyz-dimensions iteration-scheme) '(0))))

@@ -13,7 +13,8 @@
                           filtered-block-shape)
       :block-dim ,filtered-block-shape)))
 
-(defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body)
+(defmethod iteration-code ((iteration-scheme block-iteration-scheme) kernel-body buffer->kernel-parameter)
+  (declare (ignore buffer->kernel-parameter))
   (let ((iteration-ranges (or (shape-ranges (iteration-space iteration-scheme)) (list (range 1))))
         (xyz (or (xyz-dimensions iteration-scheme) '(0))))
     ;; define x,y,z dimensions

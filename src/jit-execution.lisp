@@ -31,7 +31,10 @@
                 :iteration-scheme-buffer-access
                 :shape-independent-p
                 :generic-offsets-p
-                :iteration-space)
+                :iteration-space
+                :get-instruction-symbol
+                :kernel-parameter-name
+                :kernel-parameter-type)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides
                 :cuda-array-device
@@ -86,8 +89,8 @@
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body hfunc)
 
 (defun generate-iteration-scheme (kernel backend)
-  (select-iteration-scheme (kernel-iteration-space kernel)
-                           (preferred-block-size backend)
+  (select-iteration-scheme kernel
+                           (kernel-iteration-space kernel)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
 
 (defun generate-kernel-parameters (buffers iteration-scheme filtered-offset-vector)
@@ -208,9 +211,6 @@
                              :kernel-body generated-kernel
                              :hfunc hfunc))))))
 
-(defun kernel-parameter-type (kernel-parameter)
-  (cadr kernel-parameter))
-
 (defun fill-with-device-ptrs (ptrs-to-device-ptrs device-ptrs kernel-arguments kernel-parameters iteration-scheme filtered-offsets)
   (loop for i from 0 below (length kernel-arguments) do
         (let ((argument (nth i kernel-arguments)))
@@ -299,29 +299,16 @@
     (record-corresponding-event kernel (cuda-backend-event-map backend))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)
-  ;; Loop over domain
-  (iteration-code iteration-scheme
-                  (let* ((instructions (kernel-instructions kernel))
-                         (buffer->kernel-parameter (make-buffer->kernel-parameter buffers kernel-arguments)))
+  (let* ((instructions (kernel-instructions kernel))
+         (buffer->kernel-parameter (make-buffer->kernel-parameter buffers kernel-arguments)))
+    ;; Loop over domain
+    (iteration-code iteration-scheme
                     ;; kernel body
                     (generate-instructions (sort instructions #'< :key #'instruction-number)
                                            buffer->kernel-parameter
-                                           iteration-scheme))))
+                                           iteration-scheme)
+                    buffer->kernel-parameter)))
 
-(defun get-instruction-symbol (instruction)
-  (trivia:match instruction
-    ;; weird multiple value instruction
-    ((guard (cons a b ) (> a 0)) (format-symbol t "$~A_~A" (instruction-number b) a))   
-    ;; normal instruction
-    (_
-      (format-symbol t "$~A"
-                     (etypecase instruction
-                       (number instruction)
-                       (cons (instruction-number (cdr instruction)))
-                       (instruction (instruction-number instruction)))))))
-
-(defun kernel-parameter-name (kernel-parameter)
-  (car kernel-parameter))
 
 (defun buffer-access (buffer buffer->kernel-parameter instruction iteration-scheme)
   (assert (functionp buffer->kernel-parameter))
