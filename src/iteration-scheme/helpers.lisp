@@ -64,3 +64,22 @@
 (defmethod generic-offsets-p ((iteration-scheme iteration-scheme))
   )
 
+(defun get-instruction-symbol (instruction &optional (suffix ""))
+  (trivia:match instruction
+    ;; weird multiple value instruction
+    ((trivia:guard (cons a b ) (> a 0)) (format-symbol t "$~A_~A~A" (instruction-number b) a suffix))   
+    ;; normal instruction
+    (_
+      (format-symbol t "$~A~A"
+                     (etypecase instruction
+                       (number instruction)
+                       (cons (instruction-number (cdr instruction)))
+                       (instruction (instruction-number instruction)))
+                     suffix))))
+
+
+(defun kernel-parameter-name (kernel-parameter)
+  (first kernel-parameter))
+
+(defun kernel-parameter-type (kernel-parameter)
+  (second kernel-parameter))

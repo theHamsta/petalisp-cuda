@@ -9,7 +9,10 @@
            :*generic-offsets*
            :*with-hash-table-memoization*
            :*page-locked-host-memory*
-           :*strict-cast-mode*))
+           :*strict-cast-mode*
+           :*preferred-block-shape*
+           :*slow-coordinate-load-strategy*
+           :*warp-time-slicing*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -27,3 +30,6 @@
 
 ;; Number of numbers to display at end and start when printing cuda array
 (defparameter *max-array-printing-length* 5)
+
+(defparameter *preferred-block-shape* '(16 16 1))
+(defparameter *slow-coordinate-load-strategy* "cub::BLOCK_LOAD_WARP_TRANSPOSE_TIMESLICED")

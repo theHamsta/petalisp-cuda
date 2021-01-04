@@ -38,7 +38,6 @@
            use-cuda-backend
            cl-cuda-type-from-buffer
            compile-cache
-           preferred-block-size
            execute-kernel
            cuda-backend-event-map
            cuda-backend-predecessor-map
@@ -109,6 +108,7 @@
         ((float float) float t "+ 0 *")
         ((float) float nil "(float)")
         ((double) float nil "(float)")
+        ((int) float nil "(float)")
         ((double float) float t "+ 0 *")
         ))
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ :coerce-int)
@@ -176,8 +176,6 @@
    (device-id :initform nil
               :accessor backend-device-id)
    (%predecessor-map :initform (make-hash-table) :reader cuda-backend-predecessor-map :type hash-table)
-   (preferred-block-size :initform '(16 16 1)
-                         :accessor preferred-block-size)
    (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)

@@ -9,6 +9,10 @@
   (:import-from :cl-cuda :block-dim-x :block-dim-y :block-dim-z
                 :block-idx-x :block-idx-y :block-idx-z
                 :thread-idx-x :thread-idx-y :thread-idx-z)
+  (:import-from :petalisp-cuda.type-conversion
+                :cl-cuda-type-from-ntype)
+  (:import-from :alexandria
+                :format-symbol)
   (:export :select-iteration-scheme
            :call-parameters
            :iteration-code
@@ -16,7 +20,10 @@
            :linearize-instruction-transformation
            :shape-independent-p
            :generic-offsets-p
-           :iteration-space))
+           :iteration-space
+           :get-instruction-symbol
+           :kernel-parameter-name
+           :kernel-parameter-type))
 
 (in-package petalisp-cuda.iteration-scheme)
 
@@ -29,7 +36,7 @@
                     :type list)))
 
 (defgeneric call-parameters (iteration-scheme iteration-shape))
-(defgeneric iteration-code (iteration-scheme kernel-body))
+(defgeneric iteration-code (iteration-scheme kernel-body buffer->kernel-parameter))
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
 (defgeneric shape-independent-p (iteration-scheme))
 (defgeneric generic-offsets-p (iteration-scheme))
