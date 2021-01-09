@@ -7,12 +7,15 @@
 	   :cudnnGetReductionWorkspaceSize
 	   :cudnnCreateTensorDescriptor
 	   :cudnnCreateTensorDescriptor
+	   :cudnnCreateReduceTensorDescriptor
+	   :cudnnSetReduceTensorDescriptor
 	   :cudnnDestroy
 	   :cudnnDestroyTensorDescriptor
 	   :cudnnDestroyReduceTensorDescriptor
 	   :cudnn-create-tensor-descriptor
 	   :cudnn-create-reduction-descriptor
 	   :cudnnGetReductionIndicesSize
+	   :CudnnSetTensorNdDescriptor
 	   :CUDNN-STATUS-SUCCESS
 	   :cudnnReduceTensor
 	   :cudnn-data-int32

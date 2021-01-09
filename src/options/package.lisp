@@ -12,7 +12,8 @@
            :*strict-cast-mode*
            :*preferred-block-shape*
            :*slow-coordinate-load-strategy*
-           :*warp-time-slicing*))
+           :*warp-time-slicing*
+           :*slow-coordinate-transposed-trick*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -24,6 +25,7 @@
 (defparameter *generic-offsets* t)
 (defparameter *with-hash-table-memoization* t)
 (defparameter *page-locked-host-memory* t)
+(defparameter *slow-coordinate-transposed-trick* nil)
 
 ;; Forbids casts from T to single-float to perform calculation on GPU
 (defparameter *strict-cast-mode* nil)
@@ -32,4 +34,3 @@
 (defparameter *max-array-printing-length* 5)
 
 (defparameter *preferred-block-shape* '(16 16 1))
-(defparameter *slow-coordinate-load-strategy* "cub::BLOCK_LOAD_WARP_TRANSPOSE_TIMESLICED")

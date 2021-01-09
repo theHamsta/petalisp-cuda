@@ -57,6 +57,21 @@
           0 ; '+ with zero arguments
           rtn))))
 
+;; TODO: make this shape independent?
+(defun get-oob-check (instruction)
+  (let* ((transformation (instruction-transformation instruction))
+         (output-rank (transformation-output-rank transformation))
+         (buffer-shape (buffer-shape (load-instruction-buffer instruction)))
+         (input-rank (transformation-input-rank transformation))
+         (index-space (get-counter-vector input-rank) )
+         (transformed (transform index-space transformation)))
+    `(and
+       ,@(loop for i from 0 below output-rank
+               for r = (shape-range buffer-shape i)
+               for idx in transformed
+               collect `(and (>= ,idx ,(range-start r))
+                             (<= ,idx ,(range-last r)))))))
+
 (defmethod iteration-scheme-buffer-access ((iteration-scheme iteration-scheme) instruction buffer kernel-parameter)
   ;; We can always do a uncached memory access
   `(aref ,kernel-parameter ,(linearize-instruction-transformation instruction buffer kernel-parameter (shape-independent-p iteration-scheme))))

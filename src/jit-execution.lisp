@@ -88,7 +88,9 @@
 (defstruct (jit-function)
   kernel-symbol iteration-scheme dynamic-shared-mem-bytes kernel-manager kernel-parameters kernel-body hfunc)
 
+;; TODO: make this generic for possible C backend?
 (defun generate-iteration-scheme (kernel backend)
+  (declare (ignore backend))
   (select-iteration-scheme kernel
                            (kernel-iteration-space kernel)
                            (cuda-array-strides (buffer-storage (first (kernel-outputs kernel))))))
@@ -148,6 +150,8 @@
     ((cons (cons 'declare _) b) (remove-lispy-stuff b offset-vector))
     ; unary +
     ((list '+ b) `(+ 0 ,(remove-lispy-stuff b offset-vector)))
+    ((list (list 'and a b)) `(and ,(remove-lispy-stuff a offset-vector) ,(remove-lispy-stuff b offset-vector)))
+    ((guard (list* 'and a b c) c) `(and ,(remove-lispy-stuff a offset-vector) (and ,(remove-lispy-stuff b offset-vector) ,(remove-lispy-stuff c offset-vector))))
     ; binary floor/ceiling
     ((list 'floor a b) `(floor (/ ,(remove-lispy-stuff a offset-vector) ,(remove-lispy-stuff b offset-vector))))
     ((list 'ceiling a b) `(ceiling (/ ,(remove-lispy-stuff a offset-vector) ,(remove-lispy-stuff b offset-vector))))

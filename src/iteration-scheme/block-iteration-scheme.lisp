@@ -28,10 +28,13 @@
                                         (x '(+ thread-idx-x (* block-idx-x block-dim-x)))
                                         (y '(+ thread-idx-y (* block-idx-y block-dim-y)))
                                         (z '(+ thread-idx-z (* block-idx-z block-dim-z)))))))))
-       ;; return out-of-bounds threads
-       ,@(loop for dim-idx in xyz
-               collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
-                            (return)))
-       ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
-       ;; and append kernel-body
-       ,(make-range-loop iteration-ranges 0 xyz kernel-body))))
+       ,(caching-code
+          `(
+            ;; return out-of-bounds threads
+            ,@(loop for dim-idx in xyz
+                    collect `(if (>= ,(get-counter-symbol dim-idx) ,(range-end (nth dim-idx iteration-ranges)))
+                                 (return)))
+            ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
+            ;; and append kernel-body
+            ,(make-range-loop iteration-ranges 0 xyz kernel-body))
+          buffer->kernel-parameter))))

@@ -5,8 +5,7 @@
   ((%generic-offsets :initform *generic-offsets*
                      :accessor %generic-offsets-p)))
 
-(defmethod iteration-code ((iteration-scheme symbolic-block-iteration-scheme) kernel-body buffer->kernel-paramater)
-  (declare (ignore buffer->kernel-paramater))
+(defmethod iteration-code ((iteration-scheme symbolic-block-iteration-scheme) kernel-body buffer->kernel-parameter)
   (let* ((ranges-from-ir (shape-ranges (iteration-space iteration-scheme)))
         (iteration-ranges (or ranges-from-ir (list (range 1))))
         (xyz (or (xyz-dimensions iteration-scheme) '(0))))
@@ -21,13 +20,15 @@
                                         (x '(+ thread-idx-x (* block-idx-x block-dim-x)))
                                         (y '(+ thread-idx-y (* block-idx-y block-dim-y)))
                                         (z '(+ thread-idx-z (* block-idx-z block-dim-z)))))))))
+       ,(caching-code iteration-scheme
        ;; return out-of-bounds threads
-       ,@(loop for dim-idx in xyz
+       `(,@(loop for dim-idx in xyz
                collect `(if (>= ,(get-counter-symbol dim-idx) ,(if ranges-from-ir (format-symbol t "iteration-end-~A" dim-idx) 1))
                             (return)))
        ;; iterate over remaining dimensions with for-loops (c++, do in cl-cuda)
-       ;; and append kernel-body
-       ,(make-range-loop iteration-ranges 0 xyz kernel-body))))
+       ;; and append kernel-body)
+       ,(make-range-loop iteration-ranges 0 xyz kernel-body))
+       buffer->kernel-parameter))))
 
 (defmethod shape-independent-p ((iteration-scheme symbolic-block-iteration-scheme))
   t)

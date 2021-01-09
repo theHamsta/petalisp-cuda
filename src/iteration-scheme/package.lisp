@@ -2,7 +2,8 @@
   (:use :cl
         :petalisp.core
         :petalisp.ir
-        :petalisp-cuda.options)
+        :petalisp-cuda.options
+        :trivia)
   (:import-from :alexandria :iota :format-symbol)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-strides)
@@ -37,6 +38,8 @@
 
 (defgeneric call-parameters (iteration-scheme iteration-shape))
 (defgeneric iteration-code (iteration-scheme kernel-body buffer->kernel-parameter))
+(defgeneric shared-mem-code (iteration-scheme kernel-body buffer->kernel-parameter))
+(defgeneric caching-code (iteration-scheme kernel-body buffer->kernel-parameter))
 (defgeneric iteration-scheme-buffer-access (iteration-scheme instruction buffer kernel-parameter))
 (defgeneric shape-independent-p (iteration-scheme))
 (defgeneric generic-offsets-p (iteration-scheme))
@@ -45,10 +48,16 @@
 (defmethod iteration-scheme-shared-mem ((iteration-scheme iteration-scheme))
   (values nil nil))
 
-(defmethod iteration-code :before ((iteration-scheme iteration-scheme) kernel-body buffer->kernel-parameter)
-  (multiple-value-bind (type shape) (iteration-scheme-shared-mem iteration-scheme)
-    (if typpe
+(defmethod shared-mem-code ((iteration-scheme iteration-scheme) kernel-body buffer->kernel-parameters)
+  (declare (ignore buffer->kernel-parameters))
+  (multiple-value-bind (shape type) (iteration-scheme-shared-mem iteration-scheme)
+    (if type
         `(with-shared-memory ((shared-mem ,type ,@shape))
-           ,(call-next-method)))
-    (call-next-method)))
+           ,@kernel-body)
+        `(progn
+           ,@kernel-body))))
 
+(defmethod caching-code ((iteration-scheme iteration-scheme) kernel-body buffer->kernel-parameters)
+  (declare (ignore iteration-scheme) (ignore buffer->kernel-parameters))
+  `(progn
+     ,@kernel-body))
