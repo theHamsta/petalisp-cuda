@@ -2,7 +2,9 @@
   (:use :petalisp-cuda.cudalibs
         :cl)
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
-  (:import-from :petalisp-cuda.memory.cuda-array :element-type :device-ptr)
+  (:import-from :petalisp-cuda.memory.cuda-array
+                :cuda-array-type
+                :device-ptr)
   (:export :make-cudnn-handler
            :finalize-cudnn-handler
            :cudnn-reduce-array))
@@ -88,7 +90,7 @@
 (defun cudnn-create-tensor-descriptor (array cudnn-handler)
   (let* ((shape (slot-value array 'petalisp-cuda.memory.cuda-array::shape))
             (strides (slot-value array 'petalisp-cuda.memory.cuda-array::strides))
-            (element-type (petalisp-cuda.memory.cuda-array::element-type array))
+            (element-type (petalisp-cuda.memory.cuda-array::cuda-array-type array))
             (hash-key (values shape strides element-type))
             (min-shape (max (length shape) 4))) ; cudnn wants tensors of dim 4 to 8
            (or (gethash hash-key (tensor-descriptors cudnn-handler))
@@ -144,12 +146,11 @@
 (defun cudnn-reduce-array (input-array output-array reduce-op cudnn-handler)
   (let ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
           (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
-          (reduction-descriptor (cudnn-create-reduction-descriptor reduce-op (element-type input-array) cudnn-handler))
-          (double-or-float (if (equalp (element-type input-array) :double) :double :float)))
+          (reduction-descriptor (cudnn-create-reduction-descriptor reduce-op (cuda-array-type input-array) cudnn-handler))
+          (double-or-float (if (equalp (cuda-array-type input-array) :double) :double :float)))
       (cffi:with-foreign-object (workspace-min-size '(:pointer :int))
         (cffi:with-foreign-object (indices-min-size '(:pointer :int))
-          (cffi:with-foreign-object (indices '(:pointer :int))
-            (cffi:with-foreign-object (alpha '(:pointer :double))
+          (cffi:with-foreign-object (alpha '(:pointer :double))
               (cffi:with-foreign-object (beta '(:pointer :double))
                 (progn
                   ; this routine supports mixing data types, then alpha, beta are float or else everything is double
@@ -184,6 +185,6 @@
                                                          beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
                                                          output-descriptor
                                                          (cffi:make-pointer (device-ptr output-array)))))))
-                  output-array))))))))
+                  output-array)))))))
 ;The data types of the tensors A and C must match if of type double. In this case, alpha and beta and the computation enum of reduceTensorDesc are all assumed to be of type double.
 ;The HALF and INT8 data types may be mixed with the FLOAT data types. In these cases, the computation enum of reduceTensorDesc is required to be of type FLOAT. 

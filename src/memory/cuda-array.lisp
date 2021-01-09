@@ -31,8 +31,7 @@
            :nd-iter
            :cuda-array-p
            :type-from-cl-cuda-type
-           :lisp-type-from-cl-cuda-type
-           :element-type))
+           :lisp-type-from-cl-cuda-type))
 
 (in-package :petalisp-cuda.memory.cuda-array)
 

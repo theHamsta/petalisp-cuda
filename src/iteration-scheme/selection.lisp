@@ -18,18 +18,25 @@
     slow-loads))
 
 (defun select-iteration-scheme (kernel iteration-shape array-strides)
-  (let* ((iteration-strides (loop for range in (shape-ranges iteration-shape)
-                                  for stride in array-strides
-                                  count t into i
-                                  unless (range-empty-p range)
-                                  collect (list (1- i) stride)))
-         (fastest-dimensions (mapcar #'car (sort iteration-strides #'< :key #'second)))
-         (fastest-dimension (first fastest-dimensions))
-         (xyz (subseq fastest-dimensions 0 (min 3 (length fastest-dimensions))))
-         (block-shape '())
-         (iteration-shape (kernel-iteration-space kernel))
-         (rank (shape-rank iteration-shape))
-         (slow-loads (find-slow-loads kernel fastest-dimension)))
+    (let* ((iteration-strides (loop for range in (shape-ranges iteration-shape)
+                                    for stride in array-strides
+                                    count t into i
+                                    unless (range-empty-p range)
+                                    collect (list (1- i) stride)))
+           (fastest-dimensions (mapcar #'car (sort iteration-strides #'< :key #'second)))
+           (fastest-dimension (first fastest-dimensions))
+           (slow-loads (when *slow-coordinate-transposed-trick*
+                         (find-slow-loads kernel fastest-dimension)))
+           (load-dimension (when slow-loads
+                             (aref (transformation-output-mask (instruction-transformation (first slow-loads))) fastest-dimension)))
+           (xyz (match (list load-dimension fastest-dimensions)
+                  ((list nil _) (subseq fastest-dimensions 0 (min 3 (length fastest-dimensions))))
+                  ((guard (list l (list* x y z _)) (= l z)) (list x l y))
+                  ((list l (list* x _ z _)) (list x l z))
+                  ((list l (list* x _)) (list x l))))
+           (block-shape '())
+           (iteration-shape (kernel-iteration-space kernel))
+           (rank (shape-rank iteration-shape)))
     (dotimes (i rank)
       (push (range 0) block-shape))
     (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range range-size))) xyz *preferred-block-shape*)
@@ -39,7 +46,7 @@
                      :xyz-dimensions xyz
                      :block-shape block-shape
                      :slow-loads slow-loads
-                     :load-strategy *slow-coordinate-load-strategy*)
+                     :fastest-dimension fastest-dimension)
       (make-instance (if *shape-independent-code*
                        'symbolic-block-iteration-scheme
                        'block-iteration-scheme)
