@@ -10,6 +10,7 @@
 	   :cudnnGetConvolutionForwardWorkspaceSize
 	   :cudnnGetConvolutionForwardAlgorithm_v7
 	   :cudnnGetConvolutionForwardAlgorithmMaxCount
+	   :cudnnFindConvolutionForwardAlgorithm
 	   :cudnnCreateReduceTensorDescriptor
 	   :cudnnSetReduceTensorDescriptor
 	   :cudnnDestroy
@@ -20,13 +21,19 @@
 	   :cudnnGetReductionIndicesSize
 	   :CudnnSetTensorNdDescriptor
 	   :CUDNN-STATUS-SUCCESS
-	   :cudnnConvolutionFwdAlgoPerf_t
 	   :cudnnConvolutionFwdAlgo-t
 	   :cudnnCreateConvolutionDescriptor
 	   :cudnnSetConvolutionNdDescriptor
 	   :cudnnDestroyConvolutionDescriptor
 	   :cudnnConvolutionDescriptor-t
+	   :cudnnConvolutionForward
 	   :cudnnReduceTensor
+	   :cudnnFilterDescriptor-t
+	   :cudnnCreateFilterDescriptor
+	   :cudnnSetFilterNdDescriptor
+	   :cudnnDestroyFilterDescriptor
+	   :cudnnConvolutionFwdAlgoPerf-t
+	   :algo
 	   :cudnn-data-int32
 	   :cudnn-data-half
 	   :cudnn-data-float
