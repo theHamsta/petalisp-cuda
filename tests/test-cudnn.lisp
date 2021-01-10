@@ -24,3 +24,13 @@
         (petalisp-cuda.cudnn-handler::cudnn-reduce-array a b #'+ (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
       b))))
     #2a ((9) (6))))
+
+(deftest test-convolution
+  (unless petalisp-cuda.cudalibs::*cudnn-found*
+    (skip "No cudnn!"))
+  (with-cuda-backend
+        (let ((x (make-cuda-array (aops:rand* 'float '(1 12 13)) 'float))
+              (y (make-cuda-array (aops:rand* 'float '(1 12 13)) 'float))
+              (w (make-cuda-array #4A((((1 2) (3 4)))) 'float)))
+        (petalisp-cuda.cudnn-handler::cudnn-convolution x w y (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
+      y)))

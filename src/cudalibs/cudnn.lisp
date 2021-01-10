@@ -183,7 +183,7 @@
 
 (cffi:defcstruct cudnnfilterstruct)
 
-(cffi:defctype cudnnfilterdescriptor-t (:pointer (:struct cudnnFilterStruct)))
+(cffi:defctype cudnnFilterDescriptor-t (:pointer (:struct cudnnFilterStruct)))
 
 (cffi:defcstruct cudnnlrnstruct)
 
@@ -621,10 +621,10 @@
   (biasdata (:pointer :void))
   (reorderedbiasdata (:pointer :void)))
 
-(cffi:defcfun "cudnncreateconvolutiondescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnCreateConvolutionDescriptor" cudnnStatus-t
   (convdesc (:pointer cudnnConvolutionDescriptor-t)))
 
-(cffi:defcfun "cudnnsetconvolutionmathtype" cudnnStatus-t
+(cffi:defcfun "cudnnSetConvolutionMathType" cudnnStatus-t
   (convdesc cudnnConvolutionDescriptor-t)
   (mathtype cudnnMathType-t))
 
@@ -679,7 +679,7 @@
   (h (:pointer :int))
   (w (:pointer :int)))
 
-(cffi:defcfun "cudnnsetconvolutionnddescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetConvolutionNdDescriptor" cudnnStatus-t
   (convdesc cudnnConvolutionDescriptor-t)
   (arraylength :int)
   (pada (:pointer :int) ; array 
