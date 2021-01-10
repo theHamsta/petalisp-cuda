@@ -37,10 +37,10 @@
   (with-cuda-backend
     (let ((x (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
           (y (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
-          (w (make-cuda-array #4A((((1 2) (3 4)))) 'float)))
+          (w (make-cuda-array #4A((((1 2) (3 4)))) 'float))
+          (petalisp-cuda.options:*cudnn-autotune* t))
       (petalisp-cuda.cudnn-handler::cudnn-convolution x
                                                       w
                                                       y
-                                                      (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*)
-                                                      :algorithm :cudnn-convolution-fwd-algo-implicit-gemm)
+                                                      (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
       y)))
