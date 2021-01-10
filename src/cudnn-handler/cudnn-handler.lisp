@@ -7,6 +7,7 @@
   (:import-from :petalisp-cuda.options :*cudnn-autotune*)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-type
+                :cuda-array-shape
                 :device-ptr)
   (:export :make-cudnn-handler
            :finalize-cudnn-handler
@@ -103,7 +104,7 @@
     (petalisp.utilities:with-hash-table-memoization
       ((values input-array paddings dilations filter-strides mode))
       (convolution-descriptors cudnn-handler)
-      (with-foreign-objects ((descriptor 'cudnnConvolutionDescriptor-t)
+      (with-foreign-objects ((descriptor '(:pointer cudnnConvolutionDescriptor-t))
                              (padA :int 3)
                              (dilA :int 3)
                              (strideA :int 3))
@@ -116,14 +117,14 @@
                 (setf (mem-aref padA :int i) p)
                 (setf (mem-aref dilA :int i) d)
                 (setf (mem-aref strideA :int i) s)))
-        (assert (= 0 (cudnnCreateConvolutionDescriptor descriptor)))
-        (assert (= 0 (cudnnSetConvolutionNdDescriptor descriptor
-                                                      input-rank
-                                                      padA
-                                                      dilA
-                                                      strideA
-                                                      mode
-                                                      input-type)))
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateConvolutionDescriptor descriptor)))
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnSetConvolutionNdDescriptor (mem-aref descriptor 'cudnnConvolutionDescriptor-t)
+                                                                               input-rank
+                                                                               padA
+                                                                               dilA
+                                                                               strideA
+                                                                               mode
+                                                                               input-type)))
         (mem-aref descriptor 'cudnnConvolutionDescriptor-t)))))
 
   ;(:cudnn-tensor-nchw 0)
@@ -156,15 +157,15 @@
       (with-foreign-objects ((descriptor '(:pointer cudnnFilterDescriptor-t))
                              (filterDimA :int input-rank))
         (loop for i from 0
-              for s in filter-array
+              for s in (cuda-array-shape filter-array)
               do (setf (mem-aref filterDimA :int i) s))
-        (assert (= 0 (cudnnCreateFilterDescriptor descriptor)))
-        (assert (= 0 (cudnnSetFilterNdDescriptor descriptor
-                                                 filter-format
-                                                 input-rank
-                                                 input-type
-                                                 filterDimA)))
-        (mem-aref descriptor 'cudnnConvolutionDescriptor-t)))))
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateFilterDescriptor descriptor)))
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnSetFilterNdDescriptor (mem-aref descriptor 'cudnnFilterDescriptor-t)
+                                                                          filter-format
+                                                                          input-rank
+                                                                          input-type
+                                                                          filterDimA)))
+        (mem-aref descriptor 'cudnnFilterDescriptor-t)))))
 
 (defun cudnn-create-tensor-descriptor (array cudnn-handler)
   (let* ((shape (slot-value array 'petalisp-cuda.memory.cuda-array::shape))
@@ -280,8 +281,8 @@
     ((values input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune*))
     (convolution-algorithms cudnn-handler)
     (with-foreign-object (algo-count '(:pointer :int))
-      (assert (= 0 (cudnnGetConvolutionForwardAlgorithmMaxCount algo-count (cudnn-handle cudnn-handler))))
-      (with-foreign-object (perf-results '(:pointer cudnnConvolutionFwdAlgoPerf-t))
+      (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithmMaxCount (cudnn-handle cudnn-handler) algo-count)))
+      (with-foreign-object (perf-results '(:pointer cudnnConvolutionFwdAlgoPerf-t) (mem-aref algo-count :int))
         (if *cudnn-autotune*
             ;cudnnStatus_t cudnnFindConvolutionForwardAlgorithm(
             ;cudnnHandle_t                      handle,
@@ -292,7 +293,7 @@
             ;const int                          requestedAlgoCount,
             ;int                               *returnedAlgoCount,
             ;cudnnConvolutionFwdAlgoPerf_t     *perfResults)
-          (assert (= 0 (cudnnFindConvolutionForwardAlgorithm (cudnn-handle cudnn-handler)
+          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionForwardAlgorithm (cudnn-handle cudnn-handler)
                                                              input-descriptor
                                                              filter-descriptor
                                                              convolution-descriptor
@@ -309,14 +310,14 @@
           ;const int                           requestedAlgoCount,
           ;int                                *returnedAlgoCount,
           ;cudnnConvolutionFwdAlgoPerf_t      *perfResults)
-          (assert (= 0 (cudnnGetConvolutionForwardAlgorithm_v7 (cudnn-handle cudnn-handler)
-                                                               input-descriptor
-                                                               filter-descriptor
-                                                               convolution-descriptor
-                                                               output-descriptor
-                                                               algo-count
-                                                               algo-count
-                                                               perf-results))))
+          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithm_v7 (cudnn-handle cudnn-handler)
+                                                                                        input-descriptor
+                                                                                        filter-descriptor
+                                                                                        convolution-descriptor
+                                                                                        output-descriptor
+                                                                                        (mem-aref algo-count :int)
+                                                                                        algo-count
+                                                                                        perf-results))))
         (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionFwdAlgoPerf-t) 'cudnnConvolutionFwdAlgoPerf-t 'algo)))))
 
 (defun cudnn-convolution (input-array
