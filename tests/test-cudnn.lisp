@@ -29,8 +29,18 @@
   (unless petalisp-cuda.cudalibs::*cudnn-found*
     (skip "No cudnn!"))
   (with-cuda-backend
-        (let ((x (make-cuda-array (aops:rand* 'float '(1 12 13)) 'float))
-              (y (make-cuda-array (aops:rand* 'float '(1 12 13)) 'float))
-              (w (make-cuda-array #4A((((1 2) (3 4)))) 'float)))
-        (petalisp-cuda.cudnn-handler::cudnn-convolution x w y (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
+    (let ((x (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
+          (y (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
+          (w (make-cuda-array #4A((((1 2 2) (2 4 2) (2 3 2)))) 'float)))
+      (petalisp-cuda.cudnn-handler::cudnn-convolution x w y (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
+      y))
+  (with-cuda-backend
+    (let ((x (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
+          (y (make-cuda-array (aops:rand* 'float '(1 1 12 13)) 'float))
+          (w (make-cuda-array #4A((((1 2) (3 4)))) 'float)))
+      (petalisp-cuda.cudnn-handler::cudnn-convolution x
+                                                      w
+                                                      y
+                                                      (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*)
+                                                      :algorithm :cudnn-convolution-fwd-algo-implicit-gemm)
       y)))

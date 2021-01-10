@@ -556,10 +556,10 @@
 
 (cffi:defctype cudnnconvolutionmode-t cudnnconvolutionmode-t-enum)
 
-(cffi:defcfun "cudnncreatefilterdescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnCreateFilterDescriptor" cudnnStatus-t
   (filterdesc (:pointer cudnnFilterDescriptor-t)))
 
-(cffi:defcfun "cudnnsetfilter4ddescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetFilter4dDescriptor" cudnnStatus-t
   (filterdesc cudnnFilterDescriptor-t)
   (datatype cudnnDataType-t)
   (format cudnnTensorFormat-t)
@@ -577,7 +577,7 @@
   (h (:pointer :int))
   (w (:pointer :int)))
 
-(cffi:defcfun "cudnnsetfilternddescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetFilterNdDescriptor" cudnnStatus-t
   (filterdesc cudnnFilterDescriptor-t)
   (datatype cudnnDataType-t)
   (format cudnnTensorFormat-t)
@@ -585,7 +585,7 @@
   (filterdima (:pointer :int) ; array 
 ))
 
-(cffi:defcfun "cudnngetfilternddescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnGetFilterNdDescriptor" cudnnStatus-t
   (filterdesc cudnnFilterDescriptor-t)
   (nbdimsrequested :int)
   (datatype (:pointer cudnnDataType-t))
@@ -832,7 +832,7 @@
   (algo cudnnConvolutionFwdAlgo-t)
   (sizeinbytes (:pointer :int)))
 
-(cffi:defcfun "cudnnconvolutionforward" cudnnStatus-t
+(cffi:defcfun "cudnnConvolutionForward" cudnnStatus-t
   (handle cudnnHandle-t)
   (alpha (:pointer :void))
   (xdesc cudnnTensorDescriptor-t)

@@ -19,7 +19,8 @@
 	   :cudnn-create-tensor-descriptor
 	   :cudnn-create-reduction-descriptor
 	   :cudnnGetReductionIndicesSize
-	   :CudnnSetTensorNdDescriptor
+	   :cudnnSetTensorNdDescriptor
+	   :cudnnGetConvolutionNdForwardOutputDim
 	   :CUDNN-STATUS-SUCCESS
 	   :cudnnConvolutionFwdAlgo-t
 	   :cudnnCreateConvolutionDescriptor
