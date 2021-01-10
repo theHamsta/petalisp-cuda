@@ -17,7 +17,7 @@
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
-(defparameter *transfer-back-to-lisp* nil)
+(defparameter *transfer-back-to-lisp* t)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
 (defparameter *nvcc-extra-options* '("-use_fast_math" "--std" "c++14" "-Xptxas" "-O3" "--expt-relaxed-constexpr" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))

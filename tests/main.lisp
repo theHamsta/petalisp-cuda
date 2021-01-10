@@ -1,9 +1,9 @@
 (in-package :petalisp-cuda/tests)
+; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
 
 (petalisp.test-suite:check-package ':petalisp-cuda)
-(petalisp.test-suite:check-package '#:petalisp-cuda.backend)
-(petalisp.test-suite:check-package '#:petalisp-cuda.jitexecution)
-; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
+(petalisp.test-suite:check-package ':petalisp-cuda.backend)
+(petalisp.test-suite:check-package ':petalisp-cuda.jitexecution)
 
 (defparameter *test-backend* (make-testing-backend))
 
@@ -263,23 +263,6 @@
             (funcall gradient-fn x2))))
     (call-network network x1 5d0 x2 1d0)
     (call-network gradient-network x1 1d0 x2 1d0 g1 1d0))))
-
-;(deftest test-descriptor
-  ;(unless petalisp-cuda.cudalibs::*cudnn-found*
-    ;(skip "No cudnn!"))
-  ;(with-cuda (0)
-    ;(petalisp-cuda.cudalibs::cudnn-create-tensor-descriptor
-      ;(make-cuda-array '(10 20) 'float))))
-
-;(deftest test-descriptor2
-  ;(unless petalisp-cuda.cudalibs::*cudnn-found*
-    ;(skip "No cudnn!"))
-  ;(with-cuda (0)
-    ;(progn
-      ;(petalisp-cuda:use-cuda-backend)
-      ;(let ((a (make-cuda-array '(10 20) 'float))
-            ;(b (make-cuda-array '(10 1) 'float)))
-        ;(petalisp-cuda.cudalibs::cudnn-reduce-array a b #'+)))))
 
 (deftest test-petalisp.test-suite
   (with-testing-backend

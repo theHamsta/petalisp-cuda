@@ -73,6 +73,7 @@
                 ((:file "package")
                  (:file "testing-backend")
                  (:file "main")
-                 (:file "test-cuda-array"))))
+                 (:file "test-cuda-array")
+                 (:file "test-cudnn"))))
   :description "Test system for petalisp-cuda"
   :perform (test-op (op c) (symbol-call :rove :run c)))
