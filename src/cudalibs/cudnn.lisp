@@ -739,7 +739,41 @@
 
 (cffi:defctype cudnnconvolutionfwdalgoperf-t (:struct cudnnconvolutionfwdalgoperf-t-record))
 
-(cffi:defcfun "cudnngetconvolutionforwardalgorithmmaxcount" cudnnStatus-t
+  (defcstruct cudnnConvolutionFwdAlgoPerf_t
+    "
+cudnnConvolutionFwdAlgo_t algo
+
+    The algorithm runs to obtain the associated performance metrics.
+cudnnStatus_t status
+
+    If any error occurs during the workspace allocation or timing of cudnnConvolutionForward(), this status will represent that error. Otherwise, this status will be the return status of cudnnConvolutionForward().
+
+        CUDNN_STATUS_ALLOC_FAILED if any error occurred during workspace allocation or if the provided workspace is insufficient.
+        CUDNN_STATUS_INTERNAL_ERROR if any error occurred during timing calculations or workspace deallocation.
+        Otherwise, this will be the return status of cudnnConvolutionForward().
+
+float time
+
+    The execution time of cudnnConvolutionForward() (in milliseconds).
+size_t memory
+
+    The workspace size (in bytes).
+cudnnDeterminism_t determinism
+
+    The determinism of the algorithm.
+cudnnMathType_t mathType
+
+    The math type provided to the algorithm.
+int reserved[3]
+    "
+    (algo (cudnnConvolutionFwdAlgo-t))
+    (time (:float))
+    (size (:pointer))
+    (determinism (cudnndeterminism-t))
+    (math-type cudnnMathType-t)
+    (reserved (:int 3)))
+
+(cffi:defcfun "cudnnGetConvolutionForwardAlgorithmMaxCount" cudnnStatus-t
   (handle cudnnHandle-t)
   (count (:pointer :int)))
 
@@ -768,7 +802,7 @@
   (workspace (:pointer :void))
   (workspacesizeinbytes :int))
 
-(cffi:defcfun "cudnngetconvolutionforwardalgorithm" cudnnStatus-t
+(cffi:defcfun "cudnnGetConvolutionForwardAlgorithm" cudnnStatus-t
   (handle cudnnHandle-t)
   (xdesc cudnnTensorDescriptor-t)
   (wdesc cudnnFilterDescriptor-t)
@@ -778,7 +812,7 @@
   (memorylimitinbytes :int)
   (algo (:pointer cudnnConvolutionFwdAlgo-t)))
 
-(cffi:defcfun ("cudnngetconvolutionforwardalgorithm_v7" cudnngetconvolutionforwardalgorithm-v7) cudnnStatus-t
+(cffi:defcfun ("cudnnGetConvolutionForwardAlgorithm_v7" cudnngetconvolutionforwardalgorithm-v7) cudnnStatus-t
   (handle cudnnHandle-t)
   (srcdesc cudnnTensorDescriptor-t)
   (filterdesc cudnnFilterDescriptor-t)
@@ -788,7 +822,7 @@
   (returnedalgocount (:pointer :int))
   (perfresults (:pointer cudnnConvolutionFwdAlgoPerf-t)))
 
-(cffi:defcfun "cudnngetconvolutionforwardworkspacesize" cudnnStatus-t
+(cffi:defcfun "cudnnGetConvolutionForwardWorkspaceSize" cudnnStatus-t
   (handle cudnnHandle-t)
   (xdesc cudnnTensorDescriptor-t)
   (wdesc cudnnFilterDescriptor-t)
@@ -864,7 +898,7 @@
 
 (cffi:defctype cudnnconvolutionbwdfilteralgoperf-t (:struct cudnnconvolutionbwdfilteralgoperf-t-record))
 
-(cffi:defcfun "cudnngetconvolutionbackwardfilteralgorithmmaxcount" cudnnStatus-t
+(cffi:defcfun "cudnngetconvolutionbackwardFilterAlgorithmMaxCount" cudnnStatus-t
   (handle cudnnHandle-t)
   (count (:pointer :int)))
 
