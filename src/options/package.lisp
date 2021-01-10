@@ -13,7 +13,8 @@
            :*preferred-block-shape*
            :*slow-coordinate-load-strategy*
            :*warp-time-slicing*
-           :*slow-coordinate-transposed-trick*))
+           :*slow-coordinate-transposed-trick*
+           :*cudnn-autotune*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -27,6 +28,9 @@
 (defparameter *page-locked-host-memory* t)
 (defparameter *slow-coordinate-transposed-trick* nil)
 
+;; Exhaustive searches for best convolution algorithms (alternative: use heuristics)
+(defparameter *cudnn-autotune* nil)
+
 ;; Forbids casts from T to single-float to perform calculation on GPU
 (defparameter *strict-cast-mode* nil)
 
@@ -34,3 +38,4 @@
 (defparameter *max-array-printing-length* 5)
 
 (defparameter *preferred-block-shape* '(16 16 1))
+

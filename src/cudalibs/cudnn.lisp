@@ -173,9 +173,9 @@
 
 (cffi:defctype cudnntensordescriptor-t (:pointer (:struct cudnnTensorStruct)))
 
-(cffi:defcstruct cudnnconvolutionstruct)
+(cffi:defcstruct cudnnConvolutionStruct)
 
-(cffi:defctype cudnnconvolutiondescriptor-t (:pointer (:struct cudnnConvolutionStruct)))
+(cffi:defctype cudnnConvolutionDescriptor-t (:pointer (:struct cudnnConvolutionStruct)))
 
 (cffi:defcstruct cudnnpoolingstruct)
 
@@ -704,7 +704,7 @@
   (mode (:pointer cudnnConvolutionMode-t))
   (computetype (:pointer cudnnDataType-t)))
 
-(cffi:defcfun "cudnngetconvolutionndforwardoutputdim" cudnnStatus-t
+(cffi:defcfun "cudnnGetConvolutionNdForwardOutputDim" cudnnStatus-t
   (convdesc cudnnConvolutionDescriptor-t)
   (inputtensordesc cudnnTensorDescriptor-t)
   (filterdesc cudnnFilterDescriptor-t)
@@ -712,7 +712,7 @@
   (tensorouputdima (:pointer :int) ; array 
 ))
 
-(cffi:defcfun "cudnndestroyconvolutiondescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnDestroyConvolutionDescriptor" cudnnStatus-t
   (convdesc cudnnConvolutionDescriptor-t))
 
 (cffi:defcenum cudnnconvolutionfwdpreference-t-enum
@@ -722,7 +722,7 @@
 
 (cffi:defctype cudnnconvolutionfwdpreference-t cudnnconvolutionfwdpreference-t-enum)
 
-(cffi:defcenum cudnnconvolutionfwdalgo-t-enum
+(cffi:defcenum cudnnConvolutionFwdAlgo-t-enum
   (:cudnn-convolution-fwd-algo-implicit-gemm 0)
   (:cudnn-convolution-fwd-algo-implicit-precomp-gemm 1)
   (:cudnn-convolution-fwd-algo-gemm 2)
@@ -733,51 +733,52 @@
   (:cudnn-convolution-fwd-algo-winograd-nonfused 7)
   (:cudnn-convolution-fwd-algo-count 8))
 
-(cffi:defctype cudnnconvolutionfwdalgo-t cudnnconvolutionfwdalgo-t-enum)
+(cffi:defctype cudnnConvolutionFwdAlgo-t cudnnconvolutionfwdalgo-t-enum)
 
-(cffi:defcstruct cudnnconvolutionfwdalgoperf-t-record)
 
-(cffi:defctype cudnnconvolutionfwdalgoperf-t (:struct cudnnconvolutionfwdalgoperf-t-record))
+(cffi:defcstruct cudnnConvolutionFwdAlgoPerf-t-record
 
-  (defcstruct cudnnConvolutionFwdAlgoPerf_t
-    "
-cudnnConvolutionFwdAlgo_t algo
+  "
+  cudnnConvolutionFwdAlgo_t algo
 
-    The algorithm runs to obtain the associated performance metrics.
-cudnnStatus_t status
+  The algorithm runs to obtain the associated performance metrics.
+  cudnnStatus_t status
 
-    If any error occurs during the workspace allocation or timing of cudnnConvolutionForward(), this status will represent that error. Otherwise, this status will be the return status of cudnnConvolutionForward().
+  If any error occurs during the workspace allocation or timing of cudnnConvolutionForward(), this status will represent that error. Otherwise, this status will be the return status of cudnnConvolutionForward().
 
-        CUDNN_STATUS_ALLOC_FAILED if any error occurred during workspace allocation or if the provided workspace is insufficient.
-        CUDNN_STATUS_INTERNAL_ERROR if any error occurred during timing calculations or workspace deallocation.
-        Otherwise, this will be the return status of cudnnConvolutionForward().
+  CUDNN_STATUS_ALLOC_FAILED if any error occurred during workspace allocation or if the provided workspace is insufficient.
+  CUDNN_STATUS_INTERNAL_ERROR if any error occurred during timing calculations or workspace deallocation.
+  Otherwise, this will be the return status of cudnnConvolutionForward().
 
-float time
+  float time
 
-    The execution time of cudnnConvolutionForward() (in milliseconds).
-size_t memory
+  The execution time of cudnnConvolutionForward() (in milliseconds).
+  size_t memory
 
-    The workspace size (in bytes).
-cudnnDeterminism_t determinism
+  The workspace size (in bytes).
+  cudnnDeterminism_t determinism
 
-    The determinism of the algorithm.
-cudnnMathType_t mathType
+  The determinism of the algorithm.
+  cudnnMathType_t mathType
 
-    The math type provided to the algorithm.
-int reserved[3]
-    "
-    (algo (cudnnConvolutionFwdAlgo-t))
-    (time (:float))
-    (size (:pointer))
-    (determinism (cudnndeterminism-t))
-    (math-type cudnnMathType-t)
-    (reserved (:int 3)))
+  The math type provided to the algorithm.
+  int reserved[3]
+  "
+  (algo (cudnnConvolutionFwdAlgo-t))
+  (time (:float))
+  (size (:pointer))
+  (determinism (cudnndeterminism-t))
+  (math-type cudnnMathType-t)
+  (reserved :int)
+  (reserved1 :int)
+  (reserved2 :int))
+(cffi:defctype cudnnConvolutionFwdAlgoPerf-t (:struct cudnnConvolutionFwdAlgoPerf-t-record))
 
 (cffi:defcfun "cudnnGetConvolutionForwardAlgorithmMaxCount" cudnnStatus-t
   (handle cudnnHandle-t)
   (count (:pointer :int)))
 
-(cffi:defcfun "cudnnfindconvolutionforwardalgorithm" cudnnStatus-t
+(cffi:defcfun "cudnnFindConvolutionForwardAlgorithm" cudnnStatus-t
   (handle cudnnHandle-t)
   (xdesc cudnnTensorDescriptor-t)
   (wdesc cudnnFilterDescriptor-t)
@@ -812,7 +813,7 @@ int reserved[3]
   (memorylimitinbytes :int)
   (algo (:pointer cudnnConvolutionFwdAlgo-t)))
 
-(cffi:defcfun ("cudnnGetConvolutionForwardAlgorithm_v7" cudnngetconvolutionforwardalgorithm-v7) cudnnStatus-t
+(cffi:defcfun ("cudnnGetConvolutionForwardAlgorithm_v7" cudnnGetConvolutionForwardAlgorithm_v7) cudnnStatus-t
   (handle cudnnHandle-t)
   (srcdesc cudnnTensorDescriptor-t)
   (filterdesc cudnnFilterDescriptor-t)
