@@ -8,7 +8,8 @@
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-type
                 :cuda-array-shape
-                :device-ptr)
+                :device-ptr
+                :c-layout-p)
   (:export :make-cudnn-handler
            :finalize-cudnn-handler
            :cudnn-reduce-array))
@@ -149,6 +150,7 @@
 ;For N=3, a 3D filter descriptor, the number S (number of columns per filter) is omitted and the layout of C immediately follows R.
 ;For N=5 and greater, the layout of the higher dimensions are inserted between S and C. For more information, see cudnnTensorFormat_t.
 (defun cudnn-create-filter-descriptor (filter-array filter-format cudnn-handler)
+  (assert (c-layout-p filter-array))
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type filter-array)))
         (input-rank (rank filter-array)))
     (petalisp.utilities:with-hash-table-memoization
@@ -345,7 +347,7 @@
                            (mode :cudnn-convolution)
                            bias
                            activation-function
-                           (paddings (make-list (- (rank input-array) 2) :initial-element 1))
+                           (paddings (mapcar (lambda (s) (floor s 2)) (subseq (cuda-array-shape filter-array) 2)))
                            (filter-strides (make-list (- (rank input-array) 2) :initial-element 1))
                            (dilations (make-list (- (rank input-array) 2) :initial-element 1))
                            (filter-format :cudnn-tensor-nchw))
