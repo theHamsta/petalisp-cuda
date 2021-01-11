@@ -103,7 +103,7 @@
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type input-array)))
         (array-length (length paddings)))
     (petalisp.utilities:with-hash-table-memoization
-      ((values input-type paddings dilations filter-strides mode))
+      ((list input-type paddings dilations filter-strides mode))
       (convolution-descriptors cudnn-handler)
       (with-foreign-objects ((descriptor '(:pointer cudnnConvolutionDescriptor-t))
                              (padA :int array-length)
@@ -154,7 +154,7 @@
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type filter-array)))
         (input-rank (rank filter-array)))
     (petalisp.utilities:with-hash-table-memoization
-      ((values input-rank input-type filter-format (cuda-array-shape filter-array)))
+      ((list input-rank input-type filter-format (cuda-array-shape filter-array)))
       (filter-descriptors cudnn-handler)
       (with-foreign-objects ((descriptor '(:pointer cudnnFilterDescriptor-t))
                              (filterDimA :int input-rank))
@@ -175,7 +175,7 @@
          (element-type (petalisp-cuda.memory.cuda-array::cuda-array-type array))
          (min-shape (max (length shape) 4))) ; cudnn wants tensors of dim 4 to 8
     (petalisp.utilities:with-hash-table-memoization
-      ((values shape strides element-type))
+      ((list shape strides element-type))
       (tensor-descriptors cudnn-handler)
       (with-foreign-objects ((new-descriptor '(:pointer :pointer))
                              (stride-array :int min-shape)
@@ -195,7 +195,7 @@
 
 (defun cudnn-create-reduction-descriptor (reduce-op element-type cudnn-handle)
   (petalisp.utilities:with-hash-table-memoization
-    ((values reduce-op element-type))
+    ((list reduce-op element-type))
     (reduce-descriptors cudnn-handle)
     (with-foreign-object (new-descriptor '(:pointer :pointer))
         (assert (equalp :CUDNN-STATUS-SUCCESS
@@ -278,7 +278,7 @@
 
 (defun get-convolution-forward-algorithm (input-descriptor filter-descriptor convolution-descriptor output-descriptor cudnn-handler)
   (petalisp.utilities:with-hash-table-memoization
-    ((values input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune*))
+    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune*))
     (convolution-algorithms cudnn-handler)
     (with-foreign-object (algo-count '(:pointer :int))
       (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithmMaxCount (cudnn-handle cudnn-handler)
