@@ -173,25 +173,25 @@
   (let* ((shape (slot-value array 'petalisp-cuda.memory.cuda-array::shape))
          (strides (slot-value array 'petalisp-cuda.memory.cuda-array::strides))
          (element-type (petalisp-cuda.memory.cuda-array::cuda-array-type array))
-         (hash-key (values shape strides element-type))
          (min-shape (max (length shape) 4))) ; cudnn wants tensors of dim 4 to 8
-    (or (gethash hash-key (tensor-descriptors cudnn-handler))
-        (with-foreign-object (new-descriptor '(:pointer :pointer))
-          (with-foreign-object (stride-array :int min-shape)
-            (with-foreign-object (shape-array :int min-shape)
-              (assert (<= (length shape) 8)) ; cudnn requirement
-              (fill-foreign-array shape shape-array min-shape 1)
-              (fill-foreign-array strides stride-array min-shape 1)
-              (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateTensorDescriptor new-descriptor))) 
-              (assert (equalp :CUDNN-STATUS-SUCCESS
-                              (cudnnSetTensorNdDescriptor
-                                (mem-ref new-descriptor :pointer)
-                                (cudnn-type element-type)
-                                min-shape
-                                shape-array
-                                stride-array)))
-              (setf (gethash hash-key (tensor-descriptors cudnn-handler))
-                    (mem-ref new-descriptor :pointer))))))))
+    (petalisp.utilities:with-hash-table-memoization
+      ((values shape strides element-type))
+      (tensor-descriptors cudnn-handler)
+      (with-foreign-objects ((new-descriptor '(:pointer :pointer))
+                             (stride-array :int min-shape)
+                             (shape-array :int min-shape))
+        (assert (<= (length shape) 8)) ; cudnn requirement
+        (fill-foreign-array shape shape-array min-shape 1)
+        (fill-foreign-array strides stride-array min-shape 1)
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateTensorDescriptor new-descriptor))) 
+        (assert (equalp :CUDNN-STATUS-SUCCESS
+                        (cudnnSetTensorNdDescriptor
+                          (mem-ref new-descriptor :pointer)
+                          (cudnn-type element-type)
+                          min-shape
+                          shape-array
+                          stride-array)))
+        (mem-ref new-descriptor :pointer)))))
 
 (defun cudnn-create-reduction-descriptor (reduce-op element-type cudnn-handle)
   (petalisp.utilities:with-hash-table-memoization
