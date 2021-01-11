@@ -155,7 +155,7 @@
         (input-rank (rank filter-array)))
     (petalisp.utilities:with-hash-table-memoization
       ((values input-rank input-type filter-format (cuda-array-shape filter-array)))
-      (convolution-descriptors cudnn-handler)
+      (filter-descriptors cudnn-handler)
       (with-foreign-objects ((descriptor '(:pointer cudnnFilterDescriptor-t))
                              (filterDimA :int input-rank))
         (loop for i from 0 below input-rank
