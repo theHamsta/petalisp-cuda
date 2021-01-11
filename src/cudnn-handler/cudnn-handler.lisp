@@ -102,6 +102,8 @@
 (defun cudnn-create-convolution-descriptor (input-array paddings dilations filter-strides mode cudnn-handler)
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type input-array)))
         (array-length (length paddings)))
+    (assert (= array-length (length dilations)))
+    (assert (= array-length (length filter-strides)))
     (petalisp.utilities:with-hash-table-memoization
       ((list input-type paddings dilations filter-strides mode))
       (convolution-descriptors cudnn-handler)
