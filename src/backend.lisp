@@ -288,6 +288,11 @@
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
   ((%storage :initarg :storage :accessor cuda-immediate-storage)))
 
+(defgeneric cuda-immediate-p (immediate))
+(defmethod cuda-immediate-p ((immediate t)))
+(defmethod cuda-immediate-p ((immediate cuda-array))
+  t)
+
 (defgeneric cuda-immediate-storage (immediate))
 (defmethod cuda-immediate-storage ((immediate array-immediate))
   (petalisp.core:array-immediate-storage immediate))
