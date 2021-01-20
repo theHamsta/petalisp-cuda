@@ -28,6 +28,8 @@
                             :initform (make-hash-table :test #'equalp))
    (convolution-algorithms :accessor convolution-algorithms
                            :initform (make-hash-table :test #'equalp))
+   (activation-desciptors :accessor activation-desciptors
+                          :initform (make-hash-table :test #'equalp))
    (workspace :accessor workspace
               :initform 0)
    (workspace-size :accessor workspace-size
@@ -65,6 +67,7 @@
     (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
     (clear-foreign-hashtable (convolution-descriptors cudnn-handler) #'cudnnDestroyConvolutionDescriptor)
     (clear-foreign-hashtable (filter-descriptors cudnn-handler) #'cudnnDestroyFilterDescriptor)
+    (clear-foreign-hashtable (activation-desciptors cudnn-handler) #'cudnnDestroyActivationDescriptor)
     (alexandria:when-let ((workspace-mem (workspace cudnn-handler)))
       (cl-cuda:free-device-memory workspace-mem))
     (setf (workspace cudnn-handler) 0)
@@ -338,6 +341,18 @@
               for s in (cuda-array-shape output-array)
               collect (mem-aref result :int i))))))
 
+(defun create-activation-descriptor (activation-mode activation-coefficient activation-nan-propagation cudnn-handler)
+  (petalisp.utilities:with-hash-table-memoization
+    ((list activation-mode activation-coefficient activation-nan-propagation))
+    (activation-desciptors cudnn-handler)
+    (with-foreign-object (activation-descriptor '(:pointer cudnnActivationDescriptor-t))
+      (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnCreateActivationDescriptor activation-descriptor)))
+      (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnSetActivationDescriptor (mem-aref activation-descriptor 'cudnnActivationDescriptor-t)
+                                                                          (or activation-mode :cudnn-activation-identity)
+                                                                          activation-coefficient
+                                                                          activation-nan-propagation)))
+      (mem-aref activation-descriptor 'cudnnActivationDescriptor-t))))
+
 (defun cudnn-convolution (input-array
                            filter-array
                            output-array
@@ -347,17 +362,37 @@
                            (input-factor 1.0)
                            (accumulator-factor 0.0)
                            (mode :cudnn-convolution)
-                           bias
-                           activation-function
+                           bias-array
+                           pre-bias-accumulator-array
+                           activation-mode
+                           (activation-coefficient 0.0)
+                           (activation-nan-propagation :cudnn-not-propagate-nan)
                            (paddings (mapcar (lambda (s) (floor s 2)) (subseq (cuda-array-shape filter-array) 2)))
                            (filter-strides (make-list (- (rank input-array) 2) :initial-element 1))
                            (dilations (make-list (- (rank input-array) 2) :initial-element 1))
                            (filter-format :cudnn-tensor-nchw))
-  (declare (ignore bias activation-function))
+  "
+
+
+
+  Possible activation modes:
+
+    (cffi:defcenum cudnnactivationmode-t-enum
+      (:cudnn-activation-sigmoid 0)
+      (:cudnn-activation-relu 1)
+      (:cudnn-activation-tanh 2)
+      (:cudnn-activation-clipped-relu 3)
+      (:cudnn-activation-elu 4)
+      (:cudnn-activation-identity 5))
+  "
   (let* ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
          (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
          (convolution-descriptor (cudnn-create-convolution-descriptor input-array paddings dilations filter-strides mode cudnn-handler))
          (filter-descriptor (cudnn-create-filter-descriptor filter-array filter-format cudnn-handler))
+         (pre-bias-descriptor (when bias-array
+                                (cudnn-create-tensor-descriptor pre-bias-accumulator-array cudnn-handler)))
+         (bias-descriptor (when bias-array
+                           (cudnn-create-tensor-descriptor bias-array cudnn-handler)))
          (double-or-float (if (equalp (cuda-array-type input-array) :double) :double :float))
          (convolution-algorithm (progn
                                   (check-output-dimensions output-array input-descriptor convolution-descriptor filter-descriptor)
@@ -381,44 +416,48 @@
                                                                output-descriptor
                                                                convolution-algorithm
                                                                workspace-min-size)))
+      (assert (equalp :CUDNN-STATUS-SUCCESS
+                      (cudnnGetConvolutionForwardWorkspaceSize (cudnn-handle cudnn-handler)
+                                                               input-descriptor
+                                                               filter-descriptor
+                                                               convolution-descriptor
+                                                               output-descriptor
+                                                               convolution-algorithm
+                                                               workspace-min-size)))
       (multiple-value-bind (workspace workspace-size) (allocate-workspace (mem-ref workspace-min-size :int) cudnn-handler)
-        (assert (equalp :CUDNN-STATUS-SUCCESS
-                        (cudnnConvolutionForward (cudnn-handle cudnn-handler)
-                                                 alpha ; &alpha == (type) 1 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
-                                                 input-descriptor
-                                                 (make-pointer (device-ptr input-array))
-                                                 filter-descriptor
-                                                 (make-pointer (device-ptr filter-array))
-                                                 convolution-descriptor
-                                                 convolution-algorithm
-                                                 (make-pointer workspace)
-                                                 workspace-size
-                                                 beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
-                                                 output-descriptor
-                                                 (make-pointer (device-ptr output-array)))))))
-    ;cudnnStatus_t cudnnGetConvolutionForwardWorkspaceSize(
-    ;cudnnHandle_t   handle,
-    ;const   cudnnTensorDescriptor_t         xDesc,
-    ;const   cudnnFilterDescriptor_t         wDesc,
-    ;const   cudnnConvolutionDescriptor_t    convDesc,
-    ;const   cudnnTensorDescriptor_t         yDesc,
-    ;cudnnConvolutionFwdAlgo_t               algo,
-    ;size_t                                 *sizeInBytes)
-    ))
-
-"
-cudnnStatus_t cudnnConvolutionForward(
-    cudnnHandle_t                       handle,
-    const void                         *alpha,
-    const cudnnTensorDescriptor_t       xDesc,
-    const void                         *x,
-    const cudnnFilterDescriptor_t       wDesc,
-    const void                         *w,
-    const cudnnConvolutionDescriptor_t  convDesc,
-    cudnnConvolutionFwdAlgo_t           algo,
-    void                               *workSpace,
-    size_t                              workSpaceSizeInBytes,
-    const void                         *beta,
-    const cudnnTensorDescriptor_t       yDesc,
-    void                               *y)
- "
+        (if (or bias-array activation-mode)
+            (let ((activation-desciptor (create-activation-descriptor activation-mode activation-coefficient activation-nan-propagation cudnn-handler)))
+              (assert bias-array)
+              (assert (equalp :CUDNN-STATUS-SUCCESS
+                              (cudnnConvolutionBiasActivationForward (cudnn-handle cudnn-handler)
+                                                                     alpha ; &alpha == (type) 1 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                                                     input-descriptor
+                                                                     (make-pointer (device-ptr input-array))
+                                                                     filter-descriptor
+                                                                     (make-pointer (device-ptr filter-array))
+                                                                     convolution-descriptor
+                                                                     convolution-algorithm
+                                                                     (make-pointer workspace)
+                                                                     workspace-size
+                                                                     beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                                                     (or pre-bias-descriptor output-descriptor)
+                                                                     (make-pointer (device-ptr (or pre-bias-accumulator-array output-array)))
+                                                                     bias-descriptor
+                                                                     (make-pointer (device-ptr bias-array))
+                                                                     (mem-aref activation-desciptor 'cudnnActivationDescriptor-t)
+                                                                     output-descriptor
+                                                                     (make-pointer (device-ptr output-array))))))
+            (assert (equalp :CUDNN-STATUS-SUCCESS
+                            (cudnnConvolutionForward (cudnn-handle cudnn-handler)
+                                                     alpha ; &alpha == (type) 1 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                                     input-descriptor
+                                                     (make-pointer (device-ptr input-array))
+                                                     filter-descriptor
+                                                     (make-pointer (device-ptr filter-array))
+                                                     convolution-descriptor
+                                                     convolution-algorithm
+                                                     (make-pointer workspace)
+                                                     workspace-size
+                                                     beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                                     output-descriptor
+                                                     (make-pointer (device-ptr output-array))))))))))

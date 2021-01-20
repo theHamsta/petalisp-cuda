@@ -35,6 +35,11 @@
 	   :cudnnDestroyFilterDescriptor
 	   :cudnnConvolutionFwdAlgoPerf-t
 	   :algo
+	   :cudnnActivationDescriptor-t
+	   :cudnnCreateActivationDescriptor
+	   :cudnnSetActivationDescriptor
+	   :cudnnDestroyActivationDescriptor
+	   :cudnnConvolutionBiasActivationForward
 	   :cudnn-data-int32
 	   :cudnn-data-half
 	   :cudnn-data-float

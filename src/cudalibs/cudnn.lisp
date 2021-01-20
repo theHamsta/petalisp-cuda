@@ -191,7 +191,7 @@
 
 (cffi:defcstruct cudnnactivationstruct)
 
-(cffi:defctype cudnnactivationdescriptor-t (:pointer (:struct cudnnActivationStruct)))
+(cffi:defctype cudnnActivationDescriptor-t (:pointer (:struct cudnnActivationStruct)))
 
 (cffi:defcstruct cudnnspatialtransformerstruct)
 
@@ -847,7 +847,7 @@
   (ydesc cudnnTensorDescriptor-t)
   (y (:pointer :void)))
 
-(cffi:defcfun "cudnnconvolutionbiasactivationforward" cudnnStatus-t
+(cffi:defcfun "cudnnConvolutionBiasActivationForward" cudnnStatus-t
   (handle cudnnHandle-t)
   (alpha1 (:pointer :void))
   (xdesc cudnnTensorDescriptor-t)
@@ -1221,12 +1221,12 @@
   (:cudnn-activation-elu 4)
   (:cudnn-activation-identity 5))
 
-(cffi:defctype cudnnactivationmode-t cudnnactivationmode-t-enum)
+(cffi:defctype cudnnActivationMode-t cudnnactivationmode-t-enum)
 
-(cffi:defcfun "cudnncreateactivationdescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnCreateActivationDescriptor" cudnnStatus-t
   (activationdesc (:pointer cudnnActivationDescriptor-t)))
 
-(cffi:defcfun "cudnnsetactivationdescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnSetActivationDescriptor" cudnnStatus-t
   (activationdesc cudnnActivationDescriptor-t)
   (mode cudnnActivationMode-t)
   (relunanopt cudnnNanPropagation-t)
@@ -1238,7 +1238,7 @@
   (relunanopt (:pointer cudnnNanPropagation-t))
   (coef (:pointer :double)))
 
-(cffi:defcfun "cudnndestroyactivationdescriptor" cudnnStatus-t
+(cffi:defcfun "cudnnDestroyActivationDescriptor" cudnnStatus-t
   (activationdesc cudnnActivationDescriptor-t))
 
 (cffi:defcfun "cudnnactivationforward" cudnnStatus-t
