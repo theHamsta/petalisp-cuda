@@ -48,10 +48,10 @@ git clone git@github.com:theHamsta/cl-cuda.git
 - [ ] hash CUDA array strides to recompile correctly with arrays not allocated in C-layout with alternative memory layouts
 - [x] fix super-slow lisp->native, native->lisp calls (for Lisp arrays of element-type single-float/double-float)
 - [x] compile kernels not only for fixed iteration spaces
-- [ ] implement reductions with CUDNN
-- [ ] implement convolutions with CUDNN
+- [x] implement reductions with CUDNN (TODO: automatic integration into compute graph)
+- [x] implement convolutions with CUDNN (TODO: automatic integration into compute graph)
 - [ ] __restrict__ kernel parameters
-- [ ] infer function parameters for generated __device__ functions
+- [x] infer function parameters for generated __device__ functions
 - [x] Load scalars over __constant__ memory when loading from GPU RAM instead of Host RAM (transfered as kernel arguments)
 - [ ] fast interpolation using textures (?)
 - [ ] half float, bfloat support
