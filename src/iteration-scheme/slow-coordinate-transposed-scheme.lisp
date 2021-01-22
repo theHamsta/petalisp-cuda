@@ -1,6 +1,6 @@
 (in-package petalisp-cuda.iteration-scheme)
 
-(when (boundp cl-cuda:+hacked-cl-cuda+)
+(when (boundp 'cl-cuda::+hacked-cl-cuda+)
   ;; same as block-iteration-scheme, but uses a trick to cache slow coordinate accesses
   ;; https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
   (defclass slow-coordinate-transposed-scheme (symbolic-block-iteration-scheme)

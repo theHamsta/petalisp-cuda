@@ -40,7 +40,7 @@
     (dotimes (i rank)
       (push (range 0) block-shape))
     (mapcar (lambda (idx range-size) (setf (nth idx block-shape) (range range-size))) xyz *preferred-block-shape*)
-    (if (and (boundp cl-cuda:+hacked-cl-cuda+) (> (length slow-loads) 0))
+    (if (and (boundp 'cl-cuda::+hacked-cl-cuda+) (> (length slow-loads) 0))
       (make-instance 'slow-coordinate-transposed-scheme
                      :shape iteration-shape
                      :xyz-dimensions xyz
