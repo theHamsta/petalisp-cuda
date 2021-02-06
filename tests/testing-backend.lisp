@@ -9,15 +9,15 @@
   (let ((cl-cuda:*show-messages* nil))
    (make-instance 'cuda-testing-backend)))
 
-(defmethod compute-immediates ((data-structures list) (testing-backend cuda-testing-backend))
-  (with-accessors ((reference-backend petalisp.test-suite::reference-backend)
-                   (ir-backend petalisp.test-suite::ir-backend-compiled)
-                   (native-backend petalisp.test-suite::native-backend)
+(defmethod backend-compute
+    ((testing-backend cuda-testing-backend)
+     (data-structures list))
+  (with-accessors ((multicore-backend petalisp.test-suite::multicore-backend)
                    (cuda-backend cuda-backend)) testing-backend
     (let ((native-backend-solutions
-            (compute-immediates data-structures native-backend))
+            (backend-compute multicore-backend data-structures))
           (cuda-backend-solutions
-            (compute-immediates data-structures cuda-backend)))
+            (backend-compute cuda-backend data-structures)))
       (petalisp.test-suite::compare-solutions native-backend-solutions cuda-backend-solutions)
       native-backend-solutions)))
 

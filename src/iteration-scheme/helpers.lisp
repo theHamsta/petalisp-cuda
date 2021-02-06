@@ -100,3 +100,6 @@
 
 (defun kernel-parameter-type (kernel-parameter)
   (second kernel-parameter))
+
+;; TODO
+;;(cuOccupancyMaxPotentialBlockSizeWithFlags)

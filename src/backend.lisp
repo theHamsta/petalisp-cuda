@@ -2,6 +2,7 @@
   (:use :cl
         :petalisp
         :petalisp.ir
+        :petalisp.core
         :petalisp-cuda.memory.memory-pool
         :petalisp-cuda.options)
   (:import-from :petalisp.core
@@ -45,7 +46,7 @@
            with-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
-(defparameter *cuda-backend* nil)
+(defvar *cuda-backend* nil)
 
 (defmacro with-cuda-backend-magic (backend &body body)
   `(let* ((cl-cuda:*cuda-context* (backend-context ,backend))
@@ -176,6 +177,7 @@
    (device-id :initform nil
               :accessor backend-device-id)
    (%predecessor-map :initform (make-hash-table) :reader cuda-backend-predecessor-map :type hash-table)
+   (%scheduler-queue :initform (lparallel.queue:make-queue) :reader cuda-backend-scheduler-queue)
    (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
@@ -210,80 +212,75 @@
 
 (defgeneric execute-kernel (kernel backend))
 
-(defmethod petalisp.core:compute-on-backend ((lazy-arrays list) (backend cuda-backend))
-  (let* ((collapsing-transformations
-           (mapcar (alexandria:compose #'collapsing-transformation #'array-shape)
-                   lazy-arrays))
-         (immediates
-           (petalisp.core:compute-immediates
-             (mapcar #'transform lazy-arrays collapsing-transformations)
-             backend)))
-    (loop for lazy-array in lazy-arrays
-          for collapsing-transformation in collapsing-transformations
-          for immediate in immediates
-          do (petalisp.core:replace-lazy-array
-               lazy-array
-               (petalisp.core:lazy-reshape immediate (array-shape lazy-array) collapsing-transformation)))
-    (with-cuda-backend-magic backend
-        (values-list (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
-                                                           (let ((lisp-array (petalisp.core:lisp-datum-from-immediate immediate)))
-                                                             (when (cuda-array-p (cuda-immediate-storage immediate))
-                                                               (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate)))
-                                                             lisp-array))
-                                 #'cuda-immediate-storage)
-                             immediates)))))
+(defmethod backend-schedule
+    ((backend cuda-backend)
+     (lazy-arrays list)
+     (finalizer function))
+  (let ((promise (lparallel.promise:promise)))
+    (lparallel.queue:push-queue
+     (lambda ()
+       (lparallel.promise:fulfill promise
+         (funcall finalizer (backend-compute backend lazy-arrays))))
+     (cuda-backend-scheduler-queue backend))
+    promise))
 
-(defmethod petalisp.core:compute-immediates ((lazy-arrays list) (backend cuda-backend))
+(defmethod backend-wait
+    ((backend cuda-backend)
+     (promise t))
+  (lparallel.promise:force promise))
+
+(defmethod backend-compute ((backend cuda-backend) (lazy-arrays list))
   (let* ((memory-pool (cuda-memory-pool backend))
          (worker-pool (cuda-backend-worker-pool backend))
          (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
          (event-map (cuda-backend-event-map backend))
          (allocate (lambda (type size) (memory-pool-allocate memory-pool type size)))
          (deallocate (lambda (buffer) (cuda-backend-deallocate backend buffer)))
-         (rtn (petalisp.scheduler:schedule-on-workers
-                lazy-arrays
-                (worker-pool-size worker-pool)
-                ;; Execute.
-                (lambda (tasks)
-                  ;; Ensure all kernels and buffers to be uploaded have events to wait for
-                  (loop for task in tasks do
-                        (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (create-corresponding-event kernel event-map)
-                          (mapcar (lambda (buffer)
-                                    (unless (or (cuda-array-p (buffer-storage buffer))
-                                                (pass-as-scalar-argument-p buffer))
-                                      (create-corresponding-event buffer event-map)))
-                                  (kernel-buffers kernel))))
-                  (loop for task in tasks do
-                        (let* ((kernel (petalisp.scheduler:task-kernel task)))
-                          (if *single-threaded* ; TODO: only multiple streams single thread works right now
-                              (with-cuda-backend-magic backend
-                                (execute-kernel kernel backend))
-                              (worker-pool-enqueue
-                                (lambda (worker-id)
-                                  (declare (ignore worker-id))
-                                  (with-cuda-backend-magic backend
-                                    (execute-kernel kernel backend)))
-                                worker-pool)))))
-                ;; Barrier.
-                (lambda () ())
-                ;; Allocate.
-                (lambda (buffer)
-                  (with-cuda-backend-magic backend
-                    (setf (petalisp.ir:buffer-storage buffer)
-                          (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
-                                                                           (cl-cuda-type-from-buffer buffer)
-                                                                           nil
-                                                                           allocate))))
-                ;; Deallocate.
-                deallocate)))
-    (mapcar (lambda (event) (cu-stream-wait-event cl-cuda:*cuda-stream* event 0)) (alexandria:hash-table-values event-map))
-    (mapcar #'cl-cuda.api.timer::destroy-cu-event (alexandria:hash-table-values event-map))
-    (cl-cuda.api.context:synchronize-context)
-    (clrhash event-map)
-    (clrhash (cuda-backend-predecessor-map backend))
-    rtn))
-
+         (immediates (petalisp.scheduler:schedule-on-workers
+                       lazy-arrays
+                       (worker-pool-size worker-pool)
+                       ;; Execute.
+                       (lambda (tasks)
+                         ;; Ensure all kernels and buffers to be uploaded have events to wait for
+                         (loop for task in tasks do
+                               (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                                 (create-corresponding-event kernel event-map)
+                                 (mapcar (lambda (buffer)
+                                           (unless (or (cuda-array-p (buffer-storage buffer))
+                                                       (pass-as-scalar-argument-p buffer))
+                                             (create-corresponding-event buffer event-map)))
+                                         (kernel-buffers kernel))))
+                         (loop for task in tasks do
+                               (let* ((kernel (petalisp.scheduler:task-kernel task)))
+                                 (if *single-threaded* ; TODO: only multiple streams single thread works right now
+                                   (with-cuda-backend-magic backend
+                                     (execute-kernel kernel backend))
+                                   (worker-pool-enqueue
+                                     (lambda (worker-id)
+                                       (declare (ignore worker-id))
+                                       (with-cuda-backend-magic backend
+                                         (execute-kernel kernel backend)))
+                                     worker-pool)))))
+                       ;; Barrier.
+                       (lambda () ())
+                       ;; Allocate.
+                       (lambda (buffer)
+                         (with-cuda-backend-magic backend
+                           (setf (petalisp.ir:buffer-storage buffer)
+                                 (petalisp-cuda.memory.cuda-array:make-cuda-array (buffer-shape buffer) 
+                                                                                  (cl-cuda-type-from-buffer buffer)
+                                                                                  nil
+                                                                                  allocate))))
+                       ;; Deallocate.
+                       deallocate)))
+    (with-cuda-backend-magic backend
+      (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
+                                            (let ((lisp-array (petalisp.core:array-from-immediate immediate)))
+                                              (when (cuda-array-p (cuda-immediate-storage immediate))
+                                                (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate)))
+                                              (lazy-array lisp-array)))
+                  #'cuda-immediate-storage)
+              immediates))))
 
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
   ((%storage :initarg :storage :accessor cuda-immediate-storage)))
@@ -307,16 +304,16 @@
 (defmethod petalisp.core:lazy-array ((array cuda-array))
   (make-cuda-immediate array))
   
-(defmethod petalisp.core:lisp-datum-from-immediate ((cuda-array petalisp-cuda.memory.cuda-array:cuda-array))
+(defmethod petalisp.core:array-from-immediate ((cuda-array petalisp-cuda.memory.cuda-array:cuda-array))
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
 
-(defmethod petalisp.core:lisp-datum-from-immediate ((cuda-immediate cuda-immediate))
+(defmethod petalisp.core:array-from-immediate ((cuda-immediate cuda-immediate))
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
   (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend))
   (memory-pool-reset (cuda-memory-pool backend)))
-  ;(let ((context? nil (backend-context backend)))
+  ;(let ((context? (backend-context backend)))
     ;(when context?
       ;(cl-cuda:destroy-cuda-context context?))))
 

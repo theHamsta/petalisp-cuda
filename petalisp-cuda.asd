@@ -13,6 +13,7 @@
                "cffi"
                "cffi-libffi"
                "trivia"
+               "lparallel"
                "alexandria"
                ;"trivial-garbage"
                "hash-set"

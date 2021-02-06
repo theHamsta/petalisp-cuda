@@ -20,7 +20,7 @@
 
 (in-package petalisp-cuda.utils.cl-cuda)
 
-(defvar *cu-events*)
+(defvar *cu-events* (make-hash-table))
 
 ;; same as cl-cuda.api.timer:record-cu-event except with stream
 (defun record-cu-event (cu-event)
@@ -38,6 +38,11 @@
   (let ((event (gethash thing event-map)))
     (when event
      (cu-stream-wait-event *cuda-stream* event 0))))
+
+(defun synchronize-correspoding-event (thing &optional (event-map *cu-events*))
+  (let ((event (gethash thing event-map)))
+    (when event
+     (cuEventSynchronize event))))
 
 ;; from cl-cuda README (mgl-mat)
 (defmacro with-cuda-stream ((stream) &body body)
