@@ -1,5 +1,4 @@
 (in-package :petalisp-cuda/tests)
-; NOTE: To run this test file, execute `(asdf:test-system :petalisp-cuda)' in your Lisp.
 
 (petalisp.test-suite:check-package ':petalisp-cuda)
 (petalisp.test-suite:check-package ':petalisp-cuda.backend)
