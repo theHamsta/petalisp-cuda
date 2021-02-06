@@ -2717,7 +2717,7 @@
   ::cuCtxSynchronize"
   (ctx CUcontext))
 
-(cffi:defcfun "cumoduleload" CUresult
+(cffi:defcfun "cuModuleLoad" CUresult
   "\brief Loads a compute module
  
   Takes a filename \p fname and loads the corresponding module \p module into
@@ -5711,7 +5711,7 @@
   (hevent CUevent)
   (hstream CUstream))
 
-(cffi:defcfun "cueventquery" CUresult
+(cffi:defcfun "cuEventQuery" CUresult
   "\brief Queries an event's status
  
   Queries the status of all work currently captured by \p hEvent. See

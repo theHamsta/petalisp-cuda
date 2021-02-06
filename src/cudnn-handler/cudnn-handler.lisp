@@ -461,3 +461,27 @@
                                                      beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
                                                      output-descriptor
                                                      (make-pointer (device-ptr output-array))))))))))
+
+;cudnnStatus_t cudnnMultiHeadAttnForward(
+	;cudnnHandle_t handle,
+	;const cudnnAttnDescriptor_t attnDesc,
+	;int currIdx,
+	;const int loWinIdx[],
+	;const int hiWinIdx[],
+	;const int devSeqLengthsQO[],
+	;const int devSeqLengthsKV[],
+	;const cudnnSeqDataDescriptor_t qDesc,
+	;const void *queries,
+	;const void *residuals,
+	;const cudnnSeqDataDescriptor_t kDesc,
+	;const void *keys,
+	;const cudnnSeqDataDescriptor_t vDesc,
+	;const void *values,
+	;const cudnnSeqDataDescriptor_t oDesc,
+       ;void *out,
+	;size_t weightSizeInBytes,
+	;const void *weights,
+	;size_t workSpaceSizeInBytes,
+	;void *workSpace,
+	;size_t reserveSpaceSizeInBytes,
+	;void *reserveSpace);
