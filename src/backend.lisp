@@ -87,7 +87,7 @@
       '(((float) float nil "ceil")
         ((double) double nil "ceil")))
 (setf (getf cl-cuda.lang.built-in::+built-in-functions+ 'sqrt)
-      '(((int) float nil "sqrt")
+      '(((int) float nil "sqrtf")
         ((float) float nil "sqrt")
         ((double) float nil "sqrt")
         ))
