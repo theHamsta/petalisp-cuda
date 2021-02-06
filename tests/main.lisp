@@ -25,6 +25,16 @@
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
     (ok (compute (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5)))))
 
+(deftest jacobi-prepare-cuda-only
+  (let ((petalisp-cuda.options:*transfer-back-to-lisp* nil))
+   (with-cuda-backend
+    (ok (prepare (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
+    (ok (prepare (jacobi (aops:rand* 'single-float '(25)) 0.0 1.0 2)))
+    (ok (prepare (jacobi (aops:rand* 'single-float '(26)) 0.0 1.0 2)))
+    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
+    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
+    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5))))))
+
 (deftest jacobi-test
   (with-testing-backend
     (ok (compute (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
@@ -55,19 +65,28 @@
   (with-testing-backend
     (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
 
+(deftest can-calculate-identity
+  (with-cuda-backend
+    (compute 1)))
+
+(deftest double-compute
+  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
+    (with-cuda-backend
+      (prepare (α #'+ (prepare (α #'+ #(1 2 3 4 1) 5)) 2)))))
+
 (deftest mixed-calculations
   (= (compute
       (α #'1+ (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
     (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t))
       (compute
         (α #'1+ (with-cuda-backend
-                  (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))))))
+                  (prepare 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))))))
 
 (deftest mixed-calculations-no-explict-transfer
   (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
    (compute
     (α #'1+ (with-cuda-backend
-             (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))
+             (prepare 1 2 3 4 5 6 7 8 9 (α #'+ #(1 2 3 4 1) 5) (β #'+ #(1 2 3 4 1))))))))
 
 (deftest resume-cuda-calculations
   (with-cuda-backend

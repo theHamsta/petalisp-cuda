@@ -224,7 +224,7 @@
                             :subscripts)))
         (progn 
           (cl-cuda:sync-memory-block memory-block :device-to-host)
-          (cuda-array-aref cuda-array '(0))))))
+          (make-array nil :initial-element (cuda-array-aref cuda-array '(0)))))))
 
 (defun cuda-array-device (cuda-array)
   "Returns the device index on which the array was allocated"

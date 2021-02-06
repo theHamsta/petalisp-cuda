@@ -10,6 +10,7 @@
   (:import-from :petalisp.native-backend
                 :make-worker-pool
                 :worker-pool-size
+                :delete-worker-pool
                 :worker-pool-enqueue)
   (:import-from :petalisp-cuda.type-conversion
                 :cl-cuda-type-from-buffer
@@ -178,6 +179,7 @@
               :accessor backend-device-id)
    (%predecessor-map :initform (make-hash-table) :reader cuda-backend-predecessor-map :type hash-table)
    (%scheduler-queue :initform (lparallel.queue:make-queue) :reader cuda-backend-scheduler-queue)
+   (%scheduler-thread :accessor cuda-backend-scheduler-thread)
    (worker-pool :initform (make-worker-pool (petalisp.utilities:number-of-cpus))
                 :accessor cuda-backend-worker-pool)
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
@@ -208,20 +210,30 @@
     (setf cl-cuda:*cuda-context* (cl-cuda:create-cuda-context cl-cuda:*cuda-device*)))
   (setf (backend-context backend) cl-cuda:*cuda-context*)
   (setf (backend-device-id backend) cl-cuda:*cuda-device*)
-  (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*)))
+  (setf (backend-device backend) (petalisp-cuda.device:make-cuda-device cl-cuda:*cuda-device*))
+  (let ((queue (cuda-backend-scheduler-queue backend)))
+    (setf (cuda-backend-scheduler-thread backend)
+          (bt:make-thread
+           (lambda ()
+             (loop for item = (lparallel.queue:pop-queue queue) do
+               (if (functionp item)
+                   (funcall item)
+                   (loop-finish))))
+           :name (format nil "~A scheduler thread"
+                         (class-name (class-of backend)))))))
 
 (defgeneric execute-kernel (kernel backend))
 
 (defmethod backend-schedule
-    ((backend cuda-backend)
-     (lazy-arrays list)
-     (finalizer function))
+  ((backend cuda-backend)
+   (lazy-arrays list)
+   (finalizer function))
   (let ((promise (lparallel.promise:promise)))
     (lparallel.queue:push-queue
-     (lambda ()
-       (lparallel.promise:fulfill promise
-         (funcall finalizer (backend-compute backend lazy-arrays))))
-     (cuda-backend-scheduler-queue backend))
+      (lambda ()
+        (lparallel.promise:fulfill promise
+                                   (funcall finalizer (backend-compute backend lazy-arrays))))
+      (cuda-backend-scheduler-queue backend))
     promise))
 
 (defmethod backend-wait
@@ -274,12 +286,13 @@
                        ;; Deallocate.
                        deallocate)))
     (with-cuda-backend-magic backend
-      (mapcar (if *transfer-back-to-lisp* (lambda (immediate)
-                                            (let ((lisp-array (petalisp.core:array-from-immediate immediate)))
-                                              (when (cuda-array-p (cuda-immediate-storage immediate))
-                                                (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate)))
-                                              (lazy-array lisp-array)))
-                  #'cuda-immediate-storage)
+      (mapcar (alexandria:compose #'lazy-array
+                                  (if *transfer-back-to-lisp* (lambda (immediate)
+                                                                (let ((lisp-array (petalisp.core:array-from-immediate immediate)))
+                                                                  (when (cuda-array-p (cuda-immediate-storage immediate))
+                                                                    (memory-pool-free (cuda-memory-pool backend) (cuda-immediate-storage immediate)))
+                                                                  lisp-array))
+                                      #'cuda-immediate-storage))
               immediates))))
 
 (defclass cuda-immediate (petalisp.core:non-empty-immediate)
@@ -311,8 +324,14 @@
   (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
 
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
+  (with-accessors ((queue cuda-backend-scheduler-queue)
+                   (thread cuda-backend-scheduler-thread)) backend
+    (lparallel.queue:push-queue :quit queue)
+    (bt:join-thread thread))
+  (delete-worker-pool (cuda-backend-worker-pool backend))
   (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend))
   (memory-pool-reset (cuda-memory-pool backend)))
+
   ;(let ((context? (backend-context backend)))
     ;(when context?
       ;(cl-cuda:destroy-cuda-context context?))))
