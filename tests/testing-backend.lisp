@@ -9,17 +9,21 @@
   (let ((cl-cuda:*show-messages* nil))
    (make-instance 'cuda-testing-backend)))
 
+(defparameter *check-results* t)
+
 (defmethod backend-compute
     ((testing-backend cuda-testing-backend)
      (data-structures list))
-  (with-accessors ((multicore-backend petalisp.test-suite::multicore-backend)
-                   (cuda-backend cuda-backend)) testing-backend
-    (let ((native-backend-solutions
-            (backend-compute multicore-backend data-structures))
-          (cuda-backend-solutions
-            (backend-compute cuda-backend data-structures)))
-      (petalisp.test-suite::compare-solutions native-backend-solutions cuda-backend-solutions)
-      native-backend-solutions)))
+    (with-accessors ((multicore-backend petalisp.test-suite::multicore-backend)
+                     (cuda-backend cuda-backend)) testing-backend
+      (if *check-results*
+          (let ((native-backend-solutions
+                  (backend-compute multicore-backend data-structures))
+                (cuda-backend-solutions
+                  (backend-compute cuda-backend data-structures)))
+            (petalisp.test-suite::compare-solutions native-backend-solutions cuda-backend-solutions)
+            native-backend-solutions)
+          (backend-compute cuda-backend data-structures))))
 
 (defmethod delete-backend ((testing-backend cuda-testing-backend))
   (delete-backend (cuda-backend testing-backend))

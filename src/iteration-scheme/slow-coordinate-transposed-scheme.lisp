@@ -32,6 +32,7 @@
 
   (defmethod caching-code ((iteration-scheme slow-coordinate-transposed-scheme) kernel-body buffer->kernel-parameter)
     (let* ((slow-loads (slow-loads iteration-scheme))
+           (fastest-dimension (fastest-dimension iteration-scheme))
            (load-dimension (aref (transformation-output-mask (instruction-transformation (first slow-loads))) fastest-dimension)))
       ;; Declare cached variables: (let (($0_ (coerce-float 0)) ($1_ ...) ...) ...)
       (shared-mem-code iteration-scheme

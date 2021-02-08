@@ -10,6 +10,8 @@
                 :cu-stream-wait-event)
   (:import-from :cl-cuda.api.timer
                 :create-cu-event)
+  (:import-from :petalisp-cuda.cudalibs
+                :cuEventSynchronize)
   (:export :create-corresponding-event
            :record-cu-event
            :record-corresponding-event

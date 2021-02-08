@@ -51,6 +51,7 @@
                (:module "src"
                 :components
                 ((:file "device")
+                 (:file "cl-cuda-functions")
                  (:file "backend")
                  (:file "jit-execution")
                  (:file "map-call-operator")
