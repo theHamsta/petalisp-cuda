@@ -29,8 +29,7 @@
   (cl-cuda.driver-api:cu-event-record cu-event cl-cuda:*cuda-stream*))
 
 (defun create-corresponding-event (thing &optional (event-map *cu-events*))
-  (unless (gethash thing event-map)
-    (setf (gethash thing event-map) (create-cu-event))))
+  (alexandria:ensure-gethash thing event-map (create-cu-event)))
 
 (defun record-corresponding-event (thing &optional (event-map *cu-events*))
   (let ((event (gethash thing event-map)))

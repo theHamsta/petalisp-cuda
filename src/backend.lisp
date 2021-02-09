@@ -121,8 +121,7 @@
       (when (cuda-array-p storage)
         (setf (buffer-storage buffer) nil)
         (when (petalisp.ir:interior-buffer-p buffer)
-          (unless (gethash storage predecessor-map)
-            (setf (gethash storage predecessor-map) (make-array 0 :fill-pointer 0)))
+          (alexandria:ensure-gethash storage predecessor-map (make-array 0 :fill-pointer 0))
           (push (gethash storage predecessor-map) buffer)
           (memory-pool-free (cuda-memory-pool backend) storage))))))
 
