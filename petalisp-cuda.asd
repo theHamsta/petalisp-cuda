@@ -52,6 +52,7 @@
                 :components
                 ((:file "device")
                  (:file "cl-cuda-functions")
+                 (:file "cuda-immediate")
                  (:file "backend")
                  (:file "jit-execution")
                  (:file "map-call-operator")

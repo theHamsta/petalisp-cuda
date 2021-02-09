@@ -1,6 +1,7 @@
 (defpackage :petalisp-cuda.backend
   (:use :cl
         :petalisp
+        :petalisp-cuda.cuda-immediate
         :petalisp.ir
         :petalisp.core
         :petalisp-cuda.memory.memory-pool
@@ -223,37 +224,6 @@
                                       #'cuda-immediate-storage))
               immediates))))
 
-(defclass cuda-immediate (petalisp.core:non-empty-immediate)
-  ((%storage :initarg :storage :accessor cuda-immediate-storage)))
-
-(defmethod lazy-array ((cuda-array cuda-array))
-  (make-cuda-immediate cuda-array))
-
-(defgeneric cuda-immediate-p (immediate))
-(defmethod cuda-immediate-p ((immediate t)))
-(defmethod cuda-immediate-p ((immediate cuda-array))
-  t)
-
-(defgeneric cuda-immediate-storage (immediate))
-(defmethod cuda-immediate-storage ((immediate array-immediate))
-  (petalisp.core:array-immediate-storage immediate))
-
-(defun make-cuda-immediate (cu-array)
-    (check-type cu-array cuda-array)
-    (make-instance 'cuda-immediate
-                   :shape (shape cu-array)
-                   :storage cu-array
-                   :ntype (ntype-cuda-array cu-array)))
-
-(defmethod petalisp.core:lazy-array ((array cuda-array))
-  (make-cuda-immediate array))
-  
-(defmethod petalisp.core:array-from-immediate ((cuda-array petalisp-cuda.memory.cuda-array:cuda-array))
-  (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp cuda-array)) 
-
-(defmethod petalisp.core:array-from-immediate ((cuda-immediate cuda-immediate))
-  (petalisp-cuda.memory.cuda-array:copy-cuda-array-to-lisp (cuda-immediate-storage cuda-immediate))) 
-
 (defmethod petalisp.core:delete-backend ((backend cuda-backend))
   (with-accessors ((queue cuda-backend-scheduler-queue)
                    (thread cuda-backend-scheduler-thread)) backend
@@ -262,13 +232,6 @@
   (delete-worker-pool (cuda-backend-worker-pool backend))
   (petalisp-cuda.cudnn-handler:finalize-cudnn-handler (cudnn-handler backend))
   (memory-pool-reset (cuda-memory-pool backend)))
-
   ;(let ((context? (backend-context backend)))
     ;(when context?
       ;(cl-cuda:destroy-cuda-context context?))))
-
-(defmethod petalisp.core:replace-lazy-array ((instance lazy-array) (replacement cuda-immediate))
-  (change-class instance (class-of replacement)
-    :storage (cuda-immediate-storage replacement)
-    :ntype (petalisp.core:element-ntype replacement)
-    :shape (array-shape replacement)))
