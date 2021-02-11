@@ -1,5 +1,6 @@
 (in-package petalisp-cuda.jitexecution)
 
+;;TODO: use these operators directly in cl-cuda-functions
 (defun map-call-operator (operator arguments)
   ;; LHS: Petalisp/code/type-inference/package.lisp
   ;; RHS: cl-cuda/src/lang/built-in.lisp
