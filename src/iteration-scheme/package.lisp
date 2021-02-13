@@ -12,8 +12,6 @@
                 :thread-idx-x :thread-idx-y :thread-idx-z)
   (:import-from :petalisp-cuda.type-conversion
                 :cl-cuda-type-from-ntype)
-  (:import-from :alexandria
-                :format-symbol)
   (:export :select-iteration-scheme
            :call-parameters
            :iteration-code
