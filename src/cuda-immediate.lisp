@@ -33,10 +33,10 @@
 
 (defmethod cuda-immediate-p ((immediate t)))
 
-(defmethod cuda-immediate-p ((immediate cuda-array))
+(defmethod cuda-immediate-p ((immediate cuda-immediate))
   t)
 
-;;; Conversion and Interop with array
+;;; Conversion and Interop with Array
 (defgeneric cuda-immediate-storage (immediate))
 
 (defmethod cuda-immediate-storage ((immediate array-immediate))
