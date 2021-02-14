@@ -26,13 +26,11 @@
 
 (deftest jacobi-prepare-cuda-only
   (let ((petalisp-cuda.options:*transfer-back-to-lisp* nil))
-   (with-cuda-backend
-    (ok (prepare (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2)))
-    (ok (prepare (jacobi (aops:rand* 'single-float '(25)) 0.0 1.0 2)))
-    (ok (prepare (jacobi (aops:rand* 'single-float '(26)) 0.0 1.0 2)))
-    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))
-    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 2)))
-    (ok (prepare (jacobi (aops:rand* 'single-float '(24 26 30)) 0.0 1.0 5))))))
+    (with-cuda-backend
+      (ok (cuda-immediate-p (prepare (jacobi (aops:rand* 'single-float '(24)) 0.0 1.0 2))))
+      (ok (cuda-immediate-p (prepare (jacobi (aops:rand* 'single-float '(25)) 0.0 1.0 2))))
+      (ok (cuda-immediate-p (prepare (jacobi (aops:rand* 'single-float '(26)) 0.0 1.0 2))))
+      (ok (cuda-immediate-p (prepare (jacobi (aops:rand* 'single-float '(24 26)) 0.0 1.0 2)))))))
 
 (deftest jacobi-test
   (with-testing-backend
