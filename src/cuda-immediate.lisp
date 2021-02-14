@@ -6,6 +6,21 @@
                 :cuda-array-p
                 :cuda-array-type
                 :type-from-cl-cuda-type)
+  (:import-from :petalisp.ir
+                :grow-dendrite
+                :dendrite
+                :dendrite-transformation
+                :stem-kernel
+                :dendrite-shape
+                :dendrite-cons
+                :dendrite-stem
+                :ir-converter-scalar-table
+                :make-load-instruction
+                :buffer-readers
+                :kernel-sources
+                :ir-converter-array-table
+                :*ir-converter*
+                :make-buffer)
   (:import-from :petalisp-cuda.type-conversion
                 :ntype-cuda-array)
   (:export :cuda-immediate
@@ -53,3 +68,36 @@
     :storage (cuda-immediate-storage replacement)
     :ntype (element-ntype replacement)
     :shape (array-shape replacement)))
+
+(defmethod grow-dendrite
+    ((dendrite dendrite)
+     (cuda-immediate cuda-immediate))
+  (with-accessors ((shape dendrite-shape)
+                   (transformation dendrite-transformation)
+                   (stem dendrite-stem)
+                   (cons dendrite-cons)) dendrite
+    (let* ((kernel (stem-kernel stem))
+           (shape (lazy-array-shape cuda-immediate))
+           (storage (cuda-immediate-storage cuda-immediate))
+           (ntype (petalisp.type-inference:generalize-ntype
+                   (element-ntype cuda-immediate)))
+           (buffer
+             (if (zerop (shape-rank shape))
+                 (alexandria:ensure-gethash
+                  (aref (cuda-immediate-storage cuda-immediate))
+                  (ir-converter-scalar-table *ir-converter*)
+                  (make-buffer
+                   :shape shape
+                   :ntype ntype
+                   :storage storage))
+                 (alexandria:ensure-gethash
+                  (cuda-immediate-storage cuda-immediate)
+                  (ir-converter-array-table *ir-converter*)
+                  (make-buffer
+                   :shape shape
+                   :ntype ntype
+                   :storage storage))))
+           (load-instruction (make-load-instruction buffer transformation)))
+      (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
+      (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
+      (setf (cdr cons) load-instruction))))

@@ -14,7 +14,8 @@
            :*slow-coordinate-load-strategy*
            :*warp-time-slicing*
            :*slow-coordinate-transposed-trick*
-           :*cudnn-autotune*))
+           :*cudnn-autotune*
+           :*transfer-back-to-lisp*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)

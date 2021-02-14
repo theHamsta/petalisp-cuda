@@ -44,7 +44,6 @@
            execute-kernel
            cuda-backend-event-map
            cuda-backend-predecessor-map
-           *transfer-back-to-lisp*
            with-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
@@ -68,7 +67,6 @@
          (with-cuda-stream (cl-cuda:*cuda-stream*)
            ,@body))))
 
-
 (defun use-cuda-backend ()
   (let ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*)))
    (if (cuda-backend-p petalisp:*backend*)
@@ -80,8 +78,8 @@
 
 (defmacro with-cuda-backend-raii (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
+          (*tranfer-back-to-lisp* t)
           (petalisp:*backend* (make-instance 'cuda-backend))
-          (*transfer-back-to-lisp* T)
           (result (unwind-protect
                       ,@body
                     (petalisp.core:delete-backend petalisp:*backend*))))
@@ -157,18 +155,20 @@
   ((backend cuda-backend)
    (lazy-arrays list)
    (finalizer function))
-  (let ((promise (lparallel.promise:promise)))
+  (let ((promise (lparallel.promise:promise))
+        (tranfer-back *transfer-back-to-lisp*))
     (lparallel.queue:push-queue
       (lambda ()
-        (lparallel.promise:fulfill promise
-                                   (funcall finalizer (backend-compute backend lazy-arrays))))
+        (let ((*transfer-back-to-lisp* tranfer-back))
+         (lparallel.promise:fulfill promise
+                                   (funcall finalizer (backend-compute backend lazy-arrays)))))
       (cuda-backend-scheduler-queue backend))
     promise))
 
 (defmethod backend-wait
     ((backend cuda-backend)
-     (promise t))
-  (lparallel.promise:force promise))
+     (requests list))
+  (mapcar #'lparallel.promise:force requests))
 
 (defmethod backend-compute ((backend cuda-backend) (lazy-arrays list))
   (let* ((memory-pool (cuda-memory-pool backend))

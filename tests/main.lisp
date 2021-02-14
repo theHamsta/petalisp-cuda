@@ -67,20 +67,21 @@
     (compute 1)))
 
 (deftest double-compute
-  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
+  (let ((petalisp-cuda.options:*transfer-back-to-lisp* nil))
     (with-cuda-backend
       (prepare (α #'+ (prepare (α #'+ #(1 2 3 4 1) 5)) 2)))))
 
 (deftest mixed-calculations
-  (= (compute
-      (α #'1+ (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
-    (let ((petalisp-cuda.backend:*transfer-back-to-lisp* t))
-      (compute
-        (α #'1+ (with-cuda-backend
-                  (prepare 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))))))
+  (ok
+    (= (compute
+         (α #'1+ (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1)))))
+       (let ((petalisp-cuda.options:*transfer-back-to-lisp* nil))
+         (compute
+           (α #'1+ (with-cuda-backend
+                     (prepare 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))))))))
 
 (deftest mixed-calculations-no-explict-transfer
-  (let ((petalisp-cuda.backend:*transfer-back-to-lisp* nil))
+  (let ((petalisp-cuda.options:*transfer-back-to-lisp* nil))
    (compute
     (α #'1+ (with-cuda-backend
              (prepare 1 2 3 4 5 6 7 8 9 (α #'+ #(1 2 3 4 1) 5) (β #'+ #(1 2 3 4 1))))))))
