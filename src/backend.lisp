@@ -55,7 +55,7 @@
           (cl-cuda:*cuda-device* (backend-device-id ,backend))
           (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
           (cl-cuda.lang.built-in::+built-in-functions+ petalisp-cuda.cl-cuda-functions:+built-in-functions+)
-          (cl-cuda.lang.built-in::+scalar-types+ petalisp-cuda.cl-cuda-functions:+scalar-types+)
+          (cl-cuda.lang.type::+scalar-types+ petalisp-cuda.cl-cuda-functions:+scalar-types+)
           (cl-cuda.api.nvcc:*nvcc-options*
             (if (cl-cuda.api.context::arch-exists-p cl-cuda.api.nvcc:*nvcc-options*)
                 cl-cuda.api.nvcc:*nvcc-options*
