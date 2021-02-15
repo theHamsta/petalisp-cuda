@@ -30,6 +30,8 @@
   (:import-from :petalisp-cuda.memory.memory-pool
                 :array-table
                 :allocated-cuda-arrays)
+  (:import-from :petalisp-cuda.custom-op
+                :lazy-convolution)
   (:import-from :petalisp-cuda.cuda-immediate
                 :cuda-immediate-p)
   (:export :run-tests))
