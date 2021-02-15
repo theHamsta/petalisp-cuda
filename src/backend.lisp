@@ -168,7 +168,7 @@
 (defmethod backend-wait
     ((backend cuda-backend)
      (requests list))
-  (mapcar #'lparallel.promise:force requests))
+  (mapc #'lparallel.promise:force requests))
 
 (defmethod backend-compute ((backend cuda-backend) (lazy-arrays list))
   (let* ((memory-pool (cuda-memory-pool backend))
