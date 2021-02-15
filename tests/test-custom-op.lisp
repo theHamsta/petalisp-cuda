@@ -11,10 +11,10 @@
                 a
                 b)))))))
 
-(deftest test-lazy-reduction-compute
+(deftest test-lazy-reduction
   (with-cuda-backend
     (compute
-      (lazy-reduction #2A((2 3) (4 5)) (~) #'+))))
+      (α #'+ 2 (lazy-reduction (α #'+ 2 #2A((2 3) (4 5))) (~) #'+)))))
 
 (deftest test-lazy-convolution
   (let ((a (α #'+ #2A((2 2) (2 2)) #2A((2 2) (2 2))))
