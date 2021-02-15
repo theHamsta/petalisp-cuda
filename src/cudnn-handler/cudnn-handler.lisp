@@ -217,6 +217,8 @@
 (defun allocate-workspace (min-size cudnn-handler)
     (when (< (workspace-size cudnn-handler) min-size)
         (when (workspace cudnn-handler)
+          ;; TODO: replace by malloc-async
+          (cuCtxSynchronize)
           (cl-cuda:free-device-memory (workspace cudnn-handler)))
         (setf (workspace-size cudnn-handler) min-size)
         (setf (workspace cudnn-handler)

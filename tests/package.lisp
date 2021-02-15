@@ -4,7 +4,8 @@
         :petalisp.core
         :petalisp-cuda
         :cl-cuda
-        :rove)
+        :rove
+        :petalisp-cuda.cudnn-ops)
   (:import-from :petalisp.examples.iterative-methods
                 :jacobi
                 :rbgs
@@ -30,8 +31,9 @@
   (:import-from :petalisp-cuda.memory.memory-pool
                 :array-table
                 :allocated-cuda-arrays)
-  (:import-from :petalisp-cuda.custom-op
-                :lazy-convolution)
+  (:import-from :petalisp-cuda.cudnn-ops
+                :lazy-convolution
+                :lazy-reduction)
   (:import-from :petalisp-cuda.cuda-immediate
                 :cuda-immediate-p)
   (:export :run-tests))

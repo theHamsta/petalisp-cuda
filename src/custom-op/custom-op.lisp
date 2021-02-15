@@ -36,7 +36,8 @@
                    (stem dendrite-stem)
                    (cons dendrite-cons)) dendrite
     (let* ((kernel (stem-kernel stem))
-           (custom-op-kernel (make-kernel :iteration-space shape))
+           (custom-op-kernel (make-custom-op-kernel :iteration-space shape
+                                                    :custom-op lazy-custom-op))
            (ntype (petalisp.type-inference:generalize-ntype
                     (element-ntype lazy-custom-op)))
            (buffer
@@ -47,8 +48,7 @@
                  :shape shape
                  :ntype ntype
                  :storage nil)))
-           (inputs (lazy-array-inputs lazy-custom-op))
-           (input-conses (loop for input in inputs collect (cons 0 input))))
+           (inputs (lazy-array-inputs lazy-custom-op)))
       (setf (cdr cons)
             (make-load-instruction kernel buffer transformation))
       (loop for lazy-array in inputs do
@@ -77,3 +77,28 @@
             (:constructor make-custom-op-instruction (custom-op inputs number-of-values)))
   (custom-op nil :type lazy-custom-op)
   (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
+
+(defstruct (custom-op-kernel
+            (:predicate custom-op-kernel-p)
+            (:include kernel)
+            (:constructor make-custom-op-kernel))
+  (custom-op nil :type lazy-custom-op))
+
+(defgeneric lazy-custom-op-execute (custom-op backend input-buffers output-buffers))
+
+(defun custom-op-kernel-execute (kernel backend)
+  (lazy-custom-op-execute (custom-op-kernel-custom-op kernel) backend (kernel-inputs kernel) (kernel-outputs kernel)))
+
+(defun kernel-inputs (kernel)
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-inputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))
+
+(defun kernel-outputs (kernel)
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-outputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))

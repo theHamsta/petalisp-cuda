@@ -1,13 +1,14 @@
-(defpackage petalisp-cuda.jitexecution
-  (:use :petalisp-cuda.backend
-        :petalisp.ir
-        :petalisp.core
+(defpackage petalisp-cuda.jit-execution
+ (:use :petalisp-cuda.backend
+       :petalisp.ir
+       :petalisp.core
         :petalisp
         :cl
         :let-plus
         :trivia
         :cl-cuda
-        :petalisp-cuda.memory.memory-pool)
+        :petalisp-cuda.memory.memory-pool
+        :petalisp-cuda.custom-op)
   (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
                 :kernel-manager-define-function
                 :ensure-kernel-function-loaded
@@ -48,13 +49,13 @@
                 :wait-for-correspoding-event)
   (:import-from :petalisp-cuda.utils.petalisp
                 :pass-as-scalar-argument-p)
-  (:export :compile-kernel
-           :execute-kernel))
+ (:export :compile-kernel
+          :execute-kernel))
 
-(in-package petalisp-cuda.jitexecution)
+(in-package petalisp-cuda.jit-execution)
 
 (defun weird-rational-p (r)
-  (and (rationalp r) (not (integerp r))))
+ (and (rationalp r) (not (integerp r))))
 
 (defun get-offset-vector (kernel)
   (apply #'concatenate `(list ,@(loop for i in (kernel-instructions kernel)
@@ -299,7 +300,9 @@
                                   (gethash (buffer-storage buffer) (cuda-backend-predecessor-map backend))))
                         kernel)
     (let ((arrays (mapcar #'buffer-storage buffers)))
-      (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel) kernel))
+      (if (custom-op-kernel-p kernel)
+          (custom-op-kernel-execute kernel backend)
+          (run-compiled-function (compile-kernel kernel backend) arrays (kernel-iteration-space kernel) kernel)))
     (record-corresponding-event kernel (cuda-backend-event-map backend))))
 
 (defun generate-kernel (kernel kernel-arguments buffers iteration-scheme)

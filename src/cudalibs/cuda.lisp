@@ -50,7 +50,8 @@
 	   :cudnn-data-floatx3
 	   :cudnn-data-floatx4
 	   :cudnn-data-doublex3
-	   :cudnn-data-doublex4))
+	   :cudnn-data-doublex4
+	   :cuCtxSynchronize))
 
 (in-package petalisp-cuda.cudalibs)
 (cl:defparameter *cudnn-found* t)
@@ -2216,7 +2217,7 @@
   ::cudaGetDeviceFlags"
   (flags (:pointer :unsigned-int)))
 
-(cffi:defcfun "cuctxsynchronize" CUresult
+(cffi:defcfun "cuCtxSynchronize" CUresult
   "\brief Block for a context's tasks to complete
  
   Blocks until the device has completed all preceding requested tasks.
@@ -10111,4 +10112,7 @@
   "@}"
   (ppexporttable (:pointer (:pointer :void)))
   (pexporttableid (:pointer CUuuid)))
+
+(cffi:defcfun "cudaDeviceSynchronize" CUresult
+  )
 
