@@ -11,7 +11,7 @@
                 :dendrite
                 :copy-dendrite
                 :grow-dendrite
-                :DENDRITE-SHAPE
+                :dendrite-shape
                 :make-cluster
                 :make-dendrite
                 :dendrite-transformation
@@ -20,12 +20,17 @@
                 :dendrite-kernel
                 :dendrite-stem
                 :make-load-instruction
-                :IR-CONVERTER-PQUEUE
-                :IR-CONVERTER-CLUSTER-TABLE
-                :IR-CONVERTER-scalar-TABLE
+                :ir-converter-pqueue
+                :ir-converter-cluster-table
+                :ir-converter-scalar-table
                 :stem-kernel
-                :MAKE-STORE-INSTRUCTION
+                :make-store-instruction
                 :finalize-kernel
-                :*IR-CONVERTER*)
-  (:export :custom-op))
+                :kernel
+                :*ir-converter*)
+  (:export :lazy-custom-op
+           :lazy-custom-op-execute
+           :custom-op-kernel
+           :custom-op-kernel-execute
+           :custom-op-kernel-p))
 (in-package petalisp-cuda.custom-op)

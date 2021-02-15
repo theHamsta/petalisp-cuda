@@ -78,7 +78,7 @@
 
 (defmacro with-cuda-backend-raii (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
-          (*tranfer-back-to-lisp* t)
+          (*transfer-back-to-lisp* t)
           (petalisp:*backend* (make-instance 'cuda-backend))
           (result (unwind-protect
                       ,@body

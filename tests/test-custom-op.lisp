@@ -1,9 +1,24 @@
 (in-package :petalisp-cuda/tests)
 
+(deftest test-lazy-convolution-compute
+  (let ((a (α #'+ #4A((((2 2) (2 2)))) #4A((((2 2) (2 2))))))
+        (b #4A((((2))))))
+    (with-cuda-backend
+      (compute
+      (α #'+ a
+           (β #'max
+              (lazy-convolution
+                a
+                b)))))))
+
+(deftest test-lazy-reduction-compute
+  (with-cuda-backend
+    (compute
+      (lazy-reduction #2A((2 3) (4 5)) (~) #'+))))
+
 (deftest test-lazy-convolution
   (let ((a (α #'+ #2A((2 2) (2 2)) #2A((2 2) (2 2))))
         (b #2A((2))))
-
     (compute
       (petalisp.graphviz:view
         (petalisp.ir:ir-from-lazy-arrays
@@ -12,8 +27,7 @@
              (β #'max
                (lazy-convolution
                  a
-                 b)))
-            )))))
+                 b))))))))
   (compute 
     (petalisp.graphviz:view
       (petalisp.ir:ir-from-lazy-arrays

@@ -39,7 +39,7 @@
                 ((:file "cudnn-handler")))
                (:module "src/type-conversion"
                 :components
-                 ((:file "type-conversion")))
+                ((:file "type-conversion")))
                (:module "src/iteration-scheme"
                 :components
                 ((:file "package")
@@ -48,6 +48,10 @@
                  (:file "symbolic-block-iteration-scheme")
                  (:file "slow-coordinate-transposed-scheme")
                  (:file "selection")))
+               (:module "src/custom-op"
+                :components
+                ((:file "package")
+                 (:file "custom-op")))
                (:module "src"
                 :components
                 ((:file "device")
@@ -57,12 +61,9 @@
                  (:file "jit-execution")
                  (:file "map-call-operator")
                  (:file "package")))
-               (:module "src/custom-op"
+               (:module "src/cudnn-ops"
                 :components
-                ((:file "package")
-                 (:file "custom-op")
-                 (:file "cudnn-ops")))))
-
+                ((:file "cudnn-ops")))))
 
 (defsystem "petalisp-cuda/tests"
   :author "Stephan Seitz"

@@ -2,7 +2,7 @@
 
 (petalisp.test-suite:check-package ':petalisp-cuda)
 (petalisp.test-suite:check-package ':petalisp-cuda.backend)
-(petalisp.test-suite:check-package ':petalisp-cuda.jitexecution)
+(petalisp.test-suite:check-package ':petalisp-cuda.jit-execution)
 
 (defparameter *test-backend* (make-testing-backend))
 
@@ -207,31 +207,31 @@
         (pivot-and-value #2A((1. 1.) (1. 2.)) 0))))
 
 (deftest num-values
-    (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))
-    (ok (= 2 (petalisp-cuda.jitexecution::num-values '(values 2 3))))
-    (ok (= 2 (petalisp-cuda.jitexecution::num-values '(defun (a)
+    (ok (= 1 (petalisp-cuda.jit-execution::num-values '(values 1))))
+    (ok (= 2 (petalisp-cuda.jit-execution::num-values '(values 2 3))))
+    (ok (= 2 (petalisp-cuda.jit-execution::num-values '(defun (a)
                                                          (foo (values 2 3))))))
-    (ok (= 1 (petalisp-cuda.jitexecution::num-values '(defun (a)
+    (ok (= 1 (petalisp-cuda.jit-execution::num-values '(defun (a)
                                                          (foo 2))))))
 
 (deftest nth-value-lambda
-  (ok (= 1 (petalisp-cuda.jitexecution::num-values '(values 1))))
-  (ok (= 2 (petalisp-cuda.jitexecution::nth-value-lambda 0 '(values 2 3))))
-  (ok (= 3 (petalisp-cuda.jitexecution::nth-value-lambda 1 '(values 2 3))))
+  (ok (= 1 (petalisp-cuda.jit-execution::num-values '(values 1))))
+  (ok (= 2 (petalisp-cuda.jit-execution::nth-value-lambda 0 '(values 2 3))))
+  (ok (= 3 (petalisp-cuda.jit-execution::nth-value-lambda 1 '(values 2 3))))
   (ok (equal '(defun (a) (foo 2))
-             (petalisp-cuda.jitexecution::nth-value-lambda 0 '(defun (a)
+             (petalisp-cuda.jit-execution::nth-value-lambda 0 '(defun (a)
                                                                   (foo (values 2 3))))))
   (ok (equal '(defun (a) (foo 3))
-             (petalisp-cuda.jitexecution::nth-value-lambda 1 '(defun (a)
+             (petalisp-cuda.jit-execution::nth-value-lambda 1 '(defun (a)
                                                                   (foo (values 2 3)))))))
 (deftest analyze-multiple-value-lambda
   (ok (equal 
         '((DEFUN (A) (FOO 2)))
-        (petalisp-cuda.jitexecution::analyze-multiple-value-lambda '(defun (a)
+        (petalisp-cuda.jit-execution::analyze-multiple-value-lambda '(defun (a)
                                                                         (foo 2)))))
   (ok (equal 
         '((DEFUN (A) (FOO 2)) (DEFUN (A) (FOO 3)))
-        (petalisp-cuda.jitexecution::analyze-multiple-value-lambda '(defun (a)
+        (petalisp-cuda.jit-execution::analyze-multiple-value-lambda '(defun (a)
                                                                         (foo (values 2 3)))))))
 
 (deftest test-type-conversion
