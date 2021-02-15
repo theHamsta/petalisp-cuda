@@ -56,7 +56,12 @@
                  (:file "backend")
                  (:file "jit-execution")
                  (:file "map-call-operator")
-                 (:file "package")))))
+                 (:file "package")))
+               (:module "src/custom-op"
+                :components
+                ((:file "package")
+                 (:file "custom-op")
+                 (:file "cudnn-ops")))))
 
 
 (defsystem "petalisp-cuda/tests"
@@ -77,6 +82,7 @@
                  (:file "testing-backend")
                  (:file "main")
                  (:file "test-cuda-array")
-                 (:file "test-cudnn"))))
+                 (:file "test-cudnn")
+                 (:file "test-custom-op"))))
   :description "Test system for petalisp-cuda"
   :perform (test-op (op c) (symbol-call :rove :run c)))
