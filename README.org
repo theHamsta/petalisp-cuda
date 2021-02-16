@@ -58,8 +58,7 @@ git clone git@github.com:theHamsta/cl-cuda.git
 - [ ] optimized transposed memory accesses via cub.h
 - [ ] optimized memory accesses via stride tricks
 - [ ] static scheduler
-- [ ] use cudartc library for faster JIT compilation? (current solution has advantage of disk caching but might
-      require longer for first compilation)
+- [x] use cudartc library for ~~faster~~ JIT compilation
 
 ** Debugging
 
