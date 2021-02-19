@@ -8,6 +8,7 @@
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-type
                 :cuda-array-shape
+                :cuda-array-strides
                 :device-ptr
                 :c-layout-p)
   (:export :make-cudnn-handler

@@ -36,5 +36,7 @@
                 :lazy-reduction)
   (:import-from :petalisp-cuda.cuda-immediate
                 :cuda-immediate-p)
+  (:import-from :petalisp-cuda.stride-tricks
+                :transform-cuda-array)
   (:export :run-tests))
 (in-package :petalisp-cuda/tests)

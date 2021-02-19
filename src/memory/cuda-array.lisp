@@ -20,6 +20,7 @@
   (:export :make-cuda-array
            :cuda-array
            :cuda-array-shape
+           :cuda-array-strides
            :cuda-array-type
            :cuda-array-device
            :cuda-array-from-lisp
