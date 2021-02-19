@@ -54,6 +54,17 @@
                      (assert (equal (row-major-aref foo i) (row-major-aref b i)))))
                   (mapcar #'free-cuda-array (list a))))))
 
+(deftest test-stride-tricks
+  (let ((cl-cuda:*show-messages* nil))
+    (cl-cuda:with-cuda (0)
+      (let* ((a (make-cuda-array (aops:rand* 'single-float '(20 9)) 'float))
+             (b (transform-cuda-array a (τ (a b) (b a))))
+             (c (transform-cuda-array a (τ (a b) (a b 3)))))
+        (ok (equalp (cuda-array-shape b) '(9 20)))
+        (ok (equalp (cuda-array-strides c) '(9 1 0)))
+        (ok (equalp (cuda-array-shape c) '(20 9 3)))
+        (free-cuda-array a)))))
+
 (deftest test-dont-allow-casts-in-strict-mode
   ;; should not work
   (signals

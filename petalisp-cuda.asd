@@ -55,6 +55,7 @@
                (:module "src"
                 :components
                 ((:file "device")
+                 (:file "stride-tricks")
                  (:file "cl-cuda-functions")
                  (:file "cuda-immediate")
                  (:file "backend")

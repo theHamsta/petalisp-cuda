@@ -167,11 +167,12 @@
     ((cons 'let (cons (list (list lhs (list 'floor a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(floor ,a ,b) offset-vector) (list (remove-lispy-stuff `(rem ,a ,b) offset-vector) offset-vector)) ,@(remove-lispy-stuff body offset-vector)))
     ((cons 'let (cons (list (list lhs (list 'ceiling a b))) body)) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff `(ceiling ,a ,b) offset-vector) (list (remove-lispy-stuff `(rem ,a ,b) offset-vector))) ,@(remove-lispy-stuff body offset-vector)))
     ((guard (cons 'let (cons (list (cons lhs (cons rhs more-rhs))) body)) more-rhs) `(let ,(make-multiple-value-let lhs (remove-lispy-stuff rhs offset-vector) (remove-lispy-stuff more-rhs offset-vector)) ,@(remove-lispy-stuff body offset-vector)))
-    ; rest
+    ; replace numbers by symbols
     ((guard a (numberp a)) (or (loop for o in offset-vector
                                      for i from 0
                                      when (= o a)
                                      return (format-symbol t "offset-~A" i))  a))
+    ; rest
     ((guard a (atom a)) a)
     ((cons a b) (cons (remove-lispy-stuff a offset-vector) (remove-lispy-stuff b offset-vector)))))
 
