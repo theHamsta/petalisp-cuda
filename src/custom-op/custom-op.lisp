@@ -87,7 +87,10 @@
 (defgeneric lazy-custom-op-execute (custom-op backend input-buffers output-buffers))
 
 (defun custom-op-kernel-execute (kernel backend)
-  (lazy-custom-op-execute (custom-op-kernel-custom-op kernel) backend (kernel-inputs kernel) (kernel-outputs kernel)))
+  (lazy-custom-op-execute (custom-op-kernel-custom-op kernel)
+                          backend
+                          (kernel-inputs kernel)
+                          (kernel-outputs kernel)))
 
 (defun kernel-inputs (kernel)
   (let ((buffers '()))
