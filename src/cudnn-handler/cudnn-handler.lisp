@@ -158,7 +158,7 @@
 (defun cudnn-create-filter-descriptor (filter-array filter-format cudnn-handler &optional (min-dimensions 4))
   (assert (c-layout-p filter-array))
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type filter-array)))
-        (input-rank (min (rank filter-array) min-dimensions)))
+        (input-rank (max (rank filter-array) min-dimensions)))
     (petalisp.utilities:with-hash-table-memoization
       ((list input-rank input-type filter-format (cuda-array-shape filter-array)))
       (filter-descriptors cudnn-handler)
@@ -359,8 +359,6 @@
                            output-array
                            cudnn-handler
                            &key
-                           (filter-dimensions (max 2 (- 4 (rank input-array))))
-                           (filter-start-dim (- (rank input-array) filter-dimensions))
                            algorithm
                            (input-factor 1.0)
                            (accumulator-factor 0.0)
@@ -370,9 +368,9 @@
                            activation-mode
                            (activation-coefficient 0.0)
                            (activation-nan-propagation :cudnn-not-propagate-nan)
-                           (paddings (mapcar (lambda (s) (floor s 2)) (subseq (cuda-array-shape filter-array) filter-start-dim)))
-                           (filter-strides (make-list (- (rank input-array) filter-start-dim) :initial-element 1))
-                           (dilations (make-list (- (rank input-array) filter-start-dim) :initial-element 1))
+                           (paddings (mapcar (lambda (s) (floor s 2)) (subseq (cuda-array-shape filter-array) 2)))
+                           (filter-strides (make-list (- (rank input-array) 2) :initial-element 1))
+                           (dilations (make-list (- (rank input-array) 2) :initial-element 1))
                            (filter-format :cudnn-tensor-nchw))
   "
   Possible activation modes:
@@ -385,10 +383,10 @@
       (:cudnn-activation-elu 4)
       (:cudnn-activation-identity 5))
   "
-  (let* ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler (+ filter-dimensions 2)))
-         (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler (+ filter-dimensions 2)))
+  (let* ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
+         (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
          (convolution-descriptor (cudnn-create-convolution-descriptor input-array paddings dilations filter-strides mode cudnn-handler))
-         (filter-descriptor (cudnn-create-filter-descriptor filter-array filter-format cudnn-handler (+ filter-dimensions 2)))
+         (filter-descriptor (cudnn-create-filter-descriptor filter-array filter-format cudnn-handler))
          (pre-bias-descriptor (when bias-array
                                 (cudnn-create-tensor-descriptor pre-bias-accumulator-array cudnn-handler)))
          (bias-descriptor (when bias-array
