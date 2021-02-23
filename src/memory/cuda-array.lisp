@@ -303,7 +303,10 @@
 (defun c-layout-p (cuda-array)
   (multiple-value-bind (size strides) (c-mem-layout-from-shape (cuda-array-shape cuda-array))
     (declare (ignore size))
-    (equalp strides (cuda-array-strides cuda-array))))
+    (loop for stride in (cuda-array-strides cuda-array)
+          for range in (cuda-array-shape cuda-array)
+          for c-stride in strides
+          always (or (= range 1) (= range 0) (= c-stride stride)))))
 
 (defmethod petalisp.core:shape ((array cuda-array))
   (let* ((shape (cuda-array-shape array)))

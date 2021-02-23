@@ -18,4 +18,7 @@
                                     (if mask x 0))
                                   (transform (cuda-array-strides cuda-array) transformation)
                                   (transformation-output-mask transformation))
-                    :shape (transform (cuda-array-shape cuda-array) transformation)))
+                    :shape (mapcar #'range-end (shape-ranges
+                                                 (transform
+                                                   (make-shape (mapcar #'range (cuda-array-shape cuda-array)))
+                                                   transformation)))))
