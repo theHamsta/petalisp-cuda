@@ -97,7 +97,7 @@
                    :shape shape
                    :ntype ntype
                    :storage storage))))
-           (load-instruction (make-load-instruction buffer transformation)))
+           (load-instruction (make-load-instruction kernel buffer transformation)))
       (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
       (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
       (setf (cdr cons) load-instruction))))
