@@ -14,11 +14,11 @@
 (defmethod backend-compute
     ((testing-backend cuda-testing-backend)
      (data-structures list))
-    (with-accessors ((multicore-backend petalisp.test-suite::multicore-backend)
+    (with-accessors ((native-backend petalisp.test-suite::native-backend)
                      (cuda-backend cuda-backend)) testing-backend
       (if *check-results*
           (let ((native-backend-solutions
-                  (backend-compute multicore-backend data-structures))
+                  (backend-compute native-backend data-structures))
                 (cuda-backend-solutions
                   (backend-compute cuda-backend data-structures)))
             (petalisp.test-suite::compare-solutions native-backend-solutions cuda-backend-solutions)
