@@ -192,7 +192,7 @@
                         (cudnnSetTensorNdDescriptor
                           (mem-ref new-descriptor :pointer)
                           (cudnn-type element-type)
-                          shape
+                          min-shape-dim
                           shape-array
                           stride-array)))
         (mem-ref new-descriptor :pointer)))))
