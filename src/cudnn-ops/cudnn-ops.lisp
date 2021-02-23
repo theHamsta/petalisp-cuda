@@ -14,8 +14,8 @@
 
 (defclass lazy-reduction (lazy-custom-op)
   ((%reduction-operation 
-    :initarg :reduction-operator
-    :accessor lazy-reduction-reduction-operator
+    :initarg :reduction-operation
+    :accessor lazy-reduction-reduction-operation
     :type (or function symbol))))
 
 ;;outputDim = 1 + ( inputDim + 2*pad - (((filterDim-1)*dilation)+1) )/convolutionStride;
@@ -75,5 +75,5 @@
                                    (output-buffers list))
   (petalisp-cuda.cudnn-handler::cudnn-reduce-array (buffer-storage (nth 0 input-buffers))
                                                    (buffer-storage (nth 0 output-buffers))
-                                                   (lazy-reduction-reduction-operator custom-op)
+                                                   (lazy-reduction-reduction-operation custom-op)
                                                    (petalisp-cuda.backend::cudnn-handler backend)))
