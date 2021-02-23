@@ -10,7 +10,10 @@
 (in-package petalisp-cuda.cudnn-ops)
 
 (defclass lazy-convolution (lazy-custom-op)
-  ())
+  ((%convolution-algorithm 
+    :initarg :algorithm
+    :accessor lazy-convolution-algorithm
+    :type symbol)))
 
 (defclass lazy-reduction (lazy-custom-op)
   ((%reduction-operation 
@@ -19,7 +22,7 @@
     :type (or function symbol))))
 
 ;;outputDim = 1 + ( inputDim + 2*pad - (((filterDim-1)*dilation)+1) )/convolutionStride;
-(defun lazy-convolution (input filter)
+(defun lazy-convolution (input filter &key algorithm)
   (let* ((input (lazy-array input))
          (filter (lazy-array filter))
          (shape (lazy-array-shape input))
@@ -30,7 +33,8 @@
                    :ntype (element-ntype input)
                    :number-of-batches (range-size (nth 0 (shape-ranges shape)))
                    :input-channels (range-size (nth 1 (shape-ranges shape)))
-                   :output-channels (range-size (nth 1 (shape-ranges filter-shape))))))
+                   :output-channels (range-size (nth 1 (shape-ranges filter-shape)))
+                   :algorithm algorithm)))
 
 (defun unnormalizing-transformation (input-shape output-shape)
   (let ((output-shape (transform output-shape (collapsing-transformation output-shape))))
@@ -67,7 +71,8 @@
       (transform-cuda-array output
                             (unnormalizing-transformation (buffer-shape output-buffer)
                                                           (lazy-array-shape custom-op)))
-      (petalisp-cuda.backend::cudnn-handler backend))))
+      (petalisp-cuda.backend::cudnn-handler backend)
+      :algorithm (lazy-convolution-algorithm custom-op))))
 
 (defmethod lazy-custom-op-execute ((custom-op lazy-reduction)
                                    (backend cuda-backend)

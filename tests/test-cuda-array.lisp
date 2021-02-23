@@ -62,7 +62,7 @@
              (c (transform-cuda-array a (τ (a b) (a b 3)))))
         (ok (equalp (cuda-array-shape b) '(9 20)))
         (ok (equalp (cuda-array-strides c) '(9 1 0)))
-        (ok (equalp (cuda-array-shape c) '(20 9 3)))
+        (ok (equalp (cuda-array-shape c) '(20 9 4)))
         (free-cuda-array a)))))
 
 (deftest test-dont-allow-casts-in-strict-mode

@@ -106,6 +106,7 @@
 (defun cudnn-create-convolution-descriptor (input-array paddings dilations filter-strides mode cudnn-handler)
   (let ((input-type (cudnn-type (petalisp-cuda.memory.cuda-array::cuda-array-type input-array)))
         (array-length (length paddings)))
+    (assert (= (+ 2 array-length) (rank input-array)))
     (assert (= array-length (length dilations)))
     (assert (= array-length (length filter-strides)))
     (petalisp.utilities:with-hash-table-memoization
@@ -236,48 +237,48 @@
 
   The exact operation performed is 
 
-    C = reduce op( input-factor * A ) + accumulator-factor * C
+  C = reduce op( input-factor * A ) + accumulator-factor * C
   "
   (let ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
         (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
         (reduction-descriptor (cudnn-create-reduction-descriptor reduce-op (cuda-array-type input-array) cudnn-handler))
         (double-or-float (if (equalp (cuda-array-type input-array) :double) :double :float)))
-      (with-foreign-objects ((workspace-min-size '(:pointer :int))
-                                  (indices-min-size '(:pointer :int))
-                                  (alpha '(:pointer :double))
-                                  (beta '(:pointer :double)))
-                  ; this routine supports mixing data types, then alpha, beta are float or else everything is double
-                  (setf (mem-ref alpha double-or-float) (convert-to-foreign input-factor double-or-float))
-                  (setf (mem-ref beta double-or-float) (convert-to-foreign accumulator-factor double-or-float))
-                  (assert (equalp :CUDNN-STATUS-SUCCESS
-                                  (cudnnGetReductionWorkspaceSize (cudnn-handle cudnn-handler)
-                                                                  reduction-descriptor
-                                                                  input-descriptor
-                                                                  output-descriptor
-                                                                  workspace-min-size)))
-                  (assert (equalp :CUDNN-STATUS-SUCCESS
-                                  (cudnnGetReductionIndicesSize (cudnn-handle cudnn-handler)
-                                                                reduction-descriptor
-                                                                input-descriptor
-                                                                output-descriptor
-                                                                indices-min-size)))
-                  (assert (equalp 0 (mem-ref indices-min-size :int))) ; not 0 if argmin indices requested
-                  (multiple-value-bind (workspace workspace-size) (allocate-workspace (mem-ref workspace-min-size :int) cudnn-handler)
-                    (assert (equalp :CUDNN-STATUS-SUCCESS
-                                      (cudnnReduceTensor (cudnn-handle cudnn-handler)
-                                                         reduction-descriptor
-                                                         ; if indices requrested, find this out with cudnnGetReductionIndicesSize 
-                                                         (make-pointer 0)
-                                                         (mem-ref indices-min-size :int)
-                                                         (make-pointer workspace)
-                                                         workspace-size
-                                                         alpha ; &alpha == (type) 1 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
-                                                         input-descriptor
-                                                         (make-pointer (device-ptr input-array))
-                                                         beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
-                                                         output-descriptor
-                                                         (make-pointer (device-ptr output-array))))))
-                  output-array)))
+    (with-foreign-objects ((workspace-min-size '(:pointer :int))
+                           (indices-min-size '(:pointer :int))
+                           (alpha '(:pointer :double))
+                           (beta '(:pointer :double)))
+      ; this routine supports mixing data types, then alpha, beta are float or else everything is double
+      (setf (mem-ref alpha double-or-float) (convert-to-foreign input-factor double-or-float))
+      (setf (mem-ref beta double-or-float) (convert-to-foreign accumulator-factor double-or-float))
+      (assert (equalp :CUDNN-STATUS-SUCCESS
+                      (cudnnGetReductionWorkspaceSize (cudnn-handle cudnn-handler)
+                                                      reduction-descriptor
+                                                      input-descriptor
+                                                      output-descriptor
+                                                      workspace-min-size)))
+      (assert (equalp :CUDNN-STATUS-SUCCESS
+                      (cudnnGetReductionIndicesSize (cudnn-handle cudnn-handler)
+                                                    reduction-descriptor
+                                                    input-descriptor
+                                                    output-descriptor
+                                                    indices-min-size)))
+      (assert (equalp 0 (mem-ref indices-min-size :int))) ; not 0 if argmin indices requested
+      (multiple-value-bind (workspace workspace-size) (allocate-workspace (mem-ref workspace-min-size :int) cudnn-handler)
+        (assert (equalp :CUDNN-STATUS-SUCCESS
+                        (cudnnReduceTensor (cudnn-handle cudnn-handler)
+                                           reduction-descriptor
+                                           ; if indices requrested, find this out with cudnnGetReductionIndicesSize 
+                                           (make-pointer 0)
+                                           (mem-ref indices-min-size :int)
+                                           (make-pointer workspace)
+                                           workspace-size
+                                           alpha ; &alpha == (type) 1 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                           input-descriptor
+                                           (make-pointer (device-ptr input-array))
+                                           beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
+                                           output-descriptor
+                                           (make-pointer (device-ptr output-array))))))
+      output-array)))
 ;The data types of the tensors A and C must match if of type double. In this case, alpha and beta and the computation enum of reduceTensorDesc are all assumed to be of type double.
 ;The HALF and INT8 data types may be mixed with the FLOAT data types. In these cases, the computation enum of reduceTensorDesc is required to be of type FLOAT. 
 
@@ -308,15 +309,15 @@
                                                                                       (mem-aref algo-count :int)
                                                                                       algo-count
                                                                                       perf-results)))
-          ;cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(
-          ;cudnnHandle_t                       handle,
-          ;const cudnnTensorDescriptor_t       xDesc,
-          ;const cudnnFilterDescriptor_t       wDesc,
-          ;const cudnnConvolutionDescriptor_t  convDesc,
-          ;const cudnnTensorDescriptor_t       yDesc,
-          ;const int                           requestedAlgoCount,
-          ;int                                *returnedAlgoCount,
-          ;cudnnConvolutionFwdAlgoPerf_t      *perfResults)
+          ;;cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(
+          ;;cudnnHandle_t                       handle,
+          ;;const cudnnTensorDescriptor_t       xDesc,
+          ;;const cudnnFilterDescriptor_t       wDesc,
+          ;;const cudnnConvolutionDescriptor_t  convDesc,
+          ;;const cudnnTensorDescriptor_t       yDesc,
+          ;;const int                           requestedAlgoCount,
+          ;;int                                *returnedAlgoCount,
+          ;;cudnnConvolutionFwdAlgoPerf_t      *perfResults)
           (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithm_v7 (cudnn-handle cudnn-handler)
                                                                                         input-descriptor
                                                                                         filter-descriptor
@@ -325,7 +326,10 @@
                                                                                         (mem-aref algo-count :int)
                                                                                         algo-count
                                                                                         perf-results))))
-        (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionFwdAlgoPerf-t) 'cudnnConvolutionFwdAlgoPerf-t 'algo)))))
+        (assert (> (mem-aref algo-count :int 0)))
+        (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionFwdAlgoPerf-t) 'cudnnConvolutionFwdAlgoPerf-t 'algo)
+        )
+      )))
 
 (defun check-output-dimensions (output-array input-descriptor convolution-descriptor filter-descriptor)
   (with-foreign-objects ((result :int (rank output-array)))
@@ -398,8 +402,9 @@
                                                                                    filter-descriptor
                                                                                    convolution-descriptor
                                                                                    output-descriptor
-                                                                                   cudnn-handler)))))
-
+                                                                                   cudnn-handler))
+                                  ))
+         )
     (with-foreign-objects ((workspace-min-size '(:pointer :int))
                            (alpha '(:pointer :double))
                            (beta '(:pointer :double)))
@@ -458,7 +463,9 @@
                                                      workspace-size
                                                      beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
                                                      output-descriptor
-                                                     (make-pointer (device-ptr output-array))))))))))
+                                                     (make-pointer (device-ptr output-array)))))))
+      )
+    ))
 
 ;cudnnStatus_t cudnnMultiHeadAttnForward(
 	;cudnnHandle_t handle,
