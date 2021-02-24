@@ -765,8 +765,9 @@
   int reserved[3]
   "
   (algo (cudnnConvolutionFwdAlgo-t))
+  (status (cudnnStatus-t))
   (time (:float))
-  (size (:pointer))
+  (memory (:pointer))
   (determinism (cudnndeterminism-t))
   (math-type cudnnMathType-t)
   (reserved :int)
