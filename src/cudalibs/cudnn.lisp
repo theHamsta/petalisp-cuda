@@ -632,7 +632,7 @@
   (convdesc cudnnConvolutionDescriptor-t)
   (mathtype (:pointer cudnnMathType-t)))
 
-(cffi:defcfun "cudnnsetconvolutiongroupcount" cudnnStatus-t
+(cffi:defcfun "cudnnSetConvolutionGroupCount" cudnnStatus-t
   (convdesc cudnnConvolutionDescriptor-t)
   (groupcount :int))
 

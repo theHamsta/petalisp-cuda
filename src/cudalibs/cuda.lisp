@@ -15,6 +15,7 @@
 	   :cudnnSetReduceTensorDescriptor
 	   :cudnnDestroy
 	   :cudnnDestroyTensorDescriptor
+	   :cudnnSetConvolutionGroupCount
 	   :cudnnDestroyReduceTensorDescriptor
 	   :cudnn-create-tensor-descriptor
 	   :cudnn-create-reduction-descriptor

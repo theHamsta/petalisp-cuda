@@ -22,3 +22,6 @@
                                                  (transform
                                                    (make-shape (mapcar #'range (cuda-array-shape cuda-array)))
                                                    transformation)))))
+
+(defmethod transform ((cuda-array cuda-array) (transformation transformation))
+  (transform-cuda-array cuda-array transformation))
