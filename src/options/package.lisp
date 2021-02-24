@@ -29,14 +29,14 @@
 (defparameter *page-locked-host-memory* t)
 (defparameter *slow-coordinate-transposed-trick* nil)
 
-;; Exhaustive searches for best convolution algorithms (alternative: use heuristics)
-(defparameter *cudnn-autotune* nil)
+(defparameter *cudnn-autotune* nil
+  "Exhaustive search for best convolution algorithms (alternative: use heuristics)")
 
-;; Forbids casts from T to single-float to perform calculation on GPU
-(defparameter *strict-cast-mode* nil)
+(defparameter *strict-cast-mode* nil
+  "Forbids casts from T to single-float to perform calculation on GPU")
 
-;; Number of numbers to display at end and start when printing cuda array
-(defparameter *max-array-printing-length* 5)
+(defparameter *max-array-printing-length* 5
+  "Number of numbers to display at end and start when printing cuda array")
 
 (defparameter *preferred-block-shape* '(16 16 1))
 
