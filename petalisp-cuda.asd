@@ -64,7 +64,9 @@
                  (:file "package")))
                (:module "src/cudnn-ops"
                 :components
-                ((:file "cudnn-ops")))))
+                ((:file "package")
+                 (:file "convolution")
+                 (:file "reduction")))))
 
 (defsystem "petalisp-cuda/tests"
   :author "Stephan Seitz"

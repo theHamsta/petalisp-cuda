@@ -1,12 +1,3 @@
-(defpackage petalisp-cuda.cudnn-ops
-  (:use :cl
-        :petalisp
-        :petalisp.ir
-        :petalisp.core
-        :petalisp-cuda.backend
-        :petalisp-cuda.custom-op
-        :petalisp-cuda.stride-tricks)
-  (:export :lazy-convolution))
 (in-package petalisp-cuda.cudnn-ops)
 
 (defclass lazy-convolution (lazy-custom-op)
@@ -30,12 +21,6 @@
     :initarg :group-count
     :accessor lazy-convolution-group-count
     :type (or integer null))))
-
-(defclass lazy-reduction (lazy-custom-op)
-  ((%reduction-operation 
-    :initarg :reduction-operation
-    :accessor lazy-reduction-reduction-operation
-    :type (or function symbol))))
 
 (defun lazy-convolution (input filter &key algorithm strides paddings dilations group-count)
   (let* ((input (lazy-array input))
@@ -70,20 +55,6 @@
                  :paddings paddings
                  :group-count group-count)))
 
-(defun unnormalizing-transformation (input-shape output-shape)
-  (let ((output-shape (transform output-shape (collapsing-transformation output-shape))))
-    (if (equalp input-shape output-shape)
-        (identity-transformation (shape-rank input-shape))
-        (invert-transformation (normalizing-transformation output-shape)))))
-
-(defun lazy-reduction (input output-shape reduction-operation)
-  (let* ((input (lazy-array input)))
-    (make-instance 'lazy-reduction
-                   :inputs (list input)
-                   :shape output-shape
-                   :ntype (element-ntype input)
-                   :number-of-values 1
-                   :reduction-operation reduction-operation)))
 
 (defmethod lazy-custom-op-execute ((custom-op lazy-convolution)
                                    (backend cuda-backend)
@@ -111,12 +82,3 @@
       :paddings (lazy-convolution-paddings custom-op)
       :dilations (lazy-convolution-dilations custom-op)
       :filter-strides (lazy-convolution-strides custom-op))))
-
-(defmethod lazy-custom-op-execute ((custom-op lazy-reduction)
-                                   (backend cuda-backend)
-                                   (input-buffers list)
-                                   (output-buffers list))
-  (petalisp-cuda.cudnn-handler::cudnn-reduce-array (buffer-storage (nth 0 input-buffers))
-                                                   (buffer-storage (nth 0 output-buffers))
-                                                   (lazy-reduction-reduction-operation custom-op)
-                                                   (petalisp-cuda.backend::cudnn-handler backend)))
