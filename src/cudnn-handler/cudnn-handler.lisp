@@ -217,7 +217,7 @@
 (defun allocate-workspace (min-size cudnn-handler)
     (when (< (workspace-size cudnn-handler) min-size)
         (when (workspace cudnn-handler)
-          ;; TODO: replace by malloc-async
+          ;; TODO: replace with malloc-async
           (cuCtxSynchronize)
           (cl-cuda:free-device-memory (workspace cudnn-handler)))
         (setf (workspace-size cudnn-handler) min-size)
@@ -366,6 +366,7 @@
                            algorithm
                            (input-factor 1.0)
                            (accumulator-factor 0.0)
+                           group-count
                            (mode :cudnn-convolution)
                            bias-array
                            pre-bias-accumulator-array
@@ -397,14 +398,14 @@
                            (cudnn-create-tensor-descriptor bias-array cudnn-handler)))
          (double-or-float (if (equalp (cuda-array-type input-array) :double) :double :float))
          (convolution-algorithm (progn
+                                  (when group-count
+                                    (cudnnSetConvolutionGroupCount convolution-descriptor group-count))
                                   (check-output-dimensions output-array input-descriptor convolution-descriptor filter-descriptor)
                                   (or algorithm (get-convolution-forward-algorithm input-descriptor
                                                                                    filter-descriptor
                                                                                    convolution-descriptor
                                                                                    output-descriptor
-                                                                                   cudnn-handler))
-                                  ))
-         )
+                                                                                   cudnn-handler)))))
     (with-foreign-objects ((workspace-min-size '(:pointer :int))
                            (alpha '(:pointer :double))
                            (beta '(:pointer :double)))
@@ -463,9 +464,7 @@
                                                      workspace-size
                                                      beta ; &beta = (type) 0 <- /* Tensor operation : C = reduce op( alpha * A ) + beta * C */
                                                      output-descriptor
-                                                     (make-pointer (device-ptr output-array)))))))
-      )
-    ))
+                                                     (make-pointer (device-ptr output-array))))))))))
 
 ;cudnnStatus_t cudnnMultiHeadAttnForward(
 	;cudnnHandle_t handle,
