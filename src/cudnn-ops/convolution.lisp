@@ -20,9 +20,24 @@
    (%group-count 
     :initarg :group-count
     :accessor lazy-convolution-group-count
-    :type (or integer null))))
+    :type (or integer null))
+   (%math-type
+    :initarg :math-type
+    :accessor lazy-convolution-math-type
+    :type (or symbol null))))
 
-(defun lazy-convolution (input filter &key algorithm strides paddings dilations group-count)
+(defclass lazy-convolution-backward-data (lazy-convolution)
+  ())
+
+(defclass lazy-convolution-backward-filter (lazy-convolution)
+  ())
+
+(defun lazy-convolution (input filter &key algorithm
+                                           strides
+                                           paddings
+                                           dilations
+                                           group-count
+                                           (math-type *cudnn-default-math-type*))
   (let* ((input (lazy-array input))
          (filter (lazy-array filter))
          (input-shape (lazy-array-shape input))
@@ -53,8 +68,8 @@
                  :dilations dilations
                  :strides strides
                  :paddings paddings
+                 :math-type math-type
                  :group-count group-count)))
-
 
 (defmethod lazy-custom-op-execute ((custom-op lazy-convolution)
                                    (backend cuda-backend)
@@ -79,6 +94,67 @@
       (petalisp-cuda.backend::cudnn-handler backend)
       :algorithm (lazy-convolution-algorithm custom-op)
       :group-count (lazy-convolution-group-count custom-op)
+      :math-type (lazy-convolution-math-type custom-op)
       :paddings (lazy-convolution-paddings custom-op)
       :dilations (lazy-convolution-dilations custom-op)
-      :filter-strides (lazy-convolution-strides custom-op))))
+      :filter-strides (lazy-convolution-strides custom-op)
+      :direction (if (typep custom-op 'lazy-convolution-backward-data)
+                     :backward-data
+                     :forward))))
+
+(defmethod lazy-custom-op-execute ((custom-op lazy-convolution-backward-filter)
+                                   (backend cuda-backend)
+                                   (input-buffers list)
+                                   (output-buffers list))
+  (let* ((input-buffer (nth 0 input-buffers))
+         (filter-buffer (nth 0 output-buffers))
+         (output-buffer (nth 1 input-buffers))
+         (input (buffer-storage input-buffer))
+         (filter (buffer-storage filter-buffer))
+         (output (buffer-storage output-buffer)))
+    (petalisp-cuda.cudnn-handler::cudnn-convolution
+      (transform-cuda-array input
+                            (unnormalizing-transformation (buffer-shape input-buffer)
+                                                          (lazy-array-shape (nth 0 (lazy-array-inputs custom-op)))))
+      (transform-cuda-array filter
+                            (unnormalizing-transformation (buffer-shape filter-buffer)
+                                                          (lazy-array-shape (lazy-array-shape custom-op))))
+      (transform-cuda-array output
+                            (unnormalizing-transformation (buffer-shape output-buffer)
+                                                          (lazy-array-shape (nth 1 (lazy-array-inputs custom-op)))))
+      (petalisp-cuda.backend::cudnn-handler backend)
+      :algorithm (lazy-convolution-algorithm custom-op)
+      :group-count (lazy-convolution-group-count custom-op)
+      :math-type (lazy-convolution-math-type custom-op)
+      :paddings (lazy-convolution-paddings custom-op)
+      :dilations (lazy-convolution-dilations custom-op)
+      :filter-strides (lazy-convolution-strides custom-op)
+      :direction :backward-filter)))
+
+(defmethod petalisp.api::input-gradient ((lazy-convolution lazy-convolution-backward-data) output-gradient index)
+  (error "Not implemented"))
+
+(defmethod petalisp.api::input-gradient ((lazy-convolution lazy-convolution-backward-filter) output-gradient index)
+  (error "Not implemented"))
+
+(defmethod petalisp.api::input-gradient ((lazy-convolution lazy-convolution) (output-gradient lazy-array) (index (eql 0)))
+  (make-instance 'lazy-convolution-backward-data
+                 :inputs (list output-gradient (nth 1 (lazy-array-inputs lazy-convolution)))
+                 :shape (lazy-array-shape (nth 0 (lazy-array-inputs lazy-convolution))) 
+                 :strides (lazy-convolution-strides lazy-convolution)
+                 :math-type (lazy-convolution-math-type lazy-convolution)
+                 :dilations (lazy-convolution-dilations lazy-convolution)
+                 :group-count (lazy-convolution-group-count lazy-convolution)
+                 :paddings (lazy-convolution-paddings lazy-convolution)
+                 :ntype (element-ntype (nth 0 (lazy-array-inputs lazy-convolution)))))
+
+(defmethod petalisp.api::input-gradient ((lazy-convolution lazy-convolution) (output-gradient lazy-array) (index (eql 1)))
+  (make-instance 'lazy-convolution-backward-filter 
+                 :shape (lazy-array-shape (nth 1 (lazy-array-inputs lazy-convolution)))
+                 :inputs (list (nth 0 (lazy-array-inputs lazy-convolution)) output-gradient)
+                 :strides (lazy-convolution-strides lazy-convolution)
+                 :math-type (lazy-convolution-math-type lazy-convolution)
+                 :dilations (lazy-convolution-dilations lazy-convolution)
+                 :group-count (lazy-convolution-group-count lazy-convolution)
+                 :paddings (lazy-convolution-paddings lazy-convolution)
+                 :ntype (element-ntype (nth 0 (lazy-array-inputs lazy-convolution)))))

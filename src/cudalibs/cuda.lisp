@@ -5,6 +5,13 @@
 	   :cudnn-init
 	   :cudnncreate
 	   :cudnnGetReductionWorkspaceSize
+	   :cuGraphInstantiate
+	   :cuStreamBeginCapture_v2
+	   :cuStreamEndCapture
+	   :cuGraphLaunch
+	   :cugraphexec
+	   :cugraph
+	   :cuGraphDestroy
 	   :cudnnCreateTensorDescriptor
 	   :cudnnCreateTensorDescriptor
 	   :cudnnGetConvolutionForwardWorkspaceSize
@@ -15,6 +22,13 @@
 	   :cudnnSetReduceTensorDescriptor
 	   :cudnnDestroy
 	   :cudnnDestroyTensorDescriptor
+	   :CUDNNSETCONVOLUTIONMATHTYPE
+	   :cuStreamCreate
+	   :CUDNNGETCONVOLUTIONBACKWARDFILTERWORKSPACESIZE
+	   :CUDNNGETCONVOLUTIONBACKWARDFILTERALGORITHMMAXCOUNT
+	   :CUDNNGETCONVOLUTIONBACKWARDDATAALGORITHMMAXCOUNT
+	   :CUDNNCONVOLUTIONBACKWARDFILTER
+	   :CUDNNCONVOLUTIONBACKWARDDATA
 	   :cudnnSetConvolutionGroupCount
 	   :cudnnDestroyReduceTensorDescriptor
 	   :cudnn-create-tensor-descriptor
@@ -35,6 +49,14 @@
 	   :cudnnSetFilterNdDescriptor
 	   :cudnnDestroyFilterDescriptor
 	   :cudnnConvolutionFwdAlgoPerf-t
+	   :cudnnConvolutionBwdDataAlgoPerf-t
+	   :cudnnConvolutionBwdDataAlgo-t
+	   :cudnnConvolutionBwdFilterAlgo-t
+	   :cudnnConvolutionBwdFilterAlgoPerf-t
+	   :CUDNNFINDCONVOLUTIONBACKWARDDATAALGORITHM
+	   :CUDNNFINDCONVOLUTIONBACKWARDFILTERALGORITHM
+	   :CUDNNGETCONVOLUTIONBACKWARDDATAALGORITHM_V7
+	   :CUDNNGETCONVOLUTIONBACKWARDFILTERALGORITHM_V7
 	   :algo
 	   :cudnnActivationDescriptor-t
 	   :cudnnCreateActivationDescriptor
@@ -5034,7 +5056,7 @@
   (data (:pointer (:pointer :void)))
   (ptr CUdeviceptr))
 
-(cffi:defcfun "custreamcreate" CUresult
+(cffi:defcfun "cuStreamCreate" CUresult
   "\brief Create a stream
  
   Creates a stream and returns a handle in \p phStream.  The \p Flags argument
@@ -5330,7 +5352,7 @@
   (userdata (:pointer :void))
   (flags :unsigned-int))
 
-(cffi:defcfun ("custreambegincapture_v2" custreambegincapture-v2) CUresult
+(cffi:defcfun ("cuStreamBeginCapture_v2" custreambegincapture-v2) CUresult
   (hstream CUstream)
   (mode CUstreamCaptureMode))
 
@@ -5386,7 +5408,7 @@
   ::cuStreamBeginCapture"
   (mode (:pointer CUstreamCaptureMode)))
 
-(cffi:defcfun "custreamendcapture" CUresult
+(cffi:defcfun "cuStreamEndCapture" CUresult
   "\brief Ends capture on a stream, returning the captured graph
  
   End capture on \p hStream, returning the captured graph via \p phGraph.
@@ -8296,7 +8318,7 @@
   ::cuGraphAddMemsetNode"
   (hnode CUgraphNode))
 
-(cffi:defcfun "cugraphinstantiate" CUresult
+(cffi:defcfun "cuGraphInstantiate" CUresult
   "\brief Creates an executable graph from a graph
  
   Instantiates \p hGraph as an executable graph. The graph is validated for any
@@ -8368,7 +8390,7 @@
   (hnode CUgraphNode)
   (nodeparams (:pointer CUDA-KERNEL-NODE-PARAMS)))
 
-(cffi:defcfun "cugraphlaunch" CUresult
+(cffi:defcfun "cuGraphLaunch" CUresult
   "\brief Launches an executable graph in a stream
  
   Executes \p hGraphExec in \p hStream. Only one instance of \p hGraphExec may be executing
@@ -8416,7 +8438,7 @@
   ::cuGraphLaunch"
   (hgraphexec CUgraphExec))
 
-(cffi:defcfun "cugraphdestroy" CUresult
+(cffi:defcfun "cuGraphDestroy" CUresult
   "\brief Destroys a graph
  
   Destroys the graph specified by \p hGraph, as well as all of its nodes.

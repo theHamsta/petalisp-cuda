@@ -15,7 +15,8 @@
            :*warp-time-slicing*
            :*slow-coordinate-transposed-trick*
            :*cudnn-autotune*
-           :*transfer-back-to-lisp*))
+           :*transfer-back-to-lisp*
+           :*cudnn-default-math-type*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
@@ -30,7 +31,7 @@
 (defparameter *slow-coordinate-transposed-trick* nil)
 
 (defparameter *cudnn-autotune* nil
-  "Exhaustive search for best convolution algorithms (alternative: use heuristics)")
+  "Whether to do exhaustive searches for best convolution algorithms (alternative: use heuristics)")
 
 (defparameter *strict-cast-mode* nil
   "Forbids casts from T to single-float to perform calculation on GPU")
@@ -40,3 +41,5 @@
 
 (defparameter *preferred-block-shape* '(16 16 1))
 
+(defparameter *cudnn-default-math-type* nil
+  "Determines which type conversions are allowed to accelerate CUDNN kernels with tensor cores")

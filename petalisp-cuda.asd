@@ -15,6 +15,7 @@
                "trivia"
                "lparallel"
                "alexandria"
+               "make-hash"
                ;"trivial-garbage"
                "hash-set"
                "cl-itertools"

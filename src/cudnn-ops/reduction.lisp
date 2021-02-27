@@ -23,3 +23,8 @@
                                                    (buffer-storage (nth 0 output-buffers))
                                                    (lazy-reduction-reduction-operation custom-op)
                                                    (petalisp-cuda.backend::cudnn-handler backend)))
+
+(defmethod petalisp.api::input-gradient ((lazy-reduction lazy-reduction) (output-gradient lazy-array) (index (eql 0)))
+  (alexandria:switch ((lazy-reduction-reduction-operation lazy-reduction) :test #'equalp)
+    (#'+ (reshape output-gradient (array-shape (nth 0 (lazy-array-inputs lazy-reduction)))))
+    (t (error "Not implemented!"))))
