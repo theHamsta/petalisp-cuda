@@ -131,6 +131,7 @@
     ('petalisp.type-inference:double-float-from-short-float :coerce-double)
     ('petalisp.type-inference::coerce-to-double-float :coerce-double)
     ('petalisp.type-inference:the-number :coerce-float)
+    ('petalisp.type-inference::choose 'if)
 
     (#'truncate :coerce-int)
     (#'round :round)
