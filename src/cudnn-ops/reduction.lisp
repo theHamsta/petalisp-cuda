@@ -7,12 +7,12 @@
                    :shape output-shape
                    :ntype (element-ntype input)
                    :number-of-values 1
-                   :reduction-operation reduction-operation)))
+                   :operation reduction-operation)))
 
 (defclass lazy-reduction (lazy-custom-op)
   ((%reduction-operation 
-    :initarg :reduction-operation
-    :accessor lazy-reduction-reduction-operation
+    :initarg :operation
+    :accessor lazy-reduction-operation
     :type (or function symbol))))
 
 (defmethod lazy-custom-op-execute ((custom-op lazy-reduction)
@@ -21,10 +21,20 @@
                                    (output-buffers list))
   (petalisp-cuda.cudnn-handler::cudnn-reduce-array (buffer-storage (nth 0 input-buffers))
                                                    (buffer-storage (nth 0 output-buffers))
-                                                   (lazy-reduction-reduction-operation custom-op)
+                                                   (lazy-reduction-operation custom-op)
                                                    (petalisp-cuda.backend::cudnn-handler backend)))
 
 (defmethod petalisp.api::input-gradient ((lazy-reduction lazy-reduction) (output-gradient lazy-array) (index (eql 0)))
-  (alexandria:switch ((lazy-reduction-reduction-operation lazy-reduction) :test #'equalp)
-    (#'+ (reshape output-gradient (array-shape (nth 0 (lazy-array-inputs lazy-reduction)))))
-    (t (error "Not implemented!"))))
+  (let ((input-shape (lazy-array-shape (nth 0 (lazy-array-inputs lazy-reduction))))
+        (output-shape (lazy-array-shape lazy-reduction)))
+   (alexandria:switch ((lazy-reduction-operation lazy-reduction) :test #'equalp)
+    (#'+ (reshape output-gradient input-shape))
+    (#'avg (α #'* (reshape output-gradient input-shape) (mapc 'vector (lambda (i o) (/ i o)) input-shape output-shape)))
+    (t (error "Not implemented!")))))
+
+(defmethod substitute-array ((lazy-map lazy-reduction))
+  (make-instance 'lazy-reduction
+    :shape (lazy-array-shape lazy-map)
+    :ntype (element-ntype lazy-map)
+    :operation (lazy-reduction-operation lazy-map)
+    :inputs (mapcar #'substitute-array (lazy-array-inputs lazy-map))))

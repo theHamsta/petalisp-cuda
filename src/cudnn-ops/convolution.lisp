@@ -61,9 +61,6 @@
                  :inputs (list input filter)
                  :shape output-shape
                  :ntype (element-ntype input)
-                 :number-of-batches (range-size (nth 0 (shape-ranges input-shape)))
-                 :input-channels (range-size (nth 1 (shape-ranges input-shape)))
-                 :output-channels (range-size (nth 1 (shape-ranges filter-shape)))
                  :algorithm algorithm
                  :dilations dilations
                  :strides strides
@@ -118,7 +115,7 @@
                                                           (lazy-array-shape (nth 0 (lazy-array-inputs custom-op)))))
       (transform-cuda-array filter
                             (unnormalizing-transformation (buffer-shape filter-buffer)
-                                                          (lazy-array-shape (lazy-array-shape custom-op))))
+                                                          (lazy-array-shape custom-op)))
       (transform-cuda-array output
                             (unnormalizing-transformation (buffer-shape output-buffer)
                                                           (lazy-array-shape (nth 1 (lazy-array-inputs custom-op)))))
@@ -142,6 +139,7 @@
                  :inputs (list output-gradient (nth 1 (lazy-array-inputs lazy-convolution)))
                  :shape (lazy-array-shape (nth 0 (lazy-array-inputs lazy-convolution))) 
                  :strides (lazy-convolution-strides lazy-convolution)
+                 :algorithm (lazy-convolution-algorithm lazy-convolution)
                  :math-type (lazy-convolution-math-type lazy-convolution)
                  :dilations (lazy-convolution-dilations lazy-convolution)
                  :group-count (lazy-convolution-group-count lazy-convolution)
@@ -151,10 +149,23 @@
 (defmethod petalisp.api::input-gradient ((lazy-convolution lazy-convolution) (output-gradient lazy-array) (index (eql 1)))
   (make-instance 'lazy-convolution-backward-filter 
                  :shape (lazy-array-shape (nth 1 (lazy-array-inputs lazy-convolution)))
-                 :inputs (list (nth 0 (lazy-array-inputs lazy-convolution)) output-gradient)
+                 :inputs (list output-gradient (nth 0 (lazy-array-inputs lazy-convolution)))
+                 :algorithm (lazy-convolution-algorithm lazy-convolution)
                  :strides (lazy-convolution-strides lazy-convolution)
                  :math-type (lazy-convolution-math-type lazy-convolution)
                  :dilations (lazy-convolution-dilations lazy-convolution)
                  :group-count (lazy-convolution-group-count lazy-convolution)
                  :paddings (lazy-convolution-paddings lazy-convolution)
                  :ntype (element-ntype (nth 0 (lazy-array-inputs lazy-convolution)))))
+
+(defmethod substitute-array ((lazy-map lazy-convolution))
+  (make-instance (class-of lazy-map)
+                 :shape (lazy-array-shape lazy-map)
+                 :ntype (element-ntype lazy-map)
+                 :inputs (mapcar #'substitute-array (lazy-array-inputs lazy-map))
+                 :algorithm (lazy-convolution-algorithm lazy-map)
+                 :dilations (lazy-convolution-dilations lazy-map)
+                 :strides (lazy-convolution-strides lazy-map)
+                 :paddings (lazy-convolution-paddings lazy-map)
+                 :math-type (lazy-convolution-math-type lazy-map)
+                 :group-count (lazy-convolution-group-count lazy-map)))

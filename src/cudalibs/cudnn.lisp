@@ -979,7 +979,7 @@
   (memorylimitinbytes :int)
   (algo (:pointer cudnnConvolutionBwdFilterAlgo-t)))
 
-(cffi:defcfun ("cudnnGetConvolutionBackwardFilterAlgorithm_v7" cudnngetconvolutionbackwardfilteralgorithm-v7) cudnnStatus-t
+(cffi:defcfun ("cudnnGetConvolutionBackwardFilterAlgorithm_v7" cudnnGetConvolutionBackwardFilterAlgorithm_v7) cudnnStatus-t
   (handle cudnnHandle-t)
   (srcdesc cudnnTensorDescriptor-t)
   (diffdesc cudnnTensorDescriptor-t)
@@ -989,7 +989,7 @@
   (returnedalgocount (:pointer :int))
   (perfresults (:pointer cudnnConvolutionBwdFilterAlgoPerf-t)))
 
-(cffi:defcfun "cudnnGetConvolutionBackwardFilterWorkspacesize" cudnnStatus-t
+(cffi:defcfun "cudnnGetConvolutionBackwardFilterWorkspaceSize" cudnnStatus-t
   (handle cudnnHandle-t)
   (xdesc cudnnTensorDescriptor-t)
   (dydesc cudnnTensorDescriptor-t)
@@ -1110,7 +1110,7 @@
   (memorylimitinbytes :int)
   (algo (:pointer cudnnConvolutionBwdDataAlgo-t)))
 
-(cffi:defcfun ("cudnnGetConvolutionBackwardDataAlgorithm_v7" cudnngetconvolutionbackwarddataalgorithm-v7) cudnnStatus-t
+(cffi:defcfun ("cudnnGetConvolutionBackwardDataAlgorithm_v7" cudnnGetConvolutionBackwardDataAlgorithm_v7) cudnnStatus-t
   (handle cudnnHandle-t)
   (filterdesc cudnnFilterDescriptor-t)
   (diffdesc cudnnTensorDescriptor-t)

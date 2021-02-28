@@ -7,6 +7,8 @@
         :petalisp-cuda.custom-op
         :petalisp-cuda.stride-tricks
         :petalisp-cuda.options)
+  (:import-from :petalisp.core
+                :substitute-array)
   (:export :lazy-convolution
            :lazy-reduction))
 (in-package petalisp-cuda.cudnn-ops)

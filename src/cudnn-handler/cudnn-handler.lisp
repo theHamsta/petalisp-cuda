@@ -292,15 +292,6 @@
                                                                                                 algo-count)))
       (with-foreign-object (perf-results 'cudnnConvolutionBwdFilterAlgoPerf-t (mem-aref algo-count :int))
         (if *cudnn-autotune*
-            ;(cffi:defcfun ("cudnnGetConvolutionBackwardFilterAlgorithm_v7" cudnngetconvolutionbackwardfilteralgorithm-v7) cudnnStatus-t
-               ;(handle cudnnHandle-t)
-               ;(srcdesc cudnnTensorDescriptor-t)
-               ;(diffdesc cudnnTensorDescriptor-t)
-               ;(convdesc cudnnConvolutionDescriptor-t)
-               ;(graddesc cudnnFilterDescriptor-t)
-               ;(requestedalgocount :int)
-               ;(returnedalgocount (:pointer :int))
-               ;(perfresults (:pointer cudnnConvolutionBwdFilterAlgoPerf-t)))
             (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionBackwardFilterAlgorithm (cudnn-handle cudnn-handler)
                                                                                                output-descriptor
                                                                                                input-descriptor
@@ -309,14 +300,14 @@
                                                                                                (mem-aref algo-count :int)
                                                                                                algo-count
                                                                                                perf-results)))
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardFilterAlgorithm_v7 (cudnn-handle cudnn-handler)
-                                                                                               output-descriptor
-                                                                                               input-descriptor
-                                                                                               convolution-descriptor
-                                                                                               filter-descriptor
-                                                                                               (mem-aref algo-count :int)
-                                                                                               algo-count
-                                                                                               perf-results))))
+            (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardFilterAlgorithm_v7 (cudnn-handle cudnn-handler)
+                                                                                                 output-descriptor
+                                                                                                 input-descriptor
+                                                                                                 convolution-descriptor
+                                                                                                 filter-descriptor
+                                                                                                 (mem-aref algo-count :int)
+                                                                                                 algo-count
+                                                                                                 perf-results))))
         (assert (> (mem-aref algo-count :int 0)))
         (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionBwdFilterAlgoPerf-t) 'cudnnConvolutionBwdFilterAlgoPerf-t 'algo)))))
 
@@ -432,9 +423,9 @@
 (defvar *convolution-workspace-fun*
   (make-hash :test #'equal
              :initial-contents
-             '(:forward #'cudnnGetConvolutionForwardWorkspaceSize
-               :backward-data #'cudnnGetConvolutionBackwardDataWorkspaceSize)
-               :backward-filter #'cudnnGetConvolutionBackwardFilterWorkspaceSize))
+             (list :forward #'cudnnGetConvolutionForwardWorkspaceSize
+                   :backward-data #'cudnnGetConvolutionBackwardDataWorkspaceSize
+                   :backward-filter #'cudnnGetConvolutionBackwardFilterWorkspaceSize)))
 
 (defun cudnn-convolution (input-array
                            filter-array
@@ -482,7 +473,8 @@
                                     (cudnnSetConvolutionGroupCount convolution-descriptor group-count))
                                   (when math-type
                                     (cudnnSetConvolutionMathType convolution-descriptor math-type))
-                                  (check-output-dimensions output-array input-descriptor convolution-descriptor filter-descriptor)
+                                  (when (equalp direction :forward)
+                                    (check-output-dimensions output-array input-descriptor convolution-descriptor filter-descriptor))
                                   (or algorithm (alexandria:switch (direction :test #'equalp)
                                                   (:forward (get-convolution-forward-algorithm input-descriptor
                                                                                                filter-descriptor
@@ -505,15 +497,34 @@
       ; this routine supports mixing data types, then alpha, beta are float or else everything is double
       (setf (mem-ref alpha double-or-float) (convert-to-foreign input-factor double-or-float))
       (setf (mem-ref beta double-or-float) (convert-to-foreign accumulator-factor double-or-float))
-      (assert (equalp :CUDNN-STATUS-SUCCESS
-                      (funcall (gethash direction *convolution-workspace-fun*)
-                               (cudnn-handle cudnn-handler)
-                               input-descriptor
-                               filter-descriptor
-                               convolution-descriptor
-                               output-descriptor
-                               convolution-algorithm
-                               workspace-min-size)))
+      (alexandria:switch (direction :test #'equalp)
+        (:forward (assert (equalp :CUDNN-STATUS-SUCCESS
+                                  (cudnnGetConvolutionForwardWorkspaceSize
+                                    (cudnn-handle cudnn-handler)
+                                    input-descriptor
+                                    filter-descriptor
+                                    convolution-descriptor
+                                    output-descriptor
+                                    convolution-algorithm
+                                    workspace-min-size))))
+        (:backward-data (assert (equalp :CUDNN-STATUS-SUCCESS
+                                  (cudnnGetConvolutionBackwardDataWorkspaceSize
+                                    (cudnn-handle cudnn-handler)
+                                    filter-descriptor
+                                    input-descriptor
+                                    convolution-descriptor
+                                    output-descriptor
+                                    convolution-algorithm
+                                    workspace-min-size))))
+        (:backward-filter (assert (equalp :CUDNN-STATUS-SUCCESS
+                                  (cudnnGetConvolutionBackwardFilterWorkspaceSize
+                                    (cudnn-handle cudnn-handler)
+                                    output-descriptor
+                                    input-descriptor
+                                    convolution-descriptor
+                                    filter-descriptor
+                                    convolution-algorithm
+                                    workspace-min-size)))))
       (multiple-value-bind (workspace workspace-size) (allocate-workspace (mem-ref workspace-min-size :int) cudnn-handler)
         (if (and (or bias-array activation-mode) (equalp direction :forward))
             (let ((activation-desciptor (create-activation-descriptor activation-mode activation-coefficient activation-nan-propagation cudnn-handler)))

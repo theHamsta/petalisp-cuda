@@ -17,14 +17,14 @@
     (compute
       (α #'+ 2 (lazy-reduction (α #'+ 2 #2A((2 3) (4 5))) (~) #'+)))))
 
-;(deftest test-lazy-reduction-diff
-  ;(let* ((x (petalisp.examples.machine-learning::make-trainable-parameter 2.0))
-         ;(loss (lazy-reduction (reshape x (~ 2 ~ 3)) (~) #'+))
-         ;(inference (make-network loss))
-         ;(gradient (make-network (funcall (differentiator (list loss) (list loss)) x) loss)))
-  ;(with-cuda-backend
-   ;(list (call-network inference x (petalisp.examples.machine-learning::trainable-parameter-value x))
-         ;(call-network gradient x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
+(deftest test-lazy-reduction-diff
+  (let* ((x (petalisp.examples.machine-learning::make-trainable-parameter -2.0))
+         (loss (lazy-reduction (reshape (α #'abs x) (~ 2 ~ 3)) (~) #'+))
+         (inference (make-network loss))
+         (gradient (make-network (funcall (differentiator (list loss) (list loss)) x) loss)))
+  (with-cuda-backend
+   (list (call-network inference x (petalisp.examples.machine-learning::trainable-parameter-value x))
+         (call-network gradient x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
 
 (deftest test-lazy-convolution
   (let ((a (α #'+ #4A((((2 2) (2 2)))) #4A((((2 2) (2 2))))))
@@ -49,7 +49,6 @@
          (inference (make-network loss))
          (gradient (make-network (funcall (differentiator (list loss) (list loss)) w) loss)))
   (with-cuda-backend
-    (petalisp.graphviz:view (network-outputs gradient))
    (list (call-network inference w 3.0)
          (call-network gradient w 3.0)))))
 
@@ -60,8 +59,7 @@
          (inference (make-network loss))
          (gradient (make-network (funcall (differentiator (list loss) (list loss)) x) loss)))
   (with-cuda-backend
-    (petalisp.graphviz:view (network-outputs gradient))
-   (list (call-network inference x (petalisp.examples.machine-learning::trainable-parameter-value x))
+   (list 
          (call-network gradient x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
 
 (deftest unnormalizing-transformation

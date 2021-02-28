@@ -16,6 +16,8 @@
 	   :cudnnCreateTensorDescriptor
 	   :cudnnGetConvolutionForwardWorkspaceSize
 	   :cudnnGetConvolutionForwardAlgorithm_v7
+	   :cudnnGetConvolutionBackwardFilterAlgorithm_v7
+	   :cudnnGetConvolutionBackwardDataAlgorithm_v7
 	   :cudnnGetConvolutionForwardAlgorithmMaxCount
 	   :cudnnFindConvolutionForwardAlgorithm
 	   :cudnnCreateReduceTensorDescriptor
@@ -24,7 +26,10 @@
 	   :cudnnDestroyTensorDescriptor
 	   :CUDNNSETCONVOLUTIONMATHTYPE
 	   :cuStreamCreate
-	   :CUDNNGETCONVOLUTIONBACKWARDFILTERWORKSPACESIZE
+	   :cudnnGetConvolutionBackwardFilterWorkspaceSize
+	   :cudnnGetConvolutionBackwardDataAlgorithm
+	   :cudnnGetConvolutionBackwardFilterAlgorithm
+	   :cudnnGetConvolutionBackwardDataWorkspaceSize
 	   :CUDNNGETCONVOLUTIONBACKWARDFILTERALGORITHMMAXCOUNT
 	   :CUDNNGETCONVOLUTIONBACKWARDDATAALGORITHMMAXCOUNT
 	   :CUDNNCONVOLUTIONBACKWARDFILTER
