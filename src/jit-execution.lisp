@@ -20,6 +20,8 @@
                 :with-hash-table-memoization)
   (:import-from :alexandria
                 :when-let
+                :if-let
+                :switch
                 :format-symbol
                 :iota
                 :with-gensyms)
@@ -50,7 +52,8 @@
   (:import-from :petalisp-cuda.utils.petalisp
                 :pass-as-scalar-argument-p)
  (:export :compile-kernel
-          :execute-kernel))
+          :execute-kernel
+          :*device-function-mapping*))
 
 (in-package petalisp-cuda.jit-execution)
 
@@ -98,11 +101,12 @@
 
 (defun generate-kernel-parameters (buffers iteration-scheme filtered-offset-vector)
   (concatenate 'list (mapcar (lambda (buffer idx)
-                               (list (format-symbol t "buffer-~A" idx)
-                                     (let ((dtype (cl-cuda-type-from-buffer buffer)))
-                                       (if (pass-as-scalar-argument-p buffer)
-                                           dtype 
-                                           (cl-cuda.lang.type:array-type dtype 1)))))
+                               (if (pass-as-scalar-argument-p buffer)
+                                   (list (format-symbol t "buffer-~A" idx)
+                                         (cl-cuda-type-from-buffer buffer))
+                                   (list (format-symbol t "buffer-~A" idx)
+                                         (cl-cuda.lang.type:array-type (cl-cuda-type-from-buffer buffer) 1)
+                                         #| :restrict ;; <- TODO|#)))
                              buffers
                              (iota (length buffers)))
                (when (shape-independent-p iteration-scheme)

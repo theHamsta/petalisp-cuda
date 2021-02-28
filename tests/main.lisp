@@ -290,6 +290,34 @@
     (call-network network x1 5d0 x2 1d0)
     (call-network gradient-network x1 1d0 x2 1d0 g1 1d0))))
 
+(device-host-function foo (x)
+  (+ x 1))
+
+(deftest test-device-function
+  (with-testing-backend
+    (compute (α #'foo 1))))
+
+(defun bar (x)
+  (* x 2))
+
+(device-function bar (x)
+  (* x 2))
+
+(deftest test-device-function
+  (with-testing-backend
+    (compute (α #'bar 1))))
+
+(defun baz (x)
+  (* x 2))
+
+(device-function baz (x)
+  (* x 4))
+
+(deftest test-device-function-contradicting-definitions
+  (signals
+      (with-testing-backend
+        (compute (α #'baz 1)))))
+
 (deftest test-petalisp.test-suite
   (with-testing-backend
     (mapcar (lambda (test) (let ((test-name (format nil "~A" test)))

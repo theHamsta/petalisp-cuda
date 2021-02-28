@@ -1,5 +1,6 @@
 (in-package petalisp-cuda.jit-execution)
 
+(defvar *device-function-mapping* (make-hash-table :test #'equalp))
 ;TODO: use these operators directly in cl-cuda-functions
 (defun map-call-operator (operator arguments)
   ;; LHS: Petalisp/code/type-inference/package.lisp
@@ -148,20 +149,28 @@
     (#'sqrt 'sqrt)
     (#'rem 'rem)
 
-    (t (let ((source-form (when (functionp operator) (function-lambda-expression operator))))
-         (if source-form
-             (let* ((lambda-arguments (nth 1 source-form))
-                    (lambda-body? (last source-form))
-                    (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) (car lambda-body?))))
-               (when cl-cuda:*show-messages*
-                 (format t "Creating kernel lambda: ~A~%" lambda-body))
-               (loop for ir-arg in arguments
-                     for arg in lambda-arguments do
-                     (setf lambda-body (subst ir-arg arg lambda-body)))
-               (values nil (analyze-multiple-value-lambda lambda-body)))
+    (t (if-let (source-form (try-get-source-form operator arguments))
+         (values nil source-form)
          (error "Cannot convert Petalisp instruction ~A to cl-cuda instruction.
 More copy paste required here!~%
-You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator))))))
+You may also try to compile a pure function with (debug 3) so that petalisp-cuda can retrieve its source from." operator)))))
+
+(defun try-get-source-form (operator arguments)
+  (loop for k being each hash-key in *device-function-mapping*
+        using (hash-value v)
+        when (symbolp k)
+        do (setf (gethash (symbol-function k) *device-function-mapping*) v))
+  (when-let (source-form (or (gethash operator *device-function-mapping*)
+                             (when (functionp operator) (function-lambda-expression operator))))
+    (let* ((lambda-arguments (nth 1 source-form))
+           (lambda-body? (last source-form))
+           (lambda-body (if (equal 'BLOCK (caar lambda-body?)) (car (last (first lambda-body?))) (car lambda-body?))))
+      (when cl-cuda:*show-messages*
+        (format t "Creating kernel lambda: ~A~%" lambda-body))
+      (loop for ir-arg in arguments
+            for arg in lambda-arguments do
+            (setf lambda-body (subst ir-arg arg lambda-body)))
+      (analyze-multiple-value-lambda lambda-body))))
 
 (defun num-values (tree)
   (trivia:match tree
