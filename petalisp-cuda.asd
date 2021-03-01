@@ -26,7 +26,8 @@
                (:module "src/cudalibs"
                 :components
                 ((:file "cuda")
-                 (:file "cudnn")))
+                 (:file "cudnn")
+                 (:file "nvtx")))
                (:module "src/utils"
                 :components
                 ((:file "cl-cuda")

@@ -9,6 +9,8 @@
 	   :cuStreamBeginCapture_v2
 	   :cuStreamEndCapture
 	   :cuGraphLaunch
+	   :with-nvtx-range
+	   :nvtxMark
 	   :cugraphexec
 	   :cugraph
 	   :cuGraphDestroy
@@ -83,6 +85,7 @@
 
 (in-package petalisp-cuda.cudalibs)
 (cl:defparameter *cudnn-found* t)
+(cl:defparameter *nvtx-found* t)
 
 (cffi:define-foreign-library libcudnn
   (:unix (:or "libcudnn.so.8" "libcudnn.so.7" "libcudnn.so"))
@@ -93,6 +96,16 @@
     (cl:format cl:*error-output* "~A~%" e )
     (cl:format cl:*error-output* "CUDNN will not be available for petalisp-cuda!~%")
     (cl:setq *cudnn-found* nil)))
+
+(cffi:define-foreign-library libnvToolsExt
+  (:unix (:or "libnvToolsExt.so"))
+  (t (:default "libnvToolsExt")))
+ 
+(cl:handler-case (cffi:use-foreign-library libnvToolsExt)
+  (cffi:load-foreign-library-error (e)
+    (cl:format cl:*error-output* "~A~%" e )
+    (cl:format cl:*error-output* "libnvToolsExt will not be available for tracing petalisp-cuda!~%")
+    (cl:setq *nvtx-found* nil)))
 
 ;(cffi:define-foreign-library libcudart
   ;(:unix (:or "/usr/local/cuda-10.1/targets/x86_64-linux/lib/libcudart.so" "libcudart.so"))
