@@ -52,15 +52,30 @@
    (list (call-network inference w 3.0)
          (call-network gradient w 3.0)))))
 
+(deftest test-lazy-convolution-diff-both
+  (let* ((x (petalisp.examples.machine-learning::make-trainable-parameter (aops:rand* 'single-float '(20 30))))
+         (w (petalisp.examples.machine-learning::make-trainable-parameter 2.0))
+         (loss (lazy-convolution (reshape x (~ 1 ~ 1 ~ 20 ~ 30)) (reshape w (~ 1 ~ 1 ~ 2 ~ 2))))
+         (inference (make-network loss))
+         (gradient (make-network (funcall (differentiator (list loss) (list loss)) w)
+                                 (funcall (differentiator (list loss) (list loss)) x)
+                                 loss)))
+    (with-cuda-backend
+      ;(petalisp.graphviz:view (network-outputs inference))
+      ;(petalisp.graphviz:view (network-outputs gradient))
+      (list (call-network inference w 3.0 x (petalisp.examples.machine-learning::trainable-parameter-value x))
+            (call-network gradient w 3.0 x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
+
 (deftest test-lazy-convolution-diff-data
   (let* ((x (petalisp.examples.machine-learning::make-trainable-parameter (aops:rand* 'single-float '(20 30))))
          (w 2.0)
          (loss (lazy-convolution (reshape x (~ 1 ~ 1 ~ 20 ~ 30)) (reshape w (~ 1 ~ 1 ~ 2 ~ 2))))
          (inference (make-network loss))
          (gradient (make-network (funcall (differentiator (list loss) (list loss)) x) loss)))
-  (with-cuda-backend
-   (list 
-         (call-network gradient x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
+    (with-cuda-backend
+      (list 
+        (call-network inference x (petalisp.examples.machine-learning::trainable-parameter-value x))
+        (call-network gradient x (petalisp.examples.machine-learning::trainable-parameter-value x))))))
 
 (deftest unnormalizing-transformation
   (ok
