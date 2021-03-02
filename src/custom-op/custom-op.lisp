@@ -69,7 +69,7 @@
                                      lazy-custom-op
                                      nil
                                      0)))
-        (make-store-instruction custom-op-kernel (cons 0 custom-op-instruction) buffer transformation)))))
+        (make-store-instruction custom-op-kernel (cons 0 custom-op-instruction) buffer (identity-transformation (shape-rank (buffer-shape buffer))))))))
 
 (defstruct (custom-op-instruction
             (:include instruction)

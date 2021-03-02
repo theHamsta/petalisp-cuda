@@ -81,7 +81,7 @@
           (*transfer-back-to-lisp* t)
           (petalisp:*backend* (make-instance 'cuda-backend))
           (result (unwind-protect
-                      ,@body
+                      (locally ,@body)
                     (petalisp.core:delete-backend petalisp:*backend*))))
      result))
 

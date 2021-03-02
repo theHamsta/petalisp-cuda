@@ -43,3 +43,7 @@
 
 (defparameter *cudnn-default-math-type* nil
   "Determines which type conversions are allowed to accelerate CUDNN kernels with tensor cores")
+
+(defparameter *managed-gpu-allocations* nil
+  "Whether to use cudaMallocManaged to allocate GPU memory (enables over-allocation of GPU RAM)
+  https://developer.nvidia.com/blog/beyond-gpu-memory-limits-unified-memory-pascal/")

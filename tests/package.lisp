@@ -6,6 +6,8 @@
         :cl-cuda
         :rove
         :petalisp-cuda.cudnn-ops)
+  (:import-from :petalisp-cuda.cudalibs
+                :with-nvtx-range)
   (:import-from :petalisp.examples.iterative-methods
                 :jacobi
                 :rbgs

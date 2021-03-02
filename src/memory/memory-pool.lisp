@@ -32,12 +32,20 @@
 (defmethod memory-pool-allocate ((memory-pool cuda-memory-pool)
                                  (array-element-type t)
                                  (array-size number))
+  (cuda-memory-pool-allocate memory-pool array-element-type array-size))
+
+(defun alloc-device-memory-managed (array-element-type array-size)
+  (error "TODO"))
+
+(defun cuda-memory-pool-allocate (memory-pool array-element-type array-size &optional managedp)
   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
     (or (pop (gethash (cons array-element-type array-size)
                       (array-table memory-pool)))
         (let ((array
-                (cl-cuda.api.memory::%make-memory-block :device-ptr (cl-cuda:alloc-device-memory array-element-type
-                                                                                                 array-size)
+                (cl-cuda.api.memory::%make-memory-block :device-ptr 
+                                                        (if managedp
+                                                            (alloc-device-memory-managed array-element-type array-size)
+                                                            (cl-cuda:alloc-device-memory array-element-type array-size))
                                                         :host-ptr (cffi:null-pointer)
                                                         :type array-element-type
                                                         :size array-size)))

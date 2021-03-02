@@ -11,7 +11,8 @@
 (deftest test-reduction
   (if (not petalisp-cuda.cudalibs::*cudnn-found*)
       (skip "No cudnn!")
-      (approximately-equal
+      (with-nvtx-range "test-reduction"
+       (approximately-equal
         (with-cuda-backend
           (compute (let ((petalisp-cuda.options:*transfer-back-to-lisp* t))
                      (let ((a (make-cuda-array '(10 20) 'float))
@@ -23,7 +24,7 @@
                            (b (make-cuda-array '(2 1) 'float)))
                        (petalisp-cuda.cudnn-handler::cudnn-reduce-array a b #'+ (petalisp-cuda.backend::cudnn-handler petalisp-cuda.backend::*cuda-backend*))
                        b))))
-        #2a ((9) (6)))))
+        #2a ((9) (6))))))
 
 (deftest test-convolution
   (if (not petalisp-cuda.cudalibs::*cudnn-found*)

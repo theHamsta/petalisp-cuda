@@ -1,7 +1,8 @@
 (defpackage petalisp-cuda.memory.cuda-array
   (:use :cl
         :iterate
-        :cl-itertools)
+        :cl-itertools
+        :cffi)
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :cl-cuda
                 :memory-block-device-ptr
@@ -113,7 +114,7 @@
     ;; TODO: memcpy3d in order to change layout?
     (assert (= 0 (petalisp-cuda.cudalibs::cuMemcpyDtoDAsync_v2 to-ptr
                                                                from-ptr
-                                                               (cffi:make-pointer (* (cuda-array-size cuda-array)
+                                                               (make-pointer (* (cuda-array-size cuda-array)
                                                                                      (cffi-type-size dtype)))
                                                                cl-cuda:*cuda-stream*)))
     new-cuda-array))
@@ -173,14 +174,14 @@
 ;; TODO: add with-host-memory ensured to only temporarily add host memory and re-use a common host-mem staging area?
 (defun host-alloc (element-type size)
   (if *page-locked-host-memory*
-      (cffi:with-foreign-object (ptr '(:pointer (:pointer :void)))
-        (assert (= 0 (petalisp-cuda.cudalibs::cuMemAllocHost_v2 ptr (cffi:make-pointer (* size (cffi-type-size element-type))))))
-        (cffi:mem-ref ptr :pointer))
+      (with-foreign-object (ptr '(:pointer (:pointer :void)))
+        (assert (= 0 (petalisp-cuda.cudalibs::cuMemAllocHost_v2 ptr (make-pointer (* size (cffi-type-size element-type))))))
+        (mem-ref ptr :pointer))
       (cl-cuda:alloc-host-memory element-type size)))
 
 (defun ensure-host-memory (cuda-array)
   (let ((memory-block (cuda-array-memory-block cuda-array)))
-    (when (cffi:null-pointer-p (memory-block-host-ptr memory-block))
+    (when (null-pointer-p (memory-block-host-ptr memory-block))
       (setf (cuda-array-memory-block cuda-array)
             (cl-cuda.api.memory::%make-memory-block :device-ptr (memory-block-device-ptr memory-block)
                                                     :host-ptr (host-alloc (memory-block-type memory-block)
@@ -213,7 +214,7 @@
               ;; c-layout: cffi-package
               (progn
                 (cl-cuda:sync-memory-block memory-block :device-to-host)
-                (cffi:foreign-array-to-lisp
+                (foreign-array-to-lisp
                   (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array))
                   `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array)))))
           ;; No c-layout: slow generate
@@ -230,13 +231,13 @@
 (defun cuda-array-device (cuda-array)
   "Returns the device index on which the array was allocated"
   (let ((ptr (memory-block-device-ptr (cuda-array-memory-block cuda-array))))
-   (cffi:with-foreign-object (data '(:pointer :int))
+   (with-foreign-object (data '(:pointer :int))
     (assert (= 0
                (petalisp-cuda.cudalibs::cuPointerGetAttribute data
-                                                              (cffi:foreign-enum-value 'petalisp-cuda.cudalibs::cupointer-attribute-enum
+                                                              (foreign-enum-value 'petalisp-cuda.cudalibs::cupointer-attribute-enum
                                                                                        :cu-pointer-attribute-device-ordinal)
                                                               ptr)))
-     (cffi:mem-ref data :int))))
+     (mem-ref data :int))))
 
 (defun copy-lisp-to-cuda-array-slow-fallback (lisp-array cuda-array)
   (declare (optimize (debug 0)(speed 3)(safety 0)))
@@ -270,7 +271,7 @@
                     ;; not aync since we pinning the lisp array
                     (cl-cuda:sync-memory-block new-memory-block :host-to-device))))
               ;; copy to foreign
-              (cffi:lisp-array-to-foreign lisp-array
+              (lisp-array-to-foreign lisp-array
                                           (cl-cuda:memory-block-host-ptr (cuda-array-memory-block cuda-array))
                                           `(:array ,(cuda-array-type cuda-array) ,@(cuda-array-shape cuda-array))))
             (type-error (e)
@@ -304,7 +305,7 @@
   (multiple-value-bind (size strides) (c-mem-layout-from-shape (cuda-array-shape cuda-array))
     (declare (ignore size))
     (loop for stride in (cuda-array-strides cuda-array)
-          for range in (cuda-array-shape cuda-array)
+          for range in (cuda-array-strides cuda-array)
           for c-stride in strides
           always (or (= range 1) (= range 0) (= c-stride stride)))))
 
@@ -312,6 +313,17 @@
   (let* ((shape (cuda-array-shape array)))
     (petalisp.core::make-shape
       (mapcar (lambda (s) (petalisp.core:range s)) shape))))
+
+;;CUresult CUDAAPI cuPointerGetAttribute(void *data, CUpointer_attribute attribute, CUdeviceptr ptr);
+;; :cu-pointer-attribute-is-managed
+(defun is-managed (device-pointer)
+  (with-forein-object data (:pointer :bool)
+    (assert
+      (= 0
+         (cuPointerGetAttribute data
+                                :cu-pointer-attribute-is-managed
+                                device-pointer)))
+    (mem-ref data :bool)))
 
 (defmethod print-object :after ((cuda-array cuda-array) stream)
   (unless (or *print-readably* (= *max-array-printing-length* 0))
