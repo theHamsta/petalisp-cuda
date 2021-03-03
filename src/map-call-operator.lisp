@@ -1,6 +1,7 @@
 (in-package petalisp-cuda.jit-execution)
 
 (defvar *device-function-mapping* (make-hash-table :test #'equalp))
+
 ;TODO: use these operators directly in cl-cuda-functions
 (defun map-call-operator (operator arguments)
   ;; LHS: Petalisp/code/type-inference/package.lisp
@@ -36,11 +37,11 @@
 
     ('= '==)
     (#'= '==)
-    ;(CMPEQ '==)
-    ('petalisp.type-inference:double-float= '==)
-    ('petalisp.type-inference:single-float= '==)
-    ('petalisp.type-inference:short-float= '==)
-    ('petalisp.type-inference:long-float= '==)
+    ('petalisp.type-inference::cmpeq '=)
+    ('petalisp.type-inference:double-float= '=)
+    ('petalisp.type-inference:single-float= '=)
+    ('petalisp.type-inference:short-float= '=)
+    ('petalisp.type-inference:long-float= '=)
 
     ('> '>)
     (#'> '>)
@@ -146,6 +147,10 @@
     ('ceiling 'ceiling)
     (#'ceiling 'ceiling)
     ('sqrt 'sqrt)
+    ('petalisp.type-inference::double-float-sqrt 'sqrt)
+    ('petalisp.type-inference::single-float-sqrt 'sqrt)
+    ('petalisp.type-inference::short-float-sqrt 'sqrt)
+    ('petalisp.type-inference::long-float-sqrt 'sqrt)
     (#'sqrt 'sqrt)
     (#'rem 'rem)
 

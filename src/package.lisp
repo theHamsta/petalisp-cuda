@@ -30,3 +30,8 @@
     `(defun ,function-name ,lambda-list ,body-as-single-form)
     (setf (gethash function-name petalisp-cuda.jit-execution:*device-function-mapping*)
           (list function-name lambda-list body-as-single-form))))
+
+(device-function petalisp.type-inference::argmax (x y)
+  (if (> x y)
+     0
+     1))
