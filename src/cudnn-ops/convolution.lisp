@@ -33,11 +33,11 @@
   ())
 
 (defun lazy-convolution (input filter &key algorithm
-                                           strides
-                                           paddings
-                                           dilations
-                                           group-count
-                                           (math-type *cudnn-default-math-type*))
+                               strides
+                               paddings
+                               dilations
+                               group-count
+                               (math-type *cudnn-default-math-type*))
   (let* ((input (lazy-array input))
          (filter (lazy-array filter))
          (input-shape (lazy-array-shape input))
@@ -49,24 +49,26 @@
          ;; outputDim = 1 + ( inputDim + 2*pad - (((filterDim-1)*dilation)+1) )/convolutionStride;
          (output-shape (make-shape
                          `(,(shape-range input-shape 0)
-                           ,(shape-range filter-shape 1)
-                           ,@(loop for i in (mapcar #'range-size (subseq (shape-ranges input-shape) 2))
-                                   for f in (mapcar #'range-size (subseq (shape-ranges filter-shape) 2))
-                                   for stride in strides
-                                   for pad in paddings
-                                   for dilation in dilations
-                                   collect (range
-                                             (1+ (/ (+ i (* 2 pad) (- (1+ (* (1- f) dilation)))) stride))))))))
-  (make-instance 'lazy-convolution
-                 :inputs (list input filter)
-                 :shape output-shape
-                 :ntype (element-ntype input)
-                 :algorithm algorithm
-                 :dilations dilations
-                 :strides strides
-                 :paddings paddings
-                 :math-type math-type
-                 :group-count group-count)))
+                            ,(shape-range filter-shape 0)
+                            ,@(loop for i in (mapcar #'range-size (subseq (shape-ranges input-shape) 2))
+                                    for f in (mapcar #'range-size (subseq (shape-ranges filter-shape) 2))
+                                    for stride in strides
+                                    for pad in paddings
+                                    for dilation in dilations
+                                    collect (range
+                                              (1+ (/ (+ i (* 2 pad) (- (1+ (* (1- f) dilation)))) stride))))))))
+    (unless (equalp (nth 1 (shape-ranges input-shape)) (nth 1 (shape-ranges filter-shape)))
+      (error "Input channels and filter input channels must be equal (both must agree in second dimension)!~%Input array: ~A,~%Filter array: ~A" input-shape filter-shape))
+    (make-instance 'lazy-convolution
+                   :inputs (list input filter)
+                   :shape output-shape
+                   :ntype (element-ntype input)
+                   :algorithm algorithm
+                   :dilations dilations
+                   :strides strides
+                   :paddings paddings
+                   :math-type math-type
+                   :group-count group-count)))
 
 (defmethod lazy-custom-op-execute ((custom-op lazy-convolution)
                                    (backend cuda-backend)
