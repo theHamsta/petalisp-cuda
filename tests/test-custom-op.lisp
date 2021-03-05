@@ -69,7 +69,7 @@
 (deftest test-lazy-convolution-diff-data
   (let* ((x (petalisp.examples.machine-learning::make-trainable-parameter (aops:rand* 'single-float '(20 30))))
          (w 2.0)
-         (loss (lazy-convolution (reshape x (~ 1 ~ 1 ~ 20 ~ 30)) (reshape w (~ 1 ~ 1 ~ 2 ~ 2))))
+         (loss (lazy-convolution (reshape x (~ 4 ~ 10 ~ 20 ~ 30)) (reshape w (~ 2 ~ 10 ~ 2 ~ 2))))
          (inference (make-network loss))
          (gradient (make-network (funcall (differentiator (list loss) (list loss)) x) loss)))
     (with-cuda-backend

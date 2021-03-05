@@ -437,7 +437,7 @@
                            (accumulator-factor 0.0)
                            group-count
                            math-type
-                           (mode :cudnn-convolution)
+                           mode
                            bias-array
                            pre-bias-accumulator-array
                            activation-mode
@@ -461,6 +461,7 @@
   "
   (let* ((input-descriptor (cudnn-create-tensor-descriptor input-array cudnn-handler))
          (output-descriptor (cudnn-create-tensor-descriptor output-array cudnn-handler))
+         (mode (or mode :cudnn-convolution))
          (convolution-descriptor (cudnn-create-convolution-descriptor input-array paddings dilations filter-strides mode cudnn-handler))
          (filter-descriptor (cudnn-create-filter-descriptor filter-array filter-format cudnn-handler))
          (pre-bias-descriptor (when bias-array
