@@ -53,7 +53,9 @@
                 :pass-as-scalar-argument-p)
  (:export :compile-kernel
           :execute-kernel
-          :*device-function-mapping*))
+          :*device-function-mapping*
+          :device-function
+          :device-host-function))
 
 (in-package petalisp-cuda.jit-execution)
 

@@ -2,6 +2,21 @@
 
 (defvar *device-function-mapping* (make-hash-table :test #'equalp))
 
+(defmacro device-function (lisp-function lambda-list body-as-single-form)
+  `(setf (gethash ',lisp-function petalisp-cuda.jit-execution:*device-function-mapping*)
+         (list ',lisp-function ',lambda-list ',body-as-single-form)))
+
+(defmacro device-host-function (function-name lambda-list body-as-single-form)
+  `(prog1
+       (defun ,function-name ,lambda-list ,body-as-single-form)
+     (setf (gethash ',function-name petalisp-cuda.jit-execution:*device-function-mapping*)
+           (list ',function-name ',lambda-list ',body-as-single-form))))
+
+(device-function petalisp.type-inference::argmax (x y)
+  (if (> x y)
+     0
+     1))
+
 ;TODO: use these operators directly in cl-cuda-functions
 (defun map-call-operator (operator arguments)
   ;; LHS: Petalisp/code/type-inference/package.lisp
