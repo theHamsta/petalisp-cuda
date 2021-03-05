@@ -77,7 +77,7 @@
                           dilations
                           group-count
                           (math-type *cudnn-default-math-type*)
-                          convolution-mode
+                          (convolution-mode :cudnn-convolution)
                           transposedp)
   (let* ((input (lazy-array input))
          (filter (lazy-array filter))
