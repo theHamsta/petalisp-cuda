@@ -58,15 +58,15 @@
   (make-shape
     `(,(shape-range input-shape 0)
       ,(shape-range filter-shape (if transposedp 1 0))
-      ,@(loop for i in (mapcar #'range-size (subseq (shape-ranges input-shape) 2))
-              for f in (mapcar #'range-size (subseq (shape-ranges filter-shape) 2))
+      ,@(loop for input-dim in (mapcar #'range-size (subseq (shape-ranges input-shape) 2))
+              for filter-dim in (mapcar #'range-size (subseq (shape-ranges filter-shape) 2))
               for stride in strides
               for pad in paddings
               for dilation in dilations
               collect (range
                         (if transposedp
-                            (+ (* stride i) (- stride) (* dilation f) (- dilation) (- (* 2 pad )) 1)
-                            (1+ (/ (+ i (* 2 pad) (- (1+ (* (1- f) dilation)))) stride))))))))
+                            (+ (* stride input-dim) (- stride) (* dilation filter-dim) (- dilation) (- (* 2 pad)) 1)
+                            (1+ (/ (+ input-dim (* 2 pad) (- (1+ (* (1- filter-dim) dilation)))) stride))))))))
 
 (defun lazy-convolution (input
                           filter
