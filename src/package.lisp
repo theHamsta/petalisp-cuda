@@ -18,7 +18,7 @@
 
 (defun reclaim-cuda-memory (&optional (backend (or petalisp-cuda.backend::*cuda-backend* petalisp:*backend*)))
   (petalisp-cuda.memory.memory-pool:reclaim-cuda-memory (cuda-memory-pool backend))
-  nil)
+  (values))
 
 (defmacro device-function (lisp-function lambda-list body-as-single-form)
   `(setf (gethash ',lisp-function petalisp-cuda.jit-execution:*device-function-mapping*)
