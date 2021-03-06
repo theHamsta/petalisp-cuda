@@ -1,7 +1,7 @@
 (defpackage petalisp-cuda.jit-execution
- (:use :petalisp-cuda.backend
-       :petalisp.ir
-       :petalisp.core
+  (:use :petalisp-cuda.backend
+        :petalisp.ir
+        :petalisp.core
         :petalisp
         :cl
         :let-plus
@@ -51,11 +51,11 @@
                 :wait-for-correspoding-event)
   (:import-from :petalisp-cuda.utils.petalisp
                 :pass-as-scalar-argument-p)
- (:export :compile-kernel
-          :execute-kernel
-          :*device-function-mapping*
-          :device-function
-          :device-host-function))
+  (:export :compile-kernel
+           :execute-kernel
+           :*device-function-mapping*
+           :device-function
+           :device-host-function))
 
 (in-package petalisp-cuda.jit-execution)
 
@@ -136,6 +136,7 @@
     (unless (or (and (cuda-array-p storage)
                      (= cl-cuda:*cuda-device* (cuda-array-device storage)))
                 (pass-as-scalar-argument-p buffer))
+      (setf (buffer-info-did-upload-to-gpu-p (buffer-data buffer)) t)
       (setf (buffer-storage buffer) (make-cuda-array storage
                                                      (cl-cuda-type-from-buffer buffer)
                                                      nil

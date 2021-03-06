@@ -44,6 +44,8 @@
            execute-kernel
            cuda-backend-event-map
            cuda-backend-predecessor-map
+           buffer-info
+           buffer-info-did-upload-to-gpu-p
            with-cuda-backend))
 (in-package :petalisp-cuda.backend)
 
@@ -62,8 +64,7 @@
      (nconc cl-cuda:*nvcc-options* *nvcc-extra-options*)
      (petalisp-cuda.cudalibs::cuCtxPushCurrent_v2 cl-cuda:*cuda-context*)
      (if *single-stream*
-         (let ((cl-cuda:*cuda-stream* (cffi:null-pointer)))
-           ,@body)
+         ,@body
          (with-cuda-stream (cl-cuda:*cuda-stream*)
            ,@body))))
 
@@ -113,13 +114,20 @@
    (%compile-cache :initform (make-hash-table :test #'equalp) :reader compile-cache :type hash-table)
    (event-map :initform (make-hash-table) :accessor cuda-backend-event-map)))
 
+(defstruct (buffer-info) 
+  did-upload-to-gpu-p)
+
+(defun did-upload-to-gpu-p (buffer)
+  (let ((data (buffer-data buffer)))
+    (and (buffer-info-p data) (buffer-info-did-upload-to-gpu-p data))))
+
 (defun cuda-backend-deallocate (backend buffer)
   (with-cuda-backend-magic backend
     (let ((storage (buffer-storage buffer))
           (predecessor-map (cuda-backend-predecessor-map backend)))
       (when (cuda-array-p storage)
         (setf (buffer-storage buffer) nil)
-        (when (petalisp.ir:interior-buffer-p buffer)
+        (when (or (petalisp.ir:interior-buffer-p buffer) (did-upload-to-gpu-p buffer))
           (alexandria:ensure-gethash storage predecessor-map (make-array 0 :fill-pointer 0))
           (push (gethash storage predecessor-map) buffer)
           (memory-pool-free (cuda-memory-pool backend) storage))))))
@@ -187,6 +195,7 @@
                                (let* ((kernel (petalisp.scheduler:task-kernel task)))
                                  (create-corresponding-event kernel event-map)
                                  (mapcar (lambda (buffer)
+                                           (setf (buffer-data buffer) (make-buffer-info))
                                            (unless (or (cuda-array-p (buffer-storage buffer))
                                                        (pass-as-scalar-argument-p buffer))
                                              (create-corresponding-event buffer event-map)))
