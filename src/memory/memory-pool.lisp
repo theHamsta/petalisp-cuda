@@ -1,5 +1,8 @@
 (defpackage petalisp-cuda.memory.memory-pool
-  (:use :cl)
+  (:use :cl
+        :petalisp-cuda.cudalibs
+        :cffi
+        :cl-cuda.lang.type)
   (:use :hash-set)
   (:import-from :petalisp.native-backend :memory-pool-allocate
                                          :memory-pool-free
@@ -10,6 +13,7 @@
                                                  :cuda-array-memory-block)
   (:export :make-cuda-memory-pool
            :memory-pool-allocate
+           :cuda-memory-pool-allocate
            :memory-pool-free
            :memory-pool
            :memory-pool-reset
@@ -34,10 +38,19 @@
                                  (array-size number))
   (cuda-memory-pool-allocate memory-pool array-element-type array-size))
 
-(defun alloc-device-memory-managed (array-element-type array-size)
-  (error "TODO"))
+(defun alloc-device-memory-managed (element-type size)
+  (with-foreign-object (ptr '(:pointer (:pointer :void)))
+    (let ((result (cuMemAllocManaged ptr (make-pointer (* size (cffi-type-size element-type))) :cu-mem-attach-global)))
+      (when (/= result 0)
+        (error "Failed to allocate ~A MB of managed memory (~A)~%"
+               (/ (* size (cffi-type-size element-type)) (* 1024.0 1024.0))
+               (if (= result 2)
+                 "out of memory"
+                 result))))
+    (pointer-address
+      (mem-ref ptr :pointer))))
 
-(defun cuda-memory-pool-allocate (memory-pool array-element-type array-size &optional managedp)
+(defun cuda-memory-pool-allocate (memory-pool array-element-type array-size &key managedp)
   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
     (or (pop (gethash (cons array-element-type array-size)
                       (array-table memory-pool)))
@@ -67,9 +80,10 @@
    (memory-pool-free memory-pool (petalisp-cuda.memory.cuda-array:cuda-array-memory-block array)))
 
 (defmethod memory-pool-reset :before ((memory-pool cuda-memory-pool))
-  (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
+  (let ((cl-cuda:*show-messages* nil))
+   (bt:with-lock-held ((cuda-memory-pool-lock memory-pool))
     (hs-map #'cl-cuda:free-memory-block (allocated-cuda-arrays memory-pool))
-    (hs-nremove-if (lambda (item) (declare (ignore item)) t) (allocated-cuda-arrays memory-pool))))
+    (hs-nremove-if (lambda (item) (declare (ignore item)) t) (allocated-cuda-arrays memory-pool)))))
 
 (defmethod reclaim-cuda-memory ((memory-pool cuda-memory-pool))
   (hs-map (lambda (memory-block) (memory-pool-free memory-pool memory-block)) (allocated-cuda-arrays memory-pool)))

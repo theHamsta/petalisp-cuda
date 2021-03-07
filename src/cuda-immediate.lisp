@@ -101,3 +101,6 @@
       (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
       (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
       (setf (cdr cons) load-instruction))))
+
+(defmethod total-size ((cuda-array cuda-array))
+  (total-size (lazy-array cuda-array)))

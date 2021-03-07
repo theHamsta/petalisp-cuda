@@ -16,14 +16,22 @@
            :*slow-coordinate-transposed-trick*
            :*cudnn-autotune*
            :*transfer-back-to-lisp*
-           :*cudnn-default-math-type*))
+           :*cudnn-default-math-type*
+           :*managed-gpu-allocations*
+           :*cudnn-max-workspace-memory*))
 (in-package petalisp-cuda.options)
 
 (defparameter *silence-cl-cuda* t)
 (defparameter *transfer-back-to-lisp* t)
 (defparameter *single-threaded* t)
 (defparameter *single-stream* t)
-(defparameter *nvcc-extra-options* '("-use_fast_math" "--std=c++14" "-Xptxas" "-O3" "--expt-relaxed-constexpr" "--extra-device-vectorization" "-Wno-deprecated-gpu-targets"))
+(defparameter *nvcc-extra-options* '("-use_fast_math"
+                                     "--std=c++14"
+                                     "-Xptxas"
+                                     "-O3"
+                                     "--expt-relaxed-constexpr"
+                                     "--extra-device-vectorization"
+                                     "-Wno-deprecated-gpu-targets"))
 (defparameter *shape-independent-code* t)
 (defparameter *generic-offsets* t)
 (defparameter *with-hash-table-memoization* t)
@@ -47,3 +55,6 @@
 (defparameter *managed-gpu-allocations* nil
   "Whether to use cudaMallocManaged to allocate GPU memory (enables over-allocation of GPU RAM)
   https://developer.nvidia.com/blog/beyond-gpu-memory-limits-unified-memory-pascal/")
+
+(defparameter *cudnn-max-workspace-memory* (* 0 1024 1024)
+  "Upper limit for CUDNN workspace memory size in bytes")

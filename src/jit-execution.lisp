@@ -8,6 +8,7 @@
         :trivia
         :cl-cuda
         :petalisp-cuda.memory.memory-pool
+        :petalisp-cuda.options
         :petalisp-cuda.custom-op)
   (:import-from :cl-cuda.api.kernel-manager :make-kernel-manager
                 :kernel-manager-define-function
@@ -141,9 +142,10 @@
                                                      (cl-cuda-type-from-buffer buffer)
                                                      nil
                                                      (lambda (type size)
-                                                       (memory-pool-allocate (cuda-memory-pool backend)
-                                                                             type
-                                                                             size))))
+                                                       (cuda-memory-pool-allocate (cuda-memory-pool backend)
+                                                                                  type
+                                                                                  size
+                                                                                  :managedp *managed-gpu-allocations*))))
       (record-corresponding-event buffer (cuda-backend-event-map backend)))))
 
 (defun make-multiple-value-let (lhs rhs more-rhs)

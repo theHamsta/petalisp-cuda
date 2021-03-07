@@ -75,7 +75,7 @@
       (progn 
         (when petalisp:*backend*
           (petalisp.core:delete-backend petalisp:*backend*))
-        (setq petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend)))))))
+        (setf petalisp:*backend* (or *cuda-backend* (make-instance 'cuda-backend)))))))
 
 (defmacro with-cuda-backend-raii (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
@@ -89,9 +89,9 @@
 (defmacro with-cuda-backend (&body body)
   `(let* ((cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
           (backend (or *cuda-backend* (make-instance 'cuda-backend)))
-          (petalisp:*backend* (or *cuda-backend* backend)))
+          (petalisp:*backend* backend))
      (unless *cuda-backend*
-       (setq *cuda-backend* backend))
+       (setf *cuda-backend* backend))
      ,@body))
 
 (defclass cuda-backend (petalisp.core:backend)
@@ -136,7 +136,10 @@
 (defmethod cuda-backend-p ((thing T))
   nil)
 (defmethod cuda-backend-p ((thing cuda-backend))
-  T)
+  t)
+
+(defun cuda-backend-cudnn-workspace-size (backend)
+  (petalisp-cuda.cudnn-handler::workspace-size (cudnn-handler backend)))
 
 (defmethod initialize-instance :after ((backend cuda-backend) &key)
   (unless (and (boundp 'cl-cuda:*cuda-context*) cl-cuda:*cuda-context*)
@@ -183,7 +186,7 @@
          (worker-pool (cuda-backend-worker-pool backend))
          (cl-cuda:*show-messages* (if *silence-cl-cuda* nil cl-cuda:*show-messages*))
          (event-map (cuda-backend-event-map backend))
-         (allocate (lambda (type size) (memory-pool-allocate memory-pool type size)))
+         (allocate (lambda (type size) (cuda-memory-pool-allocate memory-pool type size :managedp *managed-gpu-allocations*)))
          (deallocate (lambda (buffer) (cuda-backend-deallocate backend buffer)))
          (immediates (petalisp.scheduler:schedule-on-workers
                        lazy-arrays

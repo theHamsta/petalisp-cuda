@@ -30,11 +30,14 @@
   (call-next-method))
 
 (defmacro with-testing-backend (&body body)
-  `(let ((petalisp-cuda.options:*transfer-back-to-lisp* t)
-         (cl-cuda:*show-messages* (if petalisp-cuda.options:*silence-cl-cuda* nil cl-cuda:*show-messages*))
-         (petalisp:*backend* *test-backend*)
-         (PETALISP.TEST-SUITE::*PASS-COUNT* 0))
-     (call-with-testing-backend (lambda () ,@body))))
+  `(progn
+     (unless *test-backend*
+       (setf *test-backend* (or (make-testing-backend))))
+     (let ((petalisp-cuda.options:*transfer-back-to-lisp* t)
+           (cl-cuda:*show-messages* (if petalisp-cuda.options:*silence-cl-cuda* nil cl-cuda:*show-messages*))
+           (petalisp:*backend* *test-backend*)
+           (petalisp.test-suite::*pass-count* 0))
+       (call-with-testing-backend (lambda () ,@body)))))
 
 (defun call-with-testing-backend (thunk)
   (funcall thunk))

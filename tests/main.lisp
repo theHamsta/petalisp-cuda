@@ -4,7 +4,7 @@
 (petalisp.test-suite:check-package ':petalisp-cuda.backend)
 (petalisp.test-suite:check-package ':petalisp-cuda.jit-execution)
 
-(defparameter *test-backend* (make-testing-backend))
+(defvar *test-backend* nil)
 
 (deftest test-make-cuda-backend
   (let ((cl-cuda:*show-messages* nil))

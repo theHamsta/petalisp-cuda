@@ -2,10 +2,10 @@
   (:use :petalisp-cuda.cudalibs
         :cl
         :cffi
-        :make-hash)
+        :make-hash
+        :petalisp-cuda.options)
   (:import-from :cl-cuda.lang.type :cffi-type :cffi-type-size)
   (:import-from :petalisp.core :rank)
-  (:import-from :petalisp-cuda.options :*cudnn-autotune*)
   (:import-from :petalisp-cuda.memory.cuda-array
                 :cuda-array-type
                 :cuda-array-shape
@@ -14,7 +14,8 @@
                 :c-layout-p)
   (:export :make-cudnn-handler
            :finalize-cudnn-handler
-           :cudnn-reduce-array))
+           :cudnn-reduce-array
+           :free-workspace-memory))
 (in-package petalisp-cuda.cudnn-handler)
 
 (defclass cudnn-handler ()
@@ -63,17 +64,23 @@
     (assert (equalp :CUDNN-STATUS-SUCCESS (cudnncreate cudnn-handle-ptr)))
     (mem-ref cudnn-handle-ptr :pointer)))
 
+(defun free-workspace-memory (cudnn-handler)
+  (let ((cl-cuda:*show-messages* nil))
+    (cuCtxSynchronize)
+    (alexandria:when-let ((workspace-mem (workspace cudnn-handler)))
+      (cl-cuda:free-device-memory workspace-mem))
+    (setf (workspace cudnn-handler) 0)
+    (setf (workspace-size cudnn-handler) 0)))
+
 (defun finalize-cudnn-handler (cudnn-handler)
   (when cudnn-handler
+    (cuCtxSynchronize)
     (clear-foreign-hashtable (tensor-descriptors cudnn-handler) #'cudnnDestroyTensorDescriptor)
     (clear-foreign-hashtable (reduce-descriptors cudnn-handler) #'cudnnDestroyReduceTensorDescriptor)
     (clear-foreign-hashtable (convolution-descriptors cudnn-handler) #'cudnnDestroyConvolutionDescriptor)
     (clear-foreign-hashtable (filter-descriptors cudnn-handler) #'cudnnDestroyFilterDescriptor)
     (clear-foreign-hashtable (activation-desciptors cudnn-handler) #'cudnnDestroyActivationDescriptor)
-    (alexandria:when-let ((workspace-mem (workspace cudnn-handler)))
-      (cl-cuda:free-device-memory workspace-mem))
-    (setf (workspace cudnn-handler) 0)
-    (setf (workspace-size cudnn-handler) 0)
+    (free-workspace-memory cudnn-handler)
     (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnDestroy (cudnn-handle cudnn-handler))))))
 
 (defun cudnn-type (type)
@@ -285,7 +292,7 @@
 
 (defun get-convolution-backward-filter-algorithm (input-descriptor filter-descriptor convolution-descriptor output-descriptor cudnn-handler)
   (petalisp.utilities:with-hash-table-memoization
-    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune* :backward-data))
+    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune* *cudnn-max-workspace-memory* :backward-data))
     (convolution-algorithms cudnn-handler)
     (with-foreign-object (algo-count '(:pointer :int))
       (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardFilterAlgorithmMaxCount (cudnn-handle cudnn-handler)
@@ -309,11 +316,18 @@
                                                                                                  algo-count
                                                                                                  perf-results))))
         (assert (> (mem-aref algo-count :int 0)))
-        (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionBwdFilterAlgoPerf-t) 'cudnnConvolutionBwdFilterAlgoPerf-t 'algo)))))
+        (loop for i from 0 below (mem-aref algo-count :int)
+            for perf = (mem-aref perf-results 'cudnnConvolutionBwdFilterAlgoPerf-t i)
+            for memory = (pointer-address (foreign-slot-value perf 'cudnnConvolutionBwdFilterAlgoPerf-t 'memory))
+            for algo = (foreign-slot-value perf 'cudnnConvolutionBwdFilterAlgoPerf-t 'algo)
+            with fastest-algo = algo
+            if (or (not *cudnn-max-workspace-memory*) (<= memory *cudnn-max-workspace-memory*))
+            return algo
+            finally (return fastest-algo))))))
 
 (defun get-convolution-backward-data-algorithm (input-descriptor filter-descriptor convolution-descriptor output-descriptor cudnn-handler)
   (petalisp.utilities:with-hash-table-memoization
-    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune* :backward-filter))
+    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune* *cudnn-max-workspace-memory* :backward-filter))
     (convolution-algorithms cudnn-handler)
     (with-foreign-object (algo-count '(:pointer :int))
       (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardDataAlgorithmMaxCount (cudnn-handle cudnn-handler)
@@ -328,70 +342,66 @@
           ;(requestedalgocount :int)
           ;(returnedalgocount (:pointer :int))
           ;(perfresults (:pointer cudnnConvolutionBwdDataAlgoPerf-t)))
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionBackwardDataAlgorithm (cudnn-handle cudnn-handler)
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionBackwardDataAlgorithm (cudnn-handle cudnn-handler)
+                                                                                         filter-descriptor
+                                                                                         input-descriptor
+                                                                                         convolution-descriptor
+                                                                                         output-descriptor
+                                                                                         (mem-aref algo-count :int)
+                                                                                         algo-count
+                                                                                         perf-results)))
+        (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardDataAlgorithm_v7 (cudnn-handle cudnn-handler)
                                                                                            filter-descriptor
                                                                                            input-descriptor
                                                                                            convolution-descriptor
                                                                                            output-descriptor
                                                                                            (mem-aref algo-count :int)
                                                                                            algo-count
-                                                                                           perf-results)))
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionBackwardDataAlgorithm_v7 (cudnn-handle cudnn-handler)
-                                                                                             filter-descriptor
-                                                                                             input-descriptor
-                                                                                             convolution-descriptor
-                                                                                             output-descriptor
-                                                                                             (mem-aref algo-count :int)
-                                                                                             algo-count
-                                                                                             perf-results))))
-        (assert (> (mem-aref algo-count :int 0)))
-        (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionBwdDataAlgoPerf-t) 'cudnnConvolutionBwdDataAlgoPerf-t 'algo)))))
+                                                                                           perf-results))))
+      (assert (> (mem-aref algo-count :int 0)))
+      (loop for i below (mem-aref algo-count :int)
+            for perf = (mem-aref perf-results 'cudnnConvolutionBwdDataAlgoPerf-t i)
+            for memory = (pointer-address (foreign-slot-value perf 'cudnnConvolutionBwdDataAlgoPerf-t 'memory))
+            for algo = (foreign-slot-value perf 'cudnnConvolutionBwdDataAlgoPerf-t 'algo)
+            with fastest-algo = algo
+            if (or (not *cudnn-max-workspace-memory*) (<= memory *cudnn-max-workspace-memory*))
+            return algo
+            finally (return fastest-algo))))))
 
 (defun get-convolution-forward-algorithm (input-descriptor filter-descriptor convolution-descriptor output-descriptor cudnn-handler)
   (petalisp.utilities:with-hash-table-memoization
-    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor *cudnn-autotune*))
+    ((list input-descriptor filter-descriptor convolution-descriptor output-descriptor  *cudnn-max-workspace-memory* *cudnn-autotune*))
     (convolution-algorithms cudnn-handler)
     (with-foreign-object (algo-count '(:pointer :int))
       (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithmMaxCount (cudnn-handle cudnn-handler)
                                                                                          algo-count)))
       (with-foreign-object (perf-results 'cudnnConvolutionFwdAlgoPerf-t (mem-aref algo-count :int))
         (if *cudnn-autotune*
-            ;cudnnStatus_t cudnnFindConvolutionForwardAlgorithm(
-            ;cudnnHandle_t                      handle,
-            ;const cudnnTensorDescriptor_t      xDesc,
-            ;const cudnnFilterDescriptor_t      wDesc,
-            ;const cudnnConvolutionDescriptor_t convDesc,
-            ;const cudnnTensorDescriptor_t      yDesc,
-            ;const int                          requestedAlgoCount,
-            ;int                               *returnedAlgoCount,
-            ;cudnnConvolutionFwdAlgoPerf_t     *perfResults)
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionForwardAlgorithm (cudnn-handle cudnn-handler)
-                                                                                      input-descriptor
-                                                                                      filter-descriptor
-                                                                                      convolution-descriptor
-                                                                                      output-descriptor
-                                                                                      (mem-aref algo-count :int)
-                                                                                      algo-count
-                                                                                      perf-results)))
-          ;;cudnnStatus_t cudnnGetConvolutionForwardAlgorithm_v7(
-          ;;cudnnHandle_t                       handle,
-          ;;const cudnnTensorDescriptor_t       xDesc,
-          ;;const cudnnFilterDescriptor_t       wDesc,
-          ;;const cudnnConvolutionDescriptor_t  convDesc,
-          ;;const cudnnTensorDescriptor_t       yDesc,
-          ;;const int                           requestedAlgoCount,
-          ;;int                                *returnedAlgoCount,
-          ;;cudnnConvolutionFwdAlgoPerf_t      *perfResults)
-          (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithm_v7 (cudnn-handle cudnn-handler)
+            (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnFindConvolutionForwardAlgorithm (cudnn-handle cudnn-handler)
                                                                                         input-descriptor
                                                                                         filter-descriptor
                                                                                         convolution-descriptor
                                                                                         output-descriptor
                                                                                         (mem-aref algo-count :int)
                                                                                         algo-count
-                                                                                        perf-results))))
+                                                                                        perf-results)))
+            (assert (equalp :CUDNN-STATUS-SUCCESS (cudnnGetConvolutionForwardAlgorithm_v7 (cudnn-handle cudnn-handler)
+                                                                                          input-descriptor
+                                                                                          filter-descriptor
+                                                                                          convolution-descriptor
+                                                                                          output-descriptor
+                                                                                          (mem-aref algo-count :int)
+                                                                                          algo-count
+                                                                                          perf-results))))
         (assert (> (mem-aref algo-count :int 0)))
-        (foreign-slot-value (mem-aref perf-results 'cudnnConvolutionFwdAlgoPerf-t) 'cudnnConvolutionFwdAlgoPerf-t 'algo)))))
+        (loop for i below (mem-aref algo-count :int)
+              for perf = (mem-aref perf-results 'cudnnConvolutionFwdAlgoPerf-t i)
+              for memory = (pointer-address (foreign-slot-value perf 'cudnnConvolutionFwdAlgoPerf-t 'memory))
+              for algo = (foreign-slot-value perf 'cudnnConvolutionFwdAlgoPerf-t 'algo)
+              with fastest-algo = algo
+              if (or (not *cudnn-max-workspace-memory*) (<= memory *cudnn-max-workspace-memory*))
+              return algo
+              finally (return fastest-algo))))))
 
 (defun check-output-dimensions (output-array input-descriptor convolution-descriptor filter-descriptor)
   (with-foreign-objects ((result :int (rank output-array)))

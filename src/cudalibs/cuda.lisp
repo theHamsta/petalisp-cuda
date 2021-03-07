@@ -13,6 +13,7 @@
 	   :nvtxMark
 	   :cugraphexec
 	   :cugraph
+	   :cuMemAllocManaged
 	   :cuGraphDestroy
 	   :cudnnCreateTensorDescriptor
 	   :cudnnCreateTensorDescriptor
@@ -65,6 +66,7 @@
 	   :CUDNNGETCONVOLUTIONBACKWARDDATAALGORITHM_V7
 	   :CUDNNGETCONVOLUTIONBACKWARDFILTERALGORITHM_V7
 	   :algo
+	   :memory
 	   :cudnnActivationDescriptor-t
 	   :cudnnCreateActivationDescriptor
 	   :cudnnSetActivationDescriptor
@@ -3286,7 +3288,7 @@
   (pflags (:pointer :unsigned-int))
   (p (:pointer :void)))
 
-(cffi:defcfun "cumemallocmanaged" CUresult
+(cffi:defcfun "cuMemAllocManaged" CUresult
   "\brief Allocates memory that will be automatically managed by the Unified Memory system
  
   Allocates \p bytesize bytes of managed memory on the device and returns in
@@ -3395,7 +3397,7 @@
   ::cudaMallocManaged"
   (dptr (:pointer CUdeviceptr))
   (bytesize size-t)
-  (flags :unsigned-int))
+  (flags cumemattach-flags-enum))
 
 (cffi:defcfun "cudevicegetbypcibusid" CUresult
   "\brief Returns a handle to a compute device
