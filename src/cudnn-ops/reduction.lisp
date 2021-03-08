@@ -32,13 +32,10 @@
                                                    (lazy-reduction-operation custom-op)
                                                    (petalisp-cuda.backend::cudnn-handler backend)))
 
-(defun shape-to-list (shape)
-  (mapcar #'range-size (shape-ranges shape)))
-
 (defmethod petalisp.api::input-gradient ((lazy-reduction lazy-reduction) (output-gradient lazy-array) (index (eql 0)))
   (let* ((input-shape (lazy-array-shape (nth 0 (lazy-array-inputs lazy-reduction))))
          (output-shape (lazy-array-shape lazy-reduction))
-         (shape-ratio (reduce #'* (mapcar (lambda (i o) (/ i o)) (shape-to-list input-shape) (shape-to-list output-shape)))))
+         (shape-ratio (reduce #'* (mapcar (lambda (i o) (/ i o)) (shape-dimensions input-shape) (shape-dimensions output-shape)))))
     (alexandria:switch ((lazy-reduction-operation lazy-reduction) :test #'equalp)
       (#'+ (reshape output-gradient input-shape))
       (:avg (α #'* (reshape output-gradient input-shape) shape-ratio))

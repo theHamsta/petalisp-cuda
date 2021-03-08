@@ -32,7 +32,8 @@
 (defun reset-cuda-memory (&optional (backend (or petalisp-cuda.backend::*cuda-backend* petalisp:*backend*)))
   (when (cuda-backend-p backend)
     (petalisp-cuda.memory.memory-pool::memory-pool-reset (cuda-memory-pool backend))
-    (petalisp-cuda.cudnn-handler:free-workspace-memory (cudnn-handler backend))))
+    (petalisp-cuda.cudnn-handler:free-workspace-memory (cudnn-handler backend)))
+  (values))
 
 (defun reset-and-print-memory-report ()
   (petalisp-cuda::reclaim-cuda-memory)
