@@ -37,10 +37,10 @@
          (output-shape (lazy-array-shape lazy-reduction))
          (shape-ratio (reduce #'* (mapcar (lambda (i o) (/ i o)) (shape-dimensions input-shape) (shape-dimensions output-shape)))))
     (alexandria:switch ((lazy-reduction-operation lazy-reduction) :test #'equalp)
-      (#'+ (reshape output-gradient input-shape))
-      (:avg (α #'* (reshape output-gradient input-shape) shape-ratio))
+      (#'+ (lazy-reshape output-gradient input-shape))
+      (:avg (lazy #'* (lazy-reshape output-gradient input-shape) shape-ratio))
       ;; dy * 0.5/sqrt(||x||²) * 2x ??
-      (:norm2 (α #'* (reshape output-gradient input-shape) (α #'/ (reshape lazy-reduction input-shape)) (nth 0 (lazy-array-inputs lazy-reduction))))
+      (:norm2 (lazy #'* (lazy-reshape output-gradient input-shape) (lazy #'/ (lazy-reshape lazy-reduction input-shape)) (nth 0 (lazy-array-inputs lazy-reduction))))
       (t (error "Not implemented!")))))
 
 (defmethod substitute-array ((lazy-map lazy-reduction))

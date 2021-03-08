@@ -51,7 +51,7 @@
                           (make-list input-rank :initial-element 1))
                       '(1)))
          (index-space (get-counter-vector input-rank) )
-         (transformed (transform index-space transformation)))
+         (transformed (transform-sequence index-space transformation)))
     (let ((rtn `(+ ,@(mapcar (lambda (a b) `(* ,a ,b)) transformed strides))))
       (if (= (length rtn) 1)
           0 ; '+ with zero arguments
@@ -64,7 +64,7 @@
          (buffer-shape (buffer-shape (load-instruction-buffer instruction)))
          (input-rank (transformation-input-rank transformation))
          (index-space (get-counter-vector input-rank) )
-         (transformed (transform index-space transformation)))
+         (transformed (transform-sequence index-space transformation)))
     `(and
        ,@(loop for i from 0 below output-rank
                for r = (shape-range buffer-shape i)

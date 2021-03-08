@@ -58,8 +58,8 @@
   (let ((cl-cuda:*show-messages* nil))
     (cl-cuda:with-cuda (0)
       (let* ((a (make-cuda-array (aops:rand* 'single-float '(20 9)) 'float))
-             (b (transform-cuda-array a (τ (a b) (b a))))
-             (c (transform-cuda-array a (τ (a b) (a b 3)))))
+             (b (transform-cuda-array a (transform a b to b a)))
+             (c (transform-cuda-array a (transform a b to a b 3))))
         (ok (equalp (cuda-array-shape b) '(9 20)))
         (ok (equalp (cuda-array-strides c) '(9 1 0)))
         (ok (equalp (cuda-array-shape c) '(20 9 4)))
@@ -70,14 +70,14 @@
   (signals
       (let ((petalisp-cuda.options:*strict-cast-mode* t))
         (with-cuda-backend
-          (compute (α #'+ 1 #(1 3 4))))))
+          (compute (lazy #'+ 1 #(1 3 4))))))
   ;; should work
   (ok
       (let ((petalisp-cuda.options:*strict-cast-mode* t))
         (with-cuda-backend
-          (compute (α #'+ 1 (coerce #(1.0 3.0 4.0) '(array single-float (*))))))))
+          (compute (lazy #'+ 1 (coerce #(1.0 3.0 4.0) '(array single-float (*))))))))
   ;; should work
   (ok
     (let ((petalisp-cuda.options:*strict-cast-mode* nil))
       (with-cuda-backend
-        (compute (α #'+ 1 #(1 3 4)))))))
+        (compute (lazy #'+ 1 #(1 3 4)))))))

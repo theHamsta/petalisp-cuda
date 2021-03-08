@@ -16,12 +16,9 @@
                     :strides (map 'list
                                   (lambda (x mask)
                                     (if mask x 0))
-                                  (transform (cuda-array-strides cuda-array) transformation)
+                                  (transform-sequence (cuda-array-strides cuda-array) transformation)
                                   (transformation-output-mask transformation))
                     :shape (mapcar #'range-end (shape-ranges
-                                                 (transform
+                                                 (transform-shape
                                                    (make-shape (mapcar #'range (cuda-array-shape cuda-array)))
                                                    transformation)))))
-
-(defmethod transform ((cuda-array cuda-array) (transformation transformation))
-  (transform-cuda-array cuda-array transformation))

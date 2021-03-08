@@ -14,7 +14,7 @@
 (in-package petalisp-cuda.cudnn-ops)
 
 (defun unnormalizing-transformation (input-shape output-shape)
-  (let ((output-shape (transform output-shape (collapsing-transformation output-shape))))
+  (let ((output-shape (transform-shape output-shape (collapsing-transformation output-shape))))
     (if (equalp input-shape output-shape)
         (identity-transformation (shape-rank input-shape))
         (invert-transformation (normalizing-transformation output-shape)))))
